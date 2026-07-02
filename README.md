@@ -40,7 +40,7 @@ Este proyecto se desarrolla de forma incremental, módulo por módulo, mantenien
 | Módulo | Descripción | Estado |
 |---|---|---|
 | 0 | Scaffolding del repositorio | ✅ Completo |
-| 1 | Base de datos (PostgreSQL + Alembic) | ⏳ Pendiente |
+| 1 | Base de datos (PostgreSQL + Alembic) | ✅ Completo |
 | 2 | Laboratorio vulnerable (Juice Shop + DVWA) | ⏳ Pendiente |
 | 3 | Backend API core (FastAPI) | ⏳ Pendiente |
 | 4 | Scanner Service (Nmap/Nuclei/Nikto/WhatWeb/ZAP) | ⏳ Pendiente |
@@ -82,6 +82,7 @@ assets/       # Diagramas fuente, capturas de pantalla
 - [Arquitectura completa y plan de desarrollo](docs/architecture.md) *(Módulo 10)*
 - [Manual de instalación](docs/installation.md) *(Módulo 10)*
 - [Manual de uso](docs/usage.md) *(Módulo 10)*
+- [Modelo de datos y diagrama ER](docs/database.md)
 - [Alcance legal del laboratorio](docs/lab.md) *(Módulo 2)*
 
 ## Licencia

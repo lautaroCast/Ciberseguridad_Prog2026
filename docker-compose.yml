@@ -55,6 +55,24 @@ services:
       start_period: 10s
 
   # --------------------------------------------------------------------
+  # Migrate — one-shot Alembic runner, applies the schema then exits
+  # (Módulo 1). Any service depending on the schema should declare
+  # `depends_on: migrate: condition: service_completed_successfully`.
+  # --------------------------------------------------------------------
+  migrate:
+    build:
+      context: ./database
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-migrate
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # --------------------------------------------------------------------
   # Backend API — FastAPI orchestrator (Módulo 3)
   # --------------------------------------------------------------------
   # backend:
@@ -70,6 +88,8 @@ services:
   #   depends_on:
   #     db:
   #       condition: service_healthy
+  #     migrate:
+  #       condition: service_completed_successfully
   #   healthcheck:
   #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
   #     interval: 10s
