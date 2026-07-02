@@ -1,0 +1,192 @@
+# ============================================================================
+# VulnScan Platform — Docker Compose orchestration
+#
+# Single entry point for the whole system: `docker compose up -d` must leave
+# every service healthy with no manual follow-up steps.
+#
+# Two networks by design:
+#   - app-network: platform services talk to each other (frontend, backend,
+#     scanner, reports, n8n, db).
+#   - lab-network: isolated network for vulnerable lab targets. Only the
+#     scanner service bridges into it, so the lab is never reachable from
+#     the frontend/n8n and is never exposed beyond localhost port mappings.
+#
+# This file is a scaffold (Módulo 0): networks, volumes and service stubs
+# are defined now; each service's build context is filled in as its module
+# is completed. Services are commented out until their Dockerfile exists so
+# `docker compose up -d` stays runnable at every stage of development.
+# ============================================================================
+
+networks:
+  app-network:
+    driver: bridge
+  lab-network:
+    driver: bridge
+    internal: true # no route to the outside world — lab stays fully local
+
+volumes:
+  postgres-data:
+  n8n-data:
+  reports-data:
+
+services:
+  # --------------------------------------------------------------------
+  # Database — PostgreSQL (Módulo 1)
+  # --------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # --------------------------------------------------------------------
+  # Backend API — FastAPI orchestrator (Módulo 3)
+  # --------------------------------------------------------------------
+  # backend:
+  #   build:
+  #     context: ./backend
+  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-backend
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   ports:
+  #     - "${BACKEND_PORT:-8000}:8000"
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 15s
+
+  # --------------------------------------------------------------------
+  # Scanner Service — Nmap/Nuclei/Nikto/WhatWeb/ZAP adapters (Módulo 4)
+  # --------------------------------------------------------------------
+  # scanner:
+  #   build:
+  #     context: ./scanner
+  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-scanner
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   ports:
+  #     - "${SCANNER_PORT:-8100}:8100"
+  #   networks:
+  #     - app-network
+  #     - lab-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 15s
+
+  # --------------------------------------------------------------------
+  # Reports Service — Jinja2 + WeasyPrint (Módulo 7)
+  # --------------------------------------------------------------------
+  # reports:
+  #   build:
+  #     context: ./reports
+  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-reports
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   volumes:
+  #     - reports-data:/data/reports
+  #   ports:
+  #     - "${REPORTS_PORT:-8200}:8200"
+  #   networks:
+  #     - app-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 15s
+
+  # --------------------------------------------------------------------
+  # n8n — pipeline orchestration (Módulo 6)
+  # --------------------------------------------------------------------
+  # n8n:
+  #   image: n8nio/n8n:latest
+  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-n8n
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   environment:
+  #     N8N_HOST: ${N8N_HOST}
+  #     N8N_PORT: 5678
+  #     N8N_PROTOCOL: ${N8N_PROTOCOL}
+  #     N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE}
+  #     N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
+  #     N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+  #     N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+  #   volumes:
+  #     - n8n-data:/home/node/.n8n
+  #     - ./n8n/workflows:/workflows:ro
+  #   ports:
+  #     - "${N8N_PORT:-5678}:5678"
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 15s
+
+  # --------------------------------------------------------------------
+  # Frontend — React + TypeScript dashboard (Módulo 8)
+  # --------------------------------------------------------------------
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-frontend
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   ports:
+  #     - "${FRONTEND_PORT:-8080}:80"
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+
+  # --------------------------------------------------------------------
+  # Vulnerable lab targets — isolated network (Módulo 2)
+  # --------------------------------------------------------------------
+  # juice-shop:
+  #   image: bkimminich/juice-shop:latest
+  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-juice-shop
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${JUICE_SHOP_PORT:-3000}:3000"
+  #   networks:
+  #     - lab-network
+
+  # dvwa:
+  #   image: vulnerables/web-dvwa:latest
+  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-dvwa
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${DVWA_PORT:-3001}:80"
+  #   networks:
+  #     - lab-network
