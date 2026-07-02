@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routers import health, scans, targets
+from app.services.pipeline_service import PipelineTriggerError
 from app.services.scan_service import ScanNotFoundError
 from app.services.target_service import (
     TargetNameConflictError,
@@ -66,6 +67,15 @@ async def target_name_conflict_handler(
 @app.exception_handler(ScanNotFoundError)
 async def scan_not_found_handler(request: Request, exc: ScanNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": f"Scan '{exc}' not found."})
+
+
+@app.exception_handler(PipelineTriggerError)
+async def pipeline_trigger_error_handler(
+    request: Request, exc: PipelineTriggerError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=502, content={"detail": f"Could not start the n8n pipeline: {exc}"}
+    )
 
 
 app.include_router(health.router)

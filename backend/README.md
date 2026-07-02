@@ -72,6 +72,7 @@ gets a clean `409`, not an unhandled `500` from a race on the pre-check.
 | Method | Path | Description |
 |---|---|---|
 | POST | `/targets/{target_id}/scans` | Start a `Scan` against a registered target (`status=running`) |
+| POST | `/targets/{target_id}/pipeline` | Start the full n8n pipeline (Módulo 6) for a target — creates the `Scan` and triggers n8n's Webhook node; returns `202` immediately, before the pipeline finishes |
 | GET | `/scans/{scan_id}` | Fetch one scan |
 | POST | `/scans/{scan_id}/complete` | Mark a scan `completed`/`failed`, sets `finished_at` |
 | POST | `/scans/{scan_id}/tasks` | Ingest a Scanner Service `RawScanResult` — creates the `ScanTask` row and, when the payload carries `parsed` output, normalizes it into `Service`/`Technology`/`Finding`/`CveReference` rows in one transaction |

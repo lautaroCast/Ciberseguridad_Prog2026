@@ -103,6 +103,8 @@ services:
       # loudly at startup (see app/config.py's validator) rather than boot
       # successfully and silently reject every target registration.
       BACKEND_ALLOWED_LAB_HOSTS: ${BACKEND_ALLOWED_LAB_HOSTS}
+      # Same reasoning as above: no :-default, see app/config.py's validator.
+      N8N_WEBHOOK_BASE_URL: ${N8N_WEBHOOK_BASE_URL}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     networks:
@@ -169,36 +171,46 @@ services:
 
   # --------------------------------------------------------------------
   # n8n — pipeline orchestration (Módulo 6)
+  #
+  # Orchestrator only: every node in n8n/workflows/vulnscan-pipeline.json
+  # is an HTTP call into the Backend or Scanner Service — no business logic
+  # lives in the workflow itself. Two entry points feed the same pipeline:
+  # the Webhook trigger (called by the Backend's
+  # POST /targets/{id}/pipeline, the production path) and a Form trigger
+  # (opened directly in n8n's UI, for running/demoing the pipeline without
+  # the Backend or a frontend — see n8n/README.md).
   # --------------------------------------------------------------------
-  # n8n:
-  #   image: n8nio/n8n:latest
-  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-n8n
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   environment:
-  #     N8N_HOST: ${N8N_HOST}
-  #     N8N_PORT: 5678
-  #     N8N_PROTOCOL: ${N8N_PROTOCOL}
-  #     N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE}
-  #     N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
-  #     N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
-  #     N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
-  #   volumes:
-  #     - n8n-data:/home/node/.n8n
-  #     - ./n8n/workflows:/workflows:ro
-  #   ports:
-  #     - "${N8N_PORT:-5678}:5678"
-  #   networks:
-  #     - app-network
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 15s
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-n8n
+    restart: unless-stopped
+    environment:
+      N8N_HOST: ${N8N_HOST}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE}
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      # Basic auth protects the editor UI/API only — it does not gate
+      # webhook URLs, so the Backend's service-to-service call to the
+      # pipeline trigger needs no credentials.
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    networks:
+      - app-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # --------------------------------------------------------------------
   # Frontend — React + TypeScript dashboard (Módulo 8)

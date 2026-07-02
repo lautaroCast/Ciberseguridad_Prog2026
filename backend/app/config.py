@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     backend_allowed_lab_hosts: str
     backend_log_level: str = "info"
     backend_cors_origins: str = ""
+    n8n_webhook_base_url: str
 
     @field_validator("backend_allowed_lab_hosts")
     @classmethod
@@ -33,6 +34,18 @@ class Settings(BaseSettings):
             )
         return value
 
+    @field_validator("n8n_webhook_base_url")
+    @classmethod
+    def _require_n8n_webhook_base_url(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError(
+                "N8N_WEBHOOK_BASE_URL must not be empty — POST /targets/{id}/pipeline "
+                "would boot successfully and then fail every request with no clear "
+                "cause. Set it to n8n's internal service URL, e.g. 'http://n8n:5678' "
+                "(see .env.example)."
+            )
+        return value.rstrip("/")
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.backend_cors_origins.split(",") if origin.strip()]
@@ -40,6 +53,13 @@ class Settings(BaseSettings):
     @property
     def allowed_lab_hosts(self) -> set[str]:
         return {host.strip() for host in self.backend_allowed_lab_hosts.split(",") if host.strip()}
+
+    @property
+    def n8n_pipeline_webhook_url(self) -> str:
+        # The path is fixed by our own workflow definition (see the Webhook
+        # trigger node in n8n/workflows/vulnscan-pipeline.json), not
+        # deployment-specific, so only the base URL is configurable.
+        return f"{self.n8n_webhook_base_url}/webhook/vulnscan-pipeline"
 
 
 @lru_cache

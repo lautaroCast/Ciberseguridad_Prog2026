@@ -18,7 +18,7 @@ from app.database import get_db
 from app.schemas.finding import FindingRead
 from app.schemas.scan import ScanComplete, ScanCreate, ScanRead
 from app.schemas.scan_task import ScanTaskIngest, ScanTaskIngestResult, ScanTaskRead
-from app.services import finding_service, scan_service, scan_task_service
+from app.services import finding_service, pipeline_service, scan_service, scan_task_service
 from models import ScanStatus
 
 router = APIRouter(tags=["scans"])
@@ -36,6 +36,20 @@ def create_scan(
     target_id: uuid.UUID, payload: ScanCreate, db: Session = Depends(get_db)
 ) -> ScanRead:
     return scan_service.create_scan(db, target_id=target_id, triggered_by=payload.triggered_by)
+
+
+@router.post(
+    "/targets/{target_id}/pipeline", response_model=ScanRead, status_code=status.HTTP_202_ACCEPTED
+)
+def trigger_pipeline(target_id: uuid.UUID, db: Session = Depends(get_db)) -> ScanRead:
+    """Starts the full n8n pipeline (Módulo 6) for a target.
+
+    Returns as soon as n8n acknowledges the trigger (n8n's Webhook node
+    responds immediately, before running the workflow) — the scan is
+    `running` in the response, not `completed`. Poll `GET /scans/{id}` or
+    `GET /scans/{id}/findings` for progress.
+    """
+    return pipeline_service.trigger_pipeline(db, target_id)
 
 
 @router.get("/scans/{scan_id}", response_model=ScanRead)

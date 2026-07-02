@@ -1,0 +1,452 @@
+{
+  "id": "vulnscan-pipeline",
+  "name": "VulnScan Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Two entry points, one pipeline\n\n- **Webhook Trigger**: called by the Backend (`POST /targets/{id}/pipeline`). This is the production path — the Backend already created the `Scan` row and passes `scan_id`/`target_id`/`host` directly in the body.\n- **Form Trigger**: open this node's \"Test URL\" in a browser to run the whole pipeline by hand (type a `target_id`, no Backend/frontend call needed). Used for demos before Módulo 8 (frontend) exists.\n\nBoth branches converge at **Resolve Pipeline Context**, which is the only node that has to know which trigger actually fired. Everything after it is a single linear chain.",
+        "height": 320,
+        "width": 460
+      },
+      "id": "note-triggers",
+      "name": "Sticky Note - Triggers",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-620, -320]
+    },
+    {
+      "parameters": {
+        "content": "## Recon -> tool selection\n\nNmap runs first and unscoped (no port needed). **Select HTTP Port** reads Nmap's own response directly (not the DB) and picks the first open port that looks like HTTP(S) — this is the \"selección inteligente de herramientas\" stage from the architecture doc, kept intentionally simple. If Nmap found no open ports at all, this node returns zero items, which stops every downstream node automatically — no explicit IF/skip logic needed.",
+        "height": 260,
+        "width": 460
+      },
+      "id": "note-recon",
+      "name": "Sticky Note - Recon",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [280, -320]
+    },
+    {
+      "parameters": {
+        "content": "## Web scanning (sequential)\n\nWhatWeb, Nikto, Nuclei and ZAP run one after another rather than in parallel branches — the workflow graph stays a single linear chain (easy to read/debug in the editor), and ZAP's active scan alone (3-5 min) dominates total runtime regardless of whether the other three run before or after it. Running them concurrently is a reasonable future enhancement, not a correctness requirement.\n\nEach tool's raw result is posted straight through to the Backend's `/scans/{id}/tasks` endpoint (Módulo 5) unchanged — that endpoint's ingest schema mirrors the Scanner Service's response on purpose, so there's no reshaping here.",
+        "height": 280,
+        "width": 700
+      },
+      "id": "note-scanning",
+      "name": "Sticky Note - Scanning",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1140, -320]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vulnscan-pipeline",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-600, -100],
+      "webhookId": "28b81581-2ebc-49ff-9270-343a626caa58"
+    },
+    {
+      "parameters": {
+        "path": "vulnscan-pipeline-manual",
+        "formTitle": "VulnScan — Manual Pipeline Trigger",
+        "formDescription": "Run the full scan pipeline against an already-registered lab target (juice-shop or dvwa). For demos/testing without the Backend API or frontend.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "target_id",
+              "fieldType": "text",
+              "requiredField": true,
+              "placeholder": "UUID from GET /targets on the Backend"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "form-trigger",
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [-600, 200],
+      "webhookId": "6a6cc7b7-6182-4514-bc5f-5b5eb5dca516"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "target_id",
+              "value": "={{ $json.body.target_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "scan_id",
+              "value": "={{ $json.body.scan_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "host",
+              "value": "={{ $json.body.host }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-from-webhook",
+      "name": "Edit Fields - From Webhook",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-380, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/targets/{{ $json.target_id }}/scans",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"triggered_by\": \"n8n-manual-trigger\" } }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "http-create-scan-manual",
+      "name": "Create Scan (Manual)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-380, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://backend:8000/targets/{{ $json.target_id }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "http-get-target-manual",
+      "name": "Get Target (Manual)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "target_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "scan_id",
+              "value": "={{ $('Create Scan (Manual)').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "b3",
+              "name": "host",
+              "value": "={{ $json.host }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-from-manual",
+      "name": "Edit Fields - From Manual",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [60, 200]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "function safeGet(nodeName) {\n  try {\n    const items = $(nodeName).all();\n    return items && items.length ? items[0].json : null;\n  } catch (e) {\n    return null;\n  }\n}\n\n// Only one of the two trigger branches actually ran in this execution —\n// referencing the other by name would throw, hence the try/catch above.\n// This is the only node in the workflow that needs to guess which branch\n// fired; everything downstream can reference this node directly.\nconst ctx = safeGet('Edit Fields - From Webhook') || safeGet('Edit Fields - From Manual');\n\nif (!ctx || !ctx.scan_id || !ctx.target_id || !ctx.host) {\n  throw new Error('Pipeline context is incomplete: expected target_id, scan_id and host from either trigger branch.');\n}\n\nreturn [{ json: ctx }];"
+      },
+      "id": "code-resolve-context",
+      "name": "Resolve Pipeline Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 50]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://scanner:8100/scan/nmap",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"target\": $json.host } }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "http-scan-nmap",
+      "name": "Scan: Nmap",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/tasks",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-ingest-nmap",
+      "name": "Ingest: Nmap",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const nmapResult = $('Scan: Nmap').item.json;\nconst context = $('Resolve Pipeline Context').item.json;\n\nconst services = (nmapResult && nmapResult.parsed) || [];\n\n// \"Selección inteligente de herramientas\" (etapa 6 del pipeline): si Nmap\n// no encontró ningún puerto abierto, correr las herramientas HTTP no\n// tiene sentido. Devolver 0 items detiene el resto de la cadena.\nif (services.length === 0) {\n  return [];\n}\n\nconst httpService = services.find((s) => /http/i.test(s.service_name || ''));\nconst chosen = httpService || services[0];\nconst scheme = /https/i.test(chosen.service_name || '') ? 'https' : 'http';\n\nreturn [{\n  json: {\n    ...context,\n    port: chosen.port,\n    scheme,\n  },\n}];"
+      },
+      "id": "code-select-port",
+      "name": "Select HTTP Port",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 50]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://scanner:8100/scan/whatweb",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme } }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "http-scan-whatweb",
+      "name": "Scan: WhatWeb",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/tasks",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-ingest-whatweb",
+      "name": "Ingest: WhatWeb",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1380, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://scanner:8100/scan/nikto",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme, \"timeout_seconds\": 120, \"options\": { \"max_time\": \"90s\" } } }}",
+        "options": { "timeout": 150000 }
+      },
+      "id": "http-scan-nikto",
+      "name": "Scan: Nikto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/tasks",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-ingest-nikto",
+      "name": "Ingest: Nikto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1820, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://scanner:8100/scan/nuclei",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme, \"timeout_seconds\": 180, \"options\": { \"tags\": \"exposure,misconfig,tech,default-login\" } } }}",
+        "options": { "timeout": 200000 }
+      },
+      "id": "http-scan-nuclei",
+      "name": "Scan: Nuclei",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2040, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/tasks",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-ingest-nuclei",
+      "name": "Ingest: Nuclei",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2260, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://scanner:8100/scan/zap",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme } }}",
+        "options": { "timeout": 600000 }
+      },
+      "id": "http-scan-zap",
+      "name": "Scan: ZAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2480, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/tasks",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-ingest-zap",
+      "name": "Ingest: ZAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2700, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/complete",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"status\": \"completed\" } }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "http-complete-scan",
+      "name": "Complete Scan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2920, 50]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "message",
+              "value": "=Pipeline finished for scan {{ $('Resolve Pipeline Context').item.json.scan_id }}. Report generation (Módulo 7) will hook in here once that service exists.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-pipeline-complete",
+      "name": "Pipeline Complete",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [3140, 50]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Edit Fields - From Webhook", "type": "main", "index": 0 }]]
+    },
+    "Form Trigger": {
+      "main": [[{ "node": "Create Scan (Manual)", "type": "main", "index": 0 }]]
+    },
+    "Edit Fields - From Webhook": {
+      "main": [[{ "node": "Resolve Pipeline Context", "type": "main", "index": 0 }]]
+    },
+    "Create Scan (Manual)": {
+      "main": [[{ "node": "Get Target (Manual)", "type": "main", "index": 0 }]]
+    },
+    "Get Target (Manual)": {
+      "main": [[{ "node": "Edit Fields - From Manual", "type": "main", "index": 0 }]]
+    },
+    "Edit Fields - From Manual": {
+      "main": [[{ "node": "Resolve Pipeline Context", "type": "main", "index": 0 }]]
+    },
+    "Resolve Pipeline Context": {
+      "main": [[{ "node": "Scan: Nmap", "type": "main", "index": 0 }]]
+    },
+    "Scan: Nmap": {
+      "main": [[{ "node": "Ingest: Nmap", "type": "main", "index": 0 }]]
+    },
+    "Ingest: Nmap": {
+      "main": [[{ "node": "Select HTTP Port", "type": "main", "index": 0 }]]
+    },
+    "Select HTTP Port": {
+      "main": [[{ "node": "Scan: WhatWeb", "type": "main", "index": 0 }]]
+    },
+    "Scan: WhatWeb": {
+      "main": [[{ "node": "Ingest: WhatWeb", "type": "main", "index": 0 }]]
+    },
+    "Ingest: WhatWeb": {
+      "main": [[{ "node": "Scan: Nikto", "type": "main", "index": 0 }]]
+    },
+    "Scan: Nikto": {
+      "main": [[{ "node": "Ingest: Nikto", "type": "main", "index": 0 }]]
+    },
+    "Ingest: Nikto": {
+      "main": [[{ "node": "Scan: Nuclei", "type": "main", "index": 0 }]]
+    },
+    "Scan: Nuclei": {
+      "main": [[{ "node": "Ingest: Nuclei", "type": "main", "index": 0 }]]
+    },
+    "Ingest: Nuclei": {
+      "main": [[{ "node": "Scan: ZAP", "type": "main", "index": 0 }]]
+    },
+    "Scan: ZAP": {
+      "main": [[{ "node": "Ingest: ZAP", "type": "main", "index": 0 }]]
+    },
+    "Ingest: ZAP": {
+      "main": [[{ "node": "Complete Scan", "type": "main", "index": 0 }]]
+    },
+    "Complete Scan": {
+      "main": [[{ "node": "Pipeline Complete", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
