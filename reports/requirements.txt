@@ -1,0 +1,12 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+Jinja2==3.1.4
+weasyprint==62.3
+# Pinned explicitly: weasyprint==62.3 calls a pydyf.Stream API that was
+# removed in pydyf 0.12 (confirmed by hand — pip resolves pydyf>=0.11,<0.12
+# correctly on its own most of the time, but a stale/permissive resolver
+# pulled 0.12.1 here and every PDF render failed with
+# "AttributeError: 'super' object has no attribute 'transform'").
+pydyf==0.11.0

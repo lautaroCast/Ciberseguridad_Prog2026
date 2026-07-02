@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     backend_log_level: str = "info"
     backend_cors_origins: str = ""
     n8n_webhook_base_url: str
+    reports_base_url: str
 
     @field_validator("backend_allowed_lab_hosts")
     @classmethod
@@ -42,6 +43,18 @@ class Settings(BaseSettings):
                 "N8N_WEBHOOK_BASE_URL must not be empty — POST /targets/{id}/pipeline "
                 "would boot successfully and then fail every request with no clear "
                 "cause. Set it to n8n's internal service URL, e.g. 'http://n8n:5678' "
+                "(see .env.example)."
+            )
+        return value.rstrip("/")
+
+    @field_validator("reports_base_url")
+    @classmethod
+    def _require_reports_base_url(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError(
+                "REPORTS_BASE_URL must not be empty — POST /scans/{id}/reports would "
+                "boot successfully and then fail every request with no clear cause. "
+                "Set it to the Reports Service's internal URL, e.g. 'http://reports:8200' "
                 "(see .env.example)."
             )
         return value.rstrip("/")

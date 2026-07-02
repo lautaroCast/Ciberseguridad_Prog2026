@@ -366,12 +366,28 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/reports?format=pdf",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {} }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "http-generate-report",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3140, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "assignments": {
           "assignments": [
             {
               "id": "c1",
               "name": "message",
-              "value": "=Pipeline finished for scan {{ $('Resolve Pipeline Context').item.json.scan_id }}. Report generation (Módulo 7) will hook in here once that service exists.",
+              "value": "=Pipeline finished for scan {{ $('Resolve Pipeline Context').item.json.scan_id }}. Report: {{ $json.file_path || 'generation failed, see Generate Report node output' }}",
               "type": "string"
             }
           ]
@@ -382,7 +398,7 @@
       "name": "Pipeline Complete",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [3140, 50]
+      "position": [3360, 50]
     }
   ],
   "connections": {
@@ -441,6 +457,9 @@
       "main": [[{ "node": "Complete Scan", "type": "main", "index": 0 }]]
     },
     "Complete Scan": {
+      "main": [[{ "node": "Generate Report", "type": "main", "index": 0 }]]
+    },
+    "Generate Report": {
       "main": [[{ "node": "Pipeline Complete", "type": "main", "index": 0 }]]
     }
   },

@@ -78,7 +78,27 @@ gets a clean `409`, not an unhandled `500` from a race on the pre-check.
 | POST | `/scans/{scan_id}/tasks` | Ingest a Scanner Service `RawScanResult` — creates the `ScanTask` row and, when the payload carries `parsed` output, normalizes it into `Service`/`Technology`/`Finding`/`CveReference` rows in one transaction |
 | GET | `/scans/{scan_id}/findings` | List normalized findings for a scan, each with its CVE references |
 
+## Endpoints (Módulo 7)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/scans/{scan_id}/reports?format=pdf\|html\|markdown\|json` | Gathers target/scan/findings and pushes them to the Reports Service to render; persists the resulting `Report` row |
+| GET | `/scans/{scan_id}/reports` | List reports generated for a scan |
+| GET | `/reports/{report_id}/download` | Proxies the rendered file from the Reports Service — the two services don't share a filesystem |
+
 Interactive docs: `http://localhost:${BACKEND_PORT:-8000}/docs`.
+
+## Report generation (Módulo 7)
+
+`app/services/report_service.py::generate_report` is the only place that
+talks to the Reports Service: it gathers a target, its scan, and every
+finding (reusing `target_service`/`scan_service`/`finding_service`, no new
+queries), serializes them with the same `TargetRead`/`ScanRead`/
+`FindingRead` schemas the rest of the API already returns, and pushes the
+whole thing to the Reports Service in one request. The Reports Service is
+intentionally stateless (see [`reports/README.md`](../reports/README.md))
+— it never queries Postgres or calls back into the Backend, so this is a
+one-way push, not a pull.
 
 ## Normalization and severity classification (Módulo 5)
 

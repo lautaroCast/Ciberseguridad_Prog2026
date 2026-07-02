@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>VulnScan Report — {{ target.name }}</title>
+<style>
+  @page { size: A4; margin: 2cm; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; font-size: 11px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .subtitle { color: #666; margin-bottom: 24px; }
+  .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .meta-table td { padding: 4px 8px; border-bottom: 1px solid #eee; }
+  .meta-table td:first-child { font-weight: 600; width: 160px; color: #444; }
+  .summary { display: flex; gap: 24px; margin-bottom: 24px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-weight: 600; font-size: 10px; color: #fff; }
+  .badge.critical { background: #7a1120; }
+  .badge.high { background: #c0392b; }
+  .badge.medium { background: #d68910; }
+  .badge.low { background: #2874a6; }
+  .badge.info { background: #7f8c8d; }
+  .summary-item { text-align: center; }
+  .summary-count { font-size: 20px; font-weight: 700; }
+  table.findings { width: 100%; border-collapse: collapse; }
+  table.findings th { text-align: left; background: #f4f4f4; padding: 6px 8px; font-size: 10px; text-transform: uppercase; color: #555; }
+  table.findings td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+  table.findings tr:nth-child(even) { background: #fafafa; }
+  .cve { font-family: monospace; font-size: 10px; color: #333; }
+  .footer { margin-top: 32px; font-size: 9px; color: #999; }
+</style>
+</head>
+<body>
+  <h1>VulnScan Platform — Reporte de Escaneo</h1>
+  <div class="subtitle">Laboratorio local — uso educativo y de investigación</div>
+
+  <table class="meta-table">
+    <tr><td>Target</td><td>{{ target.name }} ({{ target.host }})</td></tr>
+    <tr><td>Scan ID</td><td>{{ scan.id }}</td></tr>
+    <tr><td>Estado</td><td>{{ scan.status }}</td></tr>
+    <tr><td>Iniciado</td><td>{{ scan.started_at or "-" }}</td></tr>
+    <tr><td>Finalizado</td><td>{{ scan.finished_at or "-" }}</td></tr>
+    <tr><td>Disparado por</td><td>{{ scan.triggered_by or "-" }}</td></tr>
+  </table>
+
+  <div class="summary">
+    {% for level in ["critical", "high", "medium", "low", "info"] %}
+    <div class="summary-item">
+      <div class="summary-count">{{ severity_counts.get(level, 0) }}</div>
+      <span class="badge {{ level }}">{{ level|upper }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <table class="findings">
+    <thead>
+      <tr><th>Severidad</th><th>Hallazgo</th><th>Tipo</th><th>Evidencia</th><th>CVE</th></tr>
+    </thead>
+    <tbody>
+      {% for f in findings %}
+      <tr>
+        <td><span class="badge {{ f.severity }}">{{ f.severity|upper }}</span></td>
+        <td><strong>{{ f.title }}</strong>{% if f.description %}<br><span style="color:#666">{{ f.description }}</span>{% endif %}</td>
+        <td>{{ f.finding_type }}</td>
+        <td>{{ f.evidence or "-" }}</td>
+        <td>
+          {% for cve in f.cve_references %}
+            <div class="cve">{{ cve.cve_id }}{% if cve.cvss_score %} (CVSS {{ cve.cvss_score }}){% endif %}</div>
+          {% else %}-{% endfor %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No se registraron hallazgos para este scan.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer">Generado por VulnScan Platform el {{ generated_at }}. Uso exclusivo en laboratorio local — ver docs/lab.md.</div>
+</body>
+</html>

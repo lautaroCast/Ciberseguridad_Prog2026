@@ -105,6 +105,7 @@ services:
       BACKEND_ALLOWED_LAB_HOSTS: ${BACKEND_ALLOWED_LAB_HOSTS}
       # Same reasoning as above: no :-default, see app/config.py's validator.
       N8N_WEBHOOK_BASE_URL: ${N8N_WEBHOOK_BASE_URL}
+      REPORTS_BASE_URL: ${REPORTS_BASE_URL}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     networks:
@@ -149,25 +150,33 @@ services:
 
   # --------------------------------------------------------------------
   # Reports Service — Jinja2 + WeasyPrint (Módulo 7)
+  #
+  # Stateless like the Scanner Service: no DB access, no knowledge of any
+  # other service. The Backend gathers target/scan/findings data and
+  # pushes it here in one request; this service only ever renders and
+  # serves files on its own private `reports-data` volume (not shared with
+  # the Backend — downloads are proxied over HTTP, see
+  # backend/app/routers/reports.py).
   # --------------------------------------------------------------------
-  # reports:
-  #   build:
-  #     context: ./reports
-  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-reports
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   volumes:
-  #     - reports-data:/data/reports
-  #   ports:
-  #     - "${REPORTS_PORT:-8200}:8200"
-  #   networks:
-  #     - app-network
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 15s
+  reports:
+    build:
+      context: ./reports
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-reports
+    restart: unless-stopped
+    environment:
+      REPORTS_OUTPUT_DIR: ${REPORTS_OUTPUT_DIR:-/data/reports}
+    volumes:
+      - reports-data:/data/reports
+    ports:
+      - "${REPORTS_PORT:-8200}:8200"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # --------------------------------------------------------------------
   # n8n — pipeline orchestration (Módulo 6)

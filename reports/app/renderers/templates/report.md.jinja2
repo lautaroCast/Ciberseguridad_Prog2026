@@ -1,0 +1,35 @@
+# VulnScan Platform — Reporte de Escaneo
+
+**Target:** {{ target.name }} ({{ target.host }})
+**Scan ID:** {{ scan.id }}
+**Estado:** {{ scan.status }}
+**Iniciado:** {{ scan.started_at or "-" }}
+**Finalizado:** {{ scan.finished_at or "-" }}
+**Disparado por:** {{ scan.triggered_by or "-" }}
+
+## Resumen por severidad
+
+| Severidad | Cantidad |
+|---|---|
+{% for level in ["critical", "high", "medium", "low", "info"] -%}
+| {{ level|upper }} | {{ severity_counts.get(level, 0) }} |
+{% endfor %}
+
+## Hallazgos
+
+{% for f in findings %}
+### [{{ f.severity|upper }}] {{ f.title }}
+
+- **Tipo:** {{ f.finding_type }}
+{% if f.description %}- **Descripción:** {{ f.description }}
+{% endif -%}
+{% if f.evidence %}- **Evidencia:** {{ f.evidence }}
+{% endif -%}
+{% if f.cve_references %}- **CVE:** {% for cve in f.cve_references %}{{ cve.cve_id }}{% if not loop.last %}, {% endif %}{% endfor %}
+{% endif %}
+{% else %}
+_No se registraron hallazgos para este scan._
+{% endfor %}
+
+---
+Generado por VulnScan Platform el {{ generated_at }}. Uso exclusivo en laboratorio local — ver `docs/lab.md`.
