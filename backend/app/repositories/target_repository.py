@@ -33,17 +33,25 @@ def create_target(db: Session, *, name: str, host: str, description: str | None)
     target = Target(name=name, host=host, description=description, is_lab_target=True)
     db.add(target)
     db.commit()
+    # db.refresh() re-hydrates the object that db.commit() just expired
+    # (SQLAlchemy's default expire_on_commit=True). Without it, the
+    # response_model serialization in the router — which reads target.id /
+    # target.created_at after get_db()'s session may already be closing —
+    # would either hit a surprise extra SELECT or a DetachedInstanceError.
+    # Looks redundant but isn't, given the current session lifecycle.
     db.refresh(target)
     return target
 
 
-def update_target(
-    db: Session, target: Target, *, description: str | None, is_active: bool | None
-) -> Target:
-    if description is not None:
-        target.description = description
-    if is_active is not None:
-        target.is_active = is_active
+def update_target(db: Session, target: Target, updates: dict) -> Target:
+    # `updates` is expected to come from TargetUpdate.model_dump(exclude_unset=True)
+    # (see app/routers/targets.py), so its keys are already constrained to
+    # that schema's fields — this trusts that boundary rather than
+    # re-validating field names here.
+    if not updates:
+        return target
+    for field, value in updates.items():
+        setattr(target, field, value)
     db.commit()
     db.refresh(target)
     return target

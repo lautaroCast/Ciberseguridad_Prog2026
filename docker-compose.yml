@@ -97,8 +97,11 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      BACKEND_LOG_LEVEL: ${BACKEND_LOG_LEVEL}
+      BACKEND_LOG_LEVEL: ${BACKEND_LOG_LEVEL:-info}
       BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS}
+      # No :-default here on purpose: an empty/unset whitelist must fail
+      # loudly at startup (see app/config.py's validator) rather than boot
+      # successfully and silently reject every target registration.
       BACKEND_ALLOWED_LAB_HOSTS: ${BACKEND_ALLOWED_LAB_HOSTS}
     ports:
       - "${BACKEND_PORT:-8000}:8000"

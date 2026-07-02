@@ -8,6 +8,7 @@ existing in the database means it was already validated here.
 
 import uuid
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -46,16 +47,22 @@ def register_target(db: Session, *, name: str, host: str, description: str | Non
     if target_repository.get_target_by_name(db, name) is not None:
         raise TargetNameConflictError(name)
 
-    return target_repository.create_target(db, name=name, host=host, description=description)
+    # The check above is an optimistic fast path, not the source of truth:
+    # it's not atomic with the insert below, so two concurrent requests for
+    # the same name can both pass it. `targets.name` has a DB-level unique
+    # constraint (database/models/target.py) that is the real guard —
+    # catching its violation here turns a would-be unhandled 500 into the
+    # same 409 the pre-check produces on the non-racy path.
+    try:
+        return target_repository.create_target(db, name=name, host=host, description=description)
+    except IntegrityError as exc:
+        db.rollback()
+        raise TargetNameConflictError(name) from exc
 
 
-def update_target(
-    db: Session, target_id: uuid.UUID, *, description: str | None, is_active: bool | None
-) -> Target:
+def update_target(db: Session, target_id: uuid.UUID, updates: dict) -> Target:
     target = get_target_or_raise(db, target_id)
-    return target_repository.update_target(
-        db, target, description=description, is_active=is_active
-    )
+    return target_repository.update_target(db, target, updates)
 
 
 def delete_target(db: Session, target_id: uuid.UUID) -> None:
