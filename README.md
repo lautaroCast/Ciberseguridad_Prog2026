@@ -42,7 +42,7 @@ Este proyecto se desarrolla de forma incremental, módulo por módulo, mantenien
 | 0 | Scaffolding del repositorio | ✅ Completo |
 | 1 | Base de datos (PostgreSQL + Alembic) | ✅ Completo |
 | 2 | Laboratorio vulnerable (Juice Shop + DVWA) | ✅ Completo |
-| 3 | Backend API core (FastAPI) | ⏳ Pendiente |
+| 3 | Backend API core (FastAPI) | ✅ Completo |
 | 4 | Scanner Service (Nmap/Nuclei/Nikto/WhatWeb/ZAP) | ⏳ Pendiente |
 | 5 | Normalización y clasificación de hallazgos | ⏳ Pendiente |
 | 6 | Orquestación n8n (pipeline de 12 etapas) | ⏳ Pendiente |

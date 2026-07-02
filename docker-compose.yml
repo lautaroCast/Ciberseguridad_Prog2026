@@ -83,28 +83,38 @@ services:
 
   # --------------------------------------------------------------------
   # Backend API — FastAPI orchestrator (Módulo 3)
+  #
+  # Build context is the repo root, not ./backend: the image needs both
+  # backend/app and database/models (see backend/Dockerfile) since the
+  # Backend reuses the same ORM models Alembic migrates, rather than
+  # redefining the schema.
   # --------------------------------------------------------------------
-  # backend:
-  #   build:
-  #     context: ./backend
-  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-backend
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   ports:
-  #     - "${BACKEND_PORT:-8000}:8000"
-  #   networks:
-  #     - app-network
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     migrate:
-  #       condition: service_completed_successfully
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 15s
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      BACKEND_LOG_LEVEL: ${BACKEND_LOG_LEVEL}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS}
+      BACKEND_ALLOWED_LAB_HOSTS: ${BACKEND_ALLOWED_LAB_HOSTS}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # --------------------------------------------------------------------
   # Scanner Service — Nmap/Nuclei/Nikto/WhatWeb/ZAP adapters (Módulo 4)
