@@ -121,24 +121,29 @@ services:
 
   # --------------------------------------------------------------------
   # Scanner Service — Nmap/Nuclei/Nikto/WhatWeb/ZAP adapters (Módulo 4)
+  #
+  # The only service that bridges app-network and lab-network: n8n/backend
+  # reach it over app-network, and it's the one thing allowed to reach the
+  # lab targets. Stateless — no DB dependency, no persistence of its own.
   # --------------------------------------------------------------------
-  # scanner:
-  #   build:
-  #     context: ./scanner
-  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-scanner
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   ports:
-  #     - "${SCANNER_PORT:-8100}:8100"
-  #   networks:
-  #     - app-network
-  #     - lab-network
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 15s
+  scanner:
+    build:
+      context: ./scanner
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-scanner
+    restart: unless-stopped
+    environment:
+      SCANNER_MAX_TIMEOUT_SECONDS: ${SCANNER_MAX_TIMEOUT_SECONDS:-900}
+    ports:
+      - "${SCANNER_PORT:-8100}:8100"
+    networks:
+      - app-network
+      - lab-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # --------------------------------------------------------------------
   # Reports Service — Jinja2 + WeasyPrint (Módulo 7)
