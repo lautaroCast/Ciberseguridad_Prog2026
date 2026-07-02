@@ -42,6 +42,9 @@ reports/generated/
 # Scan artifacts
 scanner/output/
 
+# Claude Code session artifacts
+.claude/
+
 # IDE / OS
 .vscode/
 .idea/

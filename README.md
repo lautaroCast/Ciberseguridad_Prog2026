@@ -41,7 +41,7 @@ Este proyecto se desarrolla de forma incremental, módulo por módulo, mantenien
 |---|---|---|
 | 0 | Scaffolding del repositorio | ✅ Completo |
 | 1 | Base de datos (PostgreSQL + Alembic) | ✅ Completo |
-| 2 | Laboratorio vulnerable (Juice Shop + DVWA) | ⏳ Pendiente |
+| 2 | Laboratorio vulnerable (Juice Shop + DVWA) | ✅ Completo |
 | 3 | Backend API core (FastAPI) | ⏳ Pendiente |
 | 4 | Scanner Service (Nmap/Nuclei/Nikto/WhatWeb/ZAP) | ⏳ Pendiente |
 | 5 | Normalización y clasificación de hallazgos | ⏳ Pendiente |
@@ -74,7 +74,7 @@ assets/       # Diagramas fuente, capturas de pantalla
 - **Desacoplamiento por contrato HTTP** entre todos los servicios.
 - **n8n como orquestador, no como ejecutor**: la lógica de negocio vive en código versionado, no en nodos de workflow.
 - **Patrón plugin en el motor de escaneo**: agregar una herramienta nueva no requiere modificar las existentes.
-- **Laboratorio en red aislada** (`lab-network`, sin salida a internet): el objetivo del escaneo nunca puede ser otra cosa que el propio laboratorio.
+- **Laboratorio en red segmentada** (`lab-network`, sin ruta desde frontend/n8n/backend/db): solo el Scanner Service la conecta con el resto de la plataforma. Qué se puede escanear lo decide la whitelist del Backend, no la topología de red — ver [`docs/lab.md`](docs/lab.md).
 - **Extensible sin romper nada**: nuevas herramientas, nuevas apps vulnerables o nuevos formatos de reporte se agregan como módulos nuevos.
 
 ## Documentación
@@ -83,7 +83,7 @@ assets/       # Diagramas fuente, capturas de pantalla
 - [Manual de instalación](docs/installation.md) *(Módulo 10)*
 - [Manual de uso](docs/usage.md) *(Módulo 10)*
 - [Modelo de datos y diagrama ER](docs/database.md)
-- [Alcance legal del laboratorio](docs/lab.md) *(Módulo 2)*
+- [Alcance legal del laboratorio](docs/lab.md)
 
 ## Licencia
 

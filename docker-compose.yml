@@ -7,9 +7,19 @@
 # Two networks by design:
 #   - app-network: platform services talk to each other (frontend, backend,
 #     scanner, reports, n8n, db).
-#   - lab-network: isolated network for vulnerable lab targets. Only the
-#     scanner service bridges into it, so the lab is never reachable from
-#     the frontend/n8n and is never exposed beyond localhost port mappings.
+#   - lab-network: segmented network for vulnerable lab targets. Only the
+#     scanner service bridges into both networks, so the lab is never
+#     reachable from the frontend/n8n/backend/db — they simply have no
+#     route to lab-network at all. NOTE: this is deliberately a plain
+#     bridge network, not `internal: true`. Docker silently skips host
+#     port publishing for containers whose only network is internal
+#     (verified empirically while building this module — `docker port`
+#     returns nothing even though `ports:` is configured), which would
+#     make Juice Shop/DVWA unreachable from the host browser. The actual
+#     safety guarantee — the platform never scans anything outside this
+#     lab — is enforced at the application layer: the Backend API
+#     (Módulo 3) only accepts targets whitelisted via `targets.is_lab_target`.
+#     See docs/lab.md.
 #
 # This file is a scaffold (Módulo 0): networks, volumes and service stubs
 # are defined now; each service's build context is filled in as its module
@@ -22,7 +32,6 @@ networks:
     driver: bridge
   lab-network:
     driver: bridge
-    internal: true # no route to the outside world — lab stays fully local
 
 volumes:
   postgres-data:
@@ -191,22 +200,70 @@ services:
   #       condition: service_healthy
 
   # --------------------------------------------------------------------
-  # Vulnerable lab targets — isolated network (Módulo 2)
+  # Vulnerable lab targets — segmented network (Módulo 2)
+  #
+  # Both apps live exclusively on `lab-network`: app-network services
+  # (frontend, n8n, backend, db) have no route to them at all. Only the
+  # Scanner Service (Módulo 4) bridges both networks. Host ports are still
+  # published for local browser access. See docs/lab.md for the
+  # legal/ethical scope of this lab and why the network is not marked
+  # `internal: true`.
   # --------------------------------------------------------------------
-  # juice-shop:
-  #   image: bkimminich/juice-shop:latest
-  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-juice-shop
-  #   restart: unless-stopped
-  #   ports:
-  #     - "${JUICE_SHOP_PORT:-3000}:3000"
-  #   networks:
-  #     - lab-network
+  juice-shop:
+    image: bkimminich/juice-shop:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-juice-shop
+    restart: unless-stopped
+    ports:
+      - "${JUICE_SHOP_PORT:-3000}:3000"
+    networks:
+      - lab-network
+    healthcheck:
+      # Image is distroless (no shell, no curl/wget): probe with Node's
+      # own HTTP client instead of a CMD-SHELL healthcheck.
+      test:
+        [
+          "CMD",
+          "/nodejs/bin/node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
-  # dvwa:
-  #   image: vulnerables/web-dvwa:latest
-  #   container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-dvwa
-  #   restart: unless-stopped
-  #   ports:
-  #     - "${DVWA_PORT:-3001}:80"
-  #   networks:
-  #     - lab-network
+  dvwa:
+    image: vulnerables/web-dvwa:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-dvwa
+    restart: unless-stopped
+    ports:
+      - "${DVWA_PORT:-3001}:80"
+    networks:
+      - lab-network
+    healthcheck:
+      # Image has no curl/wget either; a bare TCP probe on Apache's port
+      # is enough here since dvwa-init does its own HTTP-level readiness
+      # check (and retries) before touching the database. /dev/tcp only
+      # exists in bash, not the image's default /bin/sh (dash) — invoke
+      # bash explicitly rather than using CMD-SHELL.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/80"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # One-shot: replays the setup.php "Create / Reset Database" submission so
+  # DVWA is fully usable without a manual browser step. See
+  # lab/dvwa-init/entrypoint.sh.
+  dvwa-init:
+    build:
+      context: ./lab/dvwa-init
+    container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-dvwa-init
+    environment:
+      DVWA_URL: http://dvwa:80
+    networks:
+      - lab-network
+    depends_on:
+      dvwa:
+        condition: service_healthy
+    restart: "no"
