@@ -2,8 +2,9 @@
 
 FastAPI service that owns the schema (reuses [`database/models`](../database/models)
 verbatim, see [`Dockerfile`](Dockerfile)) and exposes the platform's REST API.
-This module ships target registration; scans, findings and reports are
-added in later modules against the same layering.
+Target registration (Módulo 3) plus scan lifecycle, raw-result ingestion and
+normalization (Módulo 5) live here; reports are added in a later module
+against the same layering.
 
 ## Layout
 
@@ -13,9 +14,10 @@ app/
   config.py             Settings from environment variables (pydantic-settings)
   database.py            SQLAlchemy engine/session, get_db() dependency
   routers/                HTTP layer — request/response only, no business logic
-  services/                Business rules (e.g. the lab whitelist)
+  services/                Business rules (e.g. the lab whitelist, ingest orchestration)
   repositories/             Plain DB queries, no rules
   schemas/                   Pydantic request/response models
+  normalization/              Tool-specific parsers: RawScanResult -> Service/Technology/Finding rows
 ```
 
 Each layer only talks to the one below it: routers call services, services
@@ -65,7 +67,55 @@ gets a clean `409`, not an unhandled `500` from a race on the pre-check.
 | PATCH | `/targets/{id}` | Update `description` and/or `is_active` (name/host are immutable). Omitted fields are left untouched; sending `"description": null` explicitly clears it — the two are distinguished via Pydantic's `exclude_unset`. |
 | DELETE | `/targets/{id}` | Remove a target (cascades to its scan history) |
 
+## Endpoints (Módulo 5)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/targets/{target_id}/scans` | Start a `Scan` against a registered target (`status=running`) |
+| GET | `/scans/{scan_id}` | Fetch one scan |
+| POST | `/scans/{scan_id}/complete` | Mark a scan `completed`/`failed`, sets `finished_at` |
+| POST | `/scans/{scan_id}/tasks` | Ingest a Scanner Service `RawScanResult` — creates the `ScanTask` row and, when the payload carries `parsed` output, normalizes it into `Service`/`Technology`/`Finding`/`CveReference` rows in one transaction |
+| GET | `/scans/{scan_id}/findings` | List normalized findings for a scan, each with its CVE references |
+
 Interactive docs: `http://localhost:${BACKEND_PORT:-8000}/docs`.
+
+## Normalization and severity classification (Módulo 5)
+
+`POST /scans/{scan_id}/tasks` is the boundary where a tool-specific
+`RawScanResult` (as returned by the Scanner Service, Módulo 4) becomes
+normalized rows. `app/normalization/registry.py` maps `tool_name` to a
+`normalize(parsed) -> NormalizedData` function — the same plugin pattern
+as the Scanner Service's adapter registry, so adding normalization support
+for a new tool is one file plus one registry line. Each normalizer only
+returns plain dataclasses (`app/normalization/types.py`); persisting them
+as ORM rows happens once, in `app/services/scan_task_service.py`.
+
+Severity is computed per tool, since each gives a different signal
+(`app/normalization/severity.py`):
+
+- **Nuclei** carries its own `info`/`low`/`medium`/`high`/`critical` label
+  per template match — trusted directly.
+- **ZAP** carries a numeric `riskcode` ("0".."3") per alert, mapped
+  directly rather than parsed out of the human-readable `riskdesc` string
+  (e.g. `"High (Medium)"`).
+- **Nikto** gives no severity or CVSS signal at all — every finding is
+  conservatively set to `low`, flagged for manual triage rather than
+  pre-triaged by risk.
+- **Nmap** and **WhatWeb** don't produce findings: they feed the
+  `services`/`technologies` tables instead (reconnaissance data, not
+  vulnerabilities by themselves).
+
+CVE mapping only happens for tools that report one: Nuclei's
+`info.classification.cve-id` (list) becomes one `CveReference` row per CVE,
+carrying the template's `cvss-score`/`cvss-metrics` alongside it. Nikto and
+ZAP alerts reference CWEs, not CVEs, so they never produce `CveReference`
+rows.
+
+A scan_task whose normalizer raises (unexpected shape from a tool) doesn't
+fail the ingest request — the raw result is still recorded, with the
+normalization error appended to the scan_task's `error_message`, since the
+raw output is valuable on its own even when it can't be turned into
+structured findings.
 
 ## Running it
 

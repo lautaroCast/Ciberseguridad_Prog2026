@@ -44,7 +44,7 @@ Este proyecto se desarrolla de forma incremental, módulo por módulo, mantenien
 | 2 | Laboratorio vulnerable (Juice Shop + DVWA) | ✅ Completo |
 | 3 | Backend API core (FastAPI) | ✅ Completo |
 | 4 | Scanner Service (Nmap/Nuclei/Nikto/WhatWeb/ZAP) | ✅ Completo |
-| 5 | Normalización y clasificación de hallazgos | ⏳ Pendiente |
+| 5 | Normalización y clasificación de hallazgos | ✅ Completo |
 | 6 | Orquestación n8n (pipeline de 12 etapas) | ⏳ Pendiente |
 | 7 | Reports Service (PDF/HTML/MD/JSON) | ⏳ Pendiente |
 | 8 | Frontend Dashboard (React + TS) | ⏳ Pendiente |

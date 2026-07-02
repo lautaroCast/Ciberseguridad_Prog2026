@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.routers import health, targets
+from app.routers import health, scans, targets
+from app.services.scan_service import ScanNotFoundError
 from app.services.target_service import (
     TargetNameConflictError,
     TargetNotAllowedError,
@@ -62,5 +63,11 @@ async def target_name_conflict_handler(
     )
 
 
+@app.exception_handler(ScanNotFoundError)
+async def scan_not_found_handler(request: Request, exc: ScanNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": f"Scan '{exc}' not found."})
+
+
 app.include_router(health.router)
 app.include_router(targets.router)
+app.include_router(scans.router)
