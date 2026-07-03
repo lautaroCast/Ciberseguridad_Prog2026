@@ -82,6 +82,7 @@ assets/       # Diagramas fuente, capturas de pantalla
 - [Arquitectura completa y plan de desarrollo](docs/architecture.md) *(Módulo 10)*
 - [Manual de instalación](docs/installation.md) *(Módulo 10)*
 - [Manual de uso](docs/usage.md) *(Módulo 10)*
+- [Guía de demostración](docs/demo.md) — cómo correr una prueba completa de punta a punta
 - [Modelo de datos y diagrama ER](docs/database.md)
 - [Alcance legal del laboratorio](docs/lab.md)
 

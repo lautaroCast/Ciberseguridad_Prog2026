@@ -195,12 +195,21 @@ services:
     restart: unless-stopped
     environment:
       N8N_HOST: ${N8N_HOST}
+      # n8n's own process always listens on 5678 inside the container —
+      # this is unrelated to which host port it's published on below.
       N8N_PORT: 5678
       N8N_PROTOCOL: ${N8N_PROTOCOL}
       N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE}
       N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
       N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      # n8n self-generates URLs (Form/Webhook "Production URL", etc.) from
+      # N8N_HOST/N8N_PORT/N8N_PROTOCOL above, which describe the internal
+      # listen address, not the host-facing one. If N8N_PORT (below, the
+      # *host* port) ever has to be remapped — e.g. 5678 already taken by
+      # an unrelated container — those self-generated URLs go stale unless
+      # told explicitly what the real external address is.
+      N8N_EDITOR_BASE_URL: ${N8N_PROTOCOL:-http}://${N8N_HOST:-localhost}:${N8N_PORT:-5678}/
       # Basic auth protects the editor UI/API only — it does not gate
       # webhook URLs, so the Backend's service-to-service call to the
       # pipeline trigger needs no credentials.
