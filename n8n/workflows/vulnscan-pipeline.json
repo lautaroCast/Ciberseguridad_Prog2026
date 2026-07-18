@@ -1,5 +1,4 @@
 {
-  "id": "vulnscan-pipeline",
   "name": "VulnScan Pipeline",
   "nodes": [
     {
@@ -8,11 +7,14 @@
         "height": 320,
         "width": 460
       },
-      "id": "note-triggers",
+      "id": "43914f81-cdf4-4acd-9c67-8504aad5f577",
       "name": "Sticky Note - Triggers",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-620, -320]
+      "position": [
+        4464,
+        1168
+      ]
     },
     {
       "parameters": {
@@ -20,11 +22,14 @@
         "height": 260,
         "width": 460
       },
-      "id": "note-recon",
+      "id": "9b0dd565-fb74-44e1-8388-cfe7cfe9f345",
       "name": "Sticky Note - Recon",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [280, -320]
+      "position": [
+        5168,
+        1072
+      ]
     },
     {
       "parameters": {
@@ -32,49 +37,55 @@
         "height": 280,
         "width": 700
       },
-      "id": "note-scanning",
+      "id": "2c170f98-5a9d-4fed-8370-e17d924a43f4",
       "name": "Sticky Note - Scanning",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [1140, -320]
+      "position": [
+        6032,
+        1520
+      ]
     },
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "vulnscan-pipeline",
-        "responseMode": "onReceived",
         "options": {}
       },
-      "id": "webhook-trigger",
+      "id": "ce04b299-0fe9-4957-a655-7669c1572b63",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-600, -100],
+      "position": [
+        4480,
+        1520
+      ],
       "webhookId": "28b81581-2ebc-49ff-9270-343a626caa58"
     },
     {
       "parameters": {
-        "path": "vulnscan-pipeline-manual",
         "formTitle": "VulnScan — Manual Pipeline Trigger",
         "formDescription": "Run the full scan pipeline against an already-registered lab target (juice-shop or dvwa). For demos/testing without the Backend API or frontend.",
         "formFields": {
           "values": [
             {
               "fieldLabel": "target_id",
-              "fieldType": "text",
-              "requiredField": true,
-              "placeholder": "UUID from GET /targets on the Backend"
+              "placeholder": "UUID from GET /targets on the Backend",
+              "requiredField": true
             }
           ]
         },
         "options": {}
       },
-      "id": "form-trigger",
+      "id": "efa5cdec-e1b5-4e94-b3ac-987882530342",
       "name": "Form Trigger",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
-      "position": [-600, 200],
-      "webhookId": "6a6cc7b7-6182-4514-bc5f-5b5eb5dca516"
+      "position": [
+        4048,
+        1728
+      ],
+      "webhookId": "9a514774-daea-4421-b582-4d6f14624139"
     },
     {
       "parameters": {
@@ -102,11 +113,14 @@
         },
         "options": {}
       },
-      "id": "set-from-webhook",
+      "id": "44115714-dc7c-41fc-bb8e-d02d400652f4",
       "name": "Edit Fields - From Webhook",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-380, -100]
+      "position": [
+        4704,
+        1520
+      ]
     },
     {
       "parameters": {
@@ -115,25 +129,34 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"triggered_by\": \"n8n-manual-trigger\" } }}",
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
-      "id": "http-create-scan-manual",
+      "id": "cfa5d75f-d491-4cfb-8593-e80a93c86596",
       "name": "Create Scan (Manual)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-380, 200]
+      "position": [
+        4256,
+        1728
+      ]
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "=http://backend:8000/targets/{{ $json.target_id }}",
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
-      "id": "http-get-target-manual",
+      "id": "2a94b50a-3416-44fd-a167-7372751227b1",
       "name": "Get Target (Manual)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-160, 200]
+      "position": [
+        4480,
+        1728
+      ]
     },
     {
       "parameters": {
@@ -161,22 +184,27 @@
         },
         "options": {}
       },
-      "id": "set-from-manual",
+      "id": "d444474d-cd22-45ed-afaa-f68325cfe01a",
       "name": "Edit Fields - From Manual",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [60, 200]
+      "position": [
+        4704,
+        1728
+      ]
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
         "jsCode": "// Both trigger branches connect into THIS node's input — n8n's own\n// connection routing already resolves \"whichever branch actually ran\";\n// there's no need to go hunting for a node by name (an earlier version\n// of this node did that with $('NodeName'), which is fragile: on n8n's\n// external Task Runner, referencing a node that didn't execute doesn't\n// reliably throw the way it does in the legacy in-process VM, so the\n// try/catch silently produced 'incomplete context' instead of catching\n// anything). $input always reflects this node's real incoming data.\nconst items = $input.all();\n\nif (!items.length) {\n  throw new Error('Pipeline context is incomplete: no input reached this node from either trigger branch.');\n}\n\nconst ctx = items[0].json;\n\nif (!ctx.scan_id || !ctx.target_id || !ctx.host) {\n  throw new Error('Pipeline context is incomplete: expected target_id, scan_id and host, got: ' + JSON.stringify(ctx));\n}\n\nreturn [{ json: ctx }];"
       },
-      "id": "code-resolve-context",
+      "id": "d71bf89b-7e58-4752-b2db-becfbc9c332c",
       "name": "Resolve Pipeline Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [280, 50]
+      "position": [
+        4928,
+        1584
+      ]
     },
     {
       "parameters": {
@@ -185,13 +213,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"target\": $json.host } }}",
-        "options": { "timeout": 60000 }
+        "options": {
+          "timeout": 60000
+        }
       },
-      "id": "http-scan-nmap",
+      "id": "5326e457-5919-4f2e-bca3-98977aa3c2e5",
       "name": "Scan: Nmap",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 50],
+      "position": [
+        5168,
+        1376
+      ],
       "continueOnFail": true
     },
     {
@@ -201,25 +234,32 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
-      "id": "http-ingest-nmap",
+      "id": "e6afbe12-38d4-4a59-95e3-f3723f7b56d0",
       "name": "Ingest: Nmap",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 50],
+      "position": [
+        5328,
+        1376
+      ],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
         "jsCode": "const nmapResult = $('Scan: Nmap').item.json;\nconst context = $('Resolve Pipeline Context').item.json;\n\nconst services = (nmapResult && nmapResult.parsed) || [];\n\n// \"Selección inteligente de herramientas\" (etapa 6 del pipeline): si Nmap\n// no encontró ningún puerto abierto, correr las herramientas HTTP no\n// tiene sentido. Devolver 0 items detiene el resto de la cadena.\nif (services.length === 0) {\n  return [];\n}\n\nconst httpService = services.find((s) => /http/i.test(s.service_name || ''));\nconst chosen = httpService || services[0];\nconst scheme = /https/i.test(chosen.service_name || '') ? 'https' : 'http';\n\nreturn [{\n  json: {\n    ...context,\n    port: chosen.port,\n    scheme,\n  },\n}];"
       },
-      "id": "code-select-port",
+      "id": "a73ba9be-1948-4be8-8fb8-26f275208690",
       "name": "Select HTTP Port",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [940, 50]
+      "position": [
+        5488,
+        1376
+      ]
     },
     {
       "parameters": {
@@ -228,13 +268,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme } }}",
-        "options": { "timeout": 60000 }
+        "options": {
+          "timeout": 60000
+        }
       },
-      "id": "http-scan-whatweb",
+      "id": "c0017846-d8f3-4d87-bf62-395e64665ebb",
       "name": "Scan: WhatWeb",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1160, 50],
+      "position": [
+        5664,
+        1376
+      ],
       "continueOnFail": true
     },
     {
@@ -244,13 +289,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
-      "id": "http-ingest-whatweb",
+      "id": "029c8f0f-e856-4340-a9b7-994b1e2fd713",
       "name": "Ingest: WhatWeb",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1380, 50],
+      "position": [
+        5840,
+        1376
+      ],
       "continueOnFail": true
     },
     {
@@ -260,13 +310,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme, \"timeout_seconds\": 120, \"options\": { \"max_time\": \"90s\" } } }}",
-        "options": { "timeout": 150000 }
+        "options": {
+          "timeout": 150000
+        }
       },
-      "id": "http-scan-nikto",
+      "id": "a242ccb5-7d5e-4413-a9f9-6486727614a1",
       "name": "Scan: Nikto",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, 50],
+      "position": [
+        5168,
+        1584
+      ],
       "continueOnFail": true
     },
     {
@@ -276,13 +331,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
-      "id": "http-ingest-nikto",
+      "id": "3bba0d9d-33e4-4031-9d80-5cdb01a2818b",
       "name": "Ingest: Nikto",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1820, 50],
+      "position": [
+        5328,
+        1584
+      ],
       "continueOnFail": true
     },
     {
@@ -292,13 +352,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme, \"timeout_seconds\": 180, \"options\": { \"tags\": \"exposure,misconfig,tech,default-login\" } } }}",
-        "options": { "timeout": 200000 }
+        "options": {
+          "timeout": 200000
+        }
       },
-      "id": "http-scan-nuclei",
+      "id": "937d1543-f445-4f4e-a750-f6adabc4025c",
       "name": "Scan: Nuclei",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2040, 50],
+      "position": [
+        5488,
+        1584
+      ],
       "continueOnFail": true
     },
     {
@@ -308,13 +373,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
-      "id": "http-ingest-nuclei",
+      "id": "84e63dd4-e701-4cf4-9016-02ae9b05fbef",
       "name": "Ingest: Nuclei",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2260, 50],
+      "position": [
+        5664,
+        1584
+      ],
       "continueOnFail": true
     },
     {
@@ -324,13 +394,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme } }}",
-        "options": { "timeout": 600000 }
+        "options": {
+          "timeout": 600000
+        }
       },
-      "id": "http-scan-zap",
+      "id": "912a5d9f-e3c4-4283-a56c-00f8670f90d4",
       "name": "Scan: ZAP",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2480, 50],
+      "position": [
+        5840,
+        1584
+      ],
       "continueOnFail": true
     },
     {
@@ -340,13 +415,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
-      "id": "http-ingest-zap",
+      "id": "5aa8a443-56b9-4a61-9b00-9d6938e9bfda",
       "name": "Ingest: ZAP",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2700, 50],
+      "position": [
+        5168,
+        1792
+      ],
       "continueOnFail": true
     },
     {
@@ -356,13 +436,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"status\": \"completed\" } }}",
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
-      "id": "http-complete-scan",
+      "id": "14d45cd3-cc92-4dba-966a-d5061cb58c65",
       "name": "Complete Scan",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2920, 50]
+      "position": [
+        5328,
+        1792
+      ]
     },
     {
       "parameters": {
@@ -371,53 +456,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ {} }}",
-        "options": { "timeout": 60000 }
+        "options": {
+          "timeout": 60000
+        }
       },
-      "id": "http-generate-report",
+      "id": "5141398c-fed5-4b1d-b39c-41ad23f6a025",
       "name": "Generate Report",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3140, 50],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "=http://backend:8000/reports/{{ $json.id }}/download",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file",
-              "outputPropertyName": "data"
-            }
-          },
-          "timeout": 30000
-        }
-      },
-      "id": "http-download-report",
-      "name": "Download Report",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [3360, 50],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "fromEmail": "vulnscan@lab.local",
-        "toEmail": "test@ethereal.email",
-        "subject": "=VulnScan Platform — Report for scan {{ $('Resolve Pipeline Context').item.json.scan_id }}",
-        "emailFormat": "both",
-        "text": "=Automated report attached for target host {{ $('Resolve Pipeline Context').item.json.host }} (scan {{ $('Resolve Pipeline Context').item.json.scan_id }}).\n\nGenerated by the VulnScan Platform pipeline — local lab use only, see docs/lab.md.",
-        "html": "=<div style=\"font-family:'Helvetica Neue',Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a;\">\n  <div style=\"background:#1a1a1a;color:#ffffff;padding:20px 24px;border-radius:6px 6px 0 0;\">\n    <h1 style=\"margin:0;font-size:18px;\">VulnScan Platform</h1>\n    <p style=\"margin:4px 0 0;font-size:12px;color:#bbbbbb;\">Reporte de escaneo automatizado</p>\n  </div>\n  <div style=\"border:1px solid #eeeeee;border-top:none;padding:24px;border-radius:0 0 6px 6px;\">\n    <p style=\"font-size:14px;line-height:1.5;\">\n      El pipeline de escaneo contra <strong>{{ $('Resolve Pipeline Context').item.json.host }}</strong> finalizó correctamente.\n      El reporte completo con todos los hallazgos está adjunto a este correo en formato PDF.\n    </p>\n    <table style=\"width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;\">\n      <tr><td style=\"padding:6px 0;color:#666666;width:140px;\">Target</td><td style=\"padding:6px 0;\"><strong>{{ $('Resolve Pipeline Context').item.json.host }}</strong></td></tr>\n      <tr><td style=\"padding:6px 0;color:#666666;\">Scan ID</td><td style=\"padding:6px 0;font-family:monospace;font-size:12px;\">{{ $('Resolve Pipeline Context').item.json.scan_id }}</td></tr>\n      <tr><td style=\"padding:6px 0;color:#666666;\">Archivo</td><td style=\"padding:6px 0;\">{{ $('Generate Report').item.json.file_path }}</td></tr>\n      <tr><td style=\"padding:6px 0;color:#666666;\">Generado</td><td style=\"padding:6px 0;\">{{ $('Generate Report').item.json.generated_at }}</td></tr>\n    </table>\n    <p style=\"font-size:12px;color:#999999;margin-top:24px;border-top:1px solid #eeeeee;padding-top:12px;\">\n      Generado automáticamente por VulnScan Platform. Uso exclusivo en laboratorio local — ver <code>docs/lab.md</code>.\n    </p>\n  </div>\n</div>",
-        "options": {
-          "attachments": "data"
-        }
-      },
-      "id": "email-send-report",
-      "name": "Send Report Email",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [3580, 50],
+      "position": [
+        5488,
+        1792
+      ],
       "continueOnFail": true
     },
     {
@@ -434,84 +484,322 @@
         },
         "options": {}
       },
-      "id": "set-pipeline-complete",
+      "id": "dad9652b-379c-49ea-973b-3bcc69c87f02",
       "name": "Pipeline Complete",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [3800, 50]
+      "position": [
+        6096,
+        1856
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://backend:8000/reports/{{ $json.id }}/download",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "35b37d11-6106-436a-a277-6c11039873cd",
+      "name": "Download Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5664,
+        1792
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "fromEmail": "vulnscan@lab.local",
+        "toEmail": "cathryn.considine@ethereal.email",
+        "subject": "=VulnScan Platform — Report for scan {{ $('Resolve Pipeline Context').item.json.scan_id }}",
+        "text": "=Automated report attached for target host {{ $('Resolve Pipeline Context').item.json.host }} (scan {{ $('Resolve Pipeline Context').item.json.scan_id }}).\n\nGenerated by the VulnScan Platform pipeline — local lab use only, see docs/lab.md.",
+        "emailFormat": "text",
+        "options": {
+          "attachments": "data"
+        }
+      },
+      "id": "bf809e1d-af6f-4b25-9ff5-81570b6ac70f",
+      "name": "Send Report Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        5872,
+        1856
+      ],
+      "webhookId": "10f50eed-09ee-4b63-8f54-4360111ddefb",
+      "credentials": {
+        "smtp": {
+          "id": "zYWvhtYHvM3ps23z",
+          "name": "SMTP account"
+        }
+      },
+      "continueOnFail": true
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook Trigger": {
-      "main": [[{ "node": "Edit Fields - From Webhook", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Edit Fields - From Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Form Trigger": {
-      "main": [[{ "node": "Create Scan (Manual)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Create Scan (Manual)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Edit Fields - From Webhook": {
-      "main": [[{ "node": "Resolve Pipeline Context", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Resolve Pipeline Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Create Scan (Manual)": {
-      "main": [[{ "node": "Get Target (Manual)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Get Target (Manual)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Get Target (Manual)": {
-      "main": [[{ "node": "Edit Fields - From Manual", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Edit Fields - From Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Edit Fields - From Manual": {
-      "main": [[{ "node": "Resolve Pipeline Context", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Resolve Pipeline Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Resolve Pipeline Context": {
-      "main": [[{ "node": "Scan: Nmap", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Scan: Nmap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Scan: Nmap": {
-      "main": [[{ "node": "Ingest: Nmap", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Ingest: Nmap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Ingest: Nmap": {
-      "main": [[{ "node": "Select HTTP Port", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Select HTTP Port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Select HTTP Port": {
-      "main": [[{ "node": "Scan: WhatWeb", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Scan: WhatWeb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Scan: WhatWeb": {
-      "main": [[{ "node": "Ingest: WhatWeb", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Ingest: WhatWeb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Ingest: WhatWeb": {
-      "main": [[{ "node": "Scan: Nikto", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Scan: Nikto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Scan: Nikto": {
-      "main": [[{ "node": "Ingest: Nikto", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Ingest: Nikto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Ingest: Nikto": {
-      "main": [[{ "node": "Scan: Nuclei", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Scan: Nuclei",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Scan: Nuclei": {
-      "main": [[{ "node": "Ingest: Nuclei", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Ingest: Nuclei",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Ingest: Nuclei": {
-      "main": [[{ "node": "Scan: ZAP", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Scan: ZAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Scan: ZAP": {
-      "main": [[{ "node": "Ingest: ZAP", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Ingest: ZAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Ingest: ZAP": {
-      "main": [[{ "node": "Complete Scan", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Complete Scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Complete Scan": {
-      "main": [[{ "node": "Generate Report", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Report": {
-      "main": [[{ "node": "Download Report", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Download Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Download Report": {
-      "main": [[{ "node": "Send Report Email", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Send Report Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Send Report Email": {
-      "main": [[{ "node": "Pipeline Complete", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Pipeline Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
-  "pinData": {}
+  "versionId": "258f07be-a3a7-494c-8820-712652674c6c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "88823eab0dce5c0a0b4ccd538e4370b0caea5b032ec6a0b9c2881f15161eb96a"
+  },
+  "nodeGroups": [],
+  "id": "vulnscan-pipeline",
+  "tags": []
 }
