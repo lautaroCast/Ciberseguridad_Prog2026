@@ -15,6 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY database/models ./models
 COPY backend/app ./app
+COPY backend/pytest.ini backend/conftest.py ./
+COPY backend/tests ./tests
 
 ENV PYTHONPATH=/app
 
