@@ -23,6 +23,11 @@ def create_scan(db: Session, *, target_id: uuid.UUID, triggered_by: str | None) 
     return scan_repository.create_scan(db, target_id=target_id, triggered_by=triggered_by)
 
 
+def list_scans_for_target(db: Session, target_id: uuid.UUID) -> list[Scan]:
+    target_service.get_target_or_raise(db, target_id)
+    return scan_repository.list_scans_for_target(db, target_id)
+
+
 def get_scan_or_raise(db: Session, scan_id: uuid.UUID) -> Scan:
     scan = scan_repository.get_scan(db, scan_id)
     if scan is None:

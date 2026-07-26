@@ -52,6 +52,11 @@ def trigger_pipeline(target_id: uuid.UUID, db: Session = Depends(get_db)) -> Sca
     return pipeline_service.trigger_pipeline(db, target_id)
 
 
+@router.get("/targets/{target_id}/scans", response_model=list[ScanRead])
+def list_scans_for_target(target_id: uuid.UUID, db: Session = Depends(get_db)) -> list[ScanRead]:
+    return scan_service.list_scans_for_target(db, target_id)
+
+
 @router.get("/scans/{scan_id}", response_model=ScanRead)
 def get_scan(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> ScanRead:
     return scan_service.get_scan_or_raise(db, scan_id)
