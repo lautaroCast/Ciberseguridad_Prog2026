@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -8,9 +9,11 @@ from app.main import app
 
 def _client_with_output_dir(tmp_path: Path) -> TestClient:
     app.dependency_overrides[get_settings] = lambda: Settings(
-        reports_output_dir=str(tmp_path)
+        reports_output_dir=str(tmp_path), internal_api_key=os.environ["INTERNAL_API_KEY"]
     )
-    client = TestClient(app)
+    client = TestClient(
+        app, headers={"X-Internal-Token": os.environ["INTERNAL_API_KEY"]}
+    )
     return client
 
 

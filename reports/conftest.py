@@ -1,13 +1,23 @@
-import pytest
-from fastapi.testclient import TestClient
+import os
 
-from app.main import app
-from app.schemas.report import CveReferenceInfo, FindingInfo, ReportRequest, ScanInfo, TargetInfo
+os.environ.setdefault("INTERNAL_API_KEY", "test-internal-api-key")
+
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
+from app.schemas.report import (  # noqa: E402
+    CveReferenceInfo,
+    FindingInfo,
+    ReportRequest,
+    ScanInfo,
+    TargetInfo,
+)
 
 
 @pytest.fixture
 def client() -> TestClient:
-    return TestClient(app)
+    return TestClient(app, headers={"X-Internal-Token": os.environ["INTERNAL_API_KEY"]})
 
 
 @pytest.fixture

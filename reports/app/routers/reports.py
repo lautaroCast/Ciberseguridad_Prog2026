@@ -1,10 +1,12 @@
 """Endpoints for report generation and file download.
 
 This service is stateless: it has no database of its own, no knowledge of
-`scan_id`/`target_id` beyond what's in the request body, and no auth of
-its own — it trusts the Backend (the only caller in this architecture) to
-have already validated everything. The Backend persists the resulting
-`Report` row; this service only ever produces and serves bytes on disk.
+`scan_id`/`target_id` beyond what's in the request body. It trusts the
+Backend (the only caller in this architecture) to have already validated
+everything domain-wise; the only auth here is the shared X-Internal-Token
+(Módulo 9), applied at include_router time in main.py, not per-route.
+The Backend persists the resulting `Report` row; this service only ever
+produces and serves bytes on disk.
 """
 
 from pathlib import Path

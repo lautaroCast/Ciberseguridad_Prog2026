@@ -14,6 +14,8 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("BACKEND_ALLOWED_LAB_HOSTS", "juice-shop,dvwa")
 os.environ.setdefault("N8N_WEBHOOK_BASE_URL", "http://n8n:5678")
 os.environ.setdefault("REPORTS_BASE_URL", "http://reports:8200")
+os.environ.setdefault("BACKEND_API_KEY", "test-backend-api-key")
+os.environ.setdefault("INTERNAL_API_KEY", "test-internal-api-key")
 
 import uuid  # noqa: E402
 
@@ -135,6 +137,6 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = _override_get_db
     try:
-        yield TestClient(app)
+        yield TestClient(app, headers={"X-API-Key": os.environ["BACKEND_API_KEY"]})
     finally:
         app.dependency_overrides.clear()

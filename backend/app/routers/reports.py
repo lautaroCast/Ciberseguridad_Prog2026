@@ -56,7 +56,9 @@ def download_report(report_id: uuid.UUID, db: Session = Depends(get_db)) -> Resp
     settings = get_settings()
     url = f"{settings.reports_base_url}/reports/{report.file_path}"
     try:
-        upstream = httpx.get(url, timeout=30.0)
+        upstream = httpx.get(
+            url, headers={"X-Internal-Token": settings.internal_api_key}, timeout=30.0
+        )
     except httpx.HTTPError as exc:
         raise ReportFileUnavailableError(str(exc)) from exc
     if upstream.status_code == 404:

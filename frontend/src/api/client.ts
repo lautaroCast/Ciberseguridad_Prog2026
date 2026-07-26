@@ -1,4 +1,5 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_KEY = import.meta.env.VITE_API_KEY;
 
 export class ApiError extends Error {
   status: number;
@@ -35,7 +36,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   const response = await fetch(buildUrl(path, query), {
     method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      "X-API-Key": API_KEY,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
@@ -59,6 +63,41 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return (await response.json()) as T;
 }
 
-export function downloadUrl(path: string): string {
-  return buildUrl(path);
+// A plain <a href> can't attach the X-API-Key header, so downloads go
+// through fetch (which can) and get turned into a client-side blob URL
+// instead of navigating the browser straight to the API endpoint.
+export async function downloadFile(path: string): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch(buildUrl(path), {
+    headers: { "X-API-Key": API_KEY },
+  });
+
+  if (!response.ok) {
+    let detail = `Request failed with status ${response.status}`;
+    try {
+      const data = (await response.json()) as { detail?: string };
+      if (data.detail) {
+        detail = data.detail;
+      }
+    } catch {
+      // Response body wasn't JSON (or was empty) — fall back to the generic message above.
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = /filename="([^"]+)"/.exec(disposition);
+  const filename = match ? match[1] : "report";
+
+  return { blob: await response.blob(), filename };
+}
+
+export function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

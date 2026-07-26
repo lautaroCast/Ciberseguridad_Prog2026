@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure environment
+        run: cp .env.example .env
+
+      - name: Build and start core services
+        run: docker compose up -d --build db migrate backend scanner reports
+
+      - name: Wait for services to be healthy
+        run: |
+          for s in backend scanner reports; do
+            echo "Waiting for $s..."
+            timeout 180 sh -c "until [ \"\$(docker inspect -f '{{.State.Health.Status}}' vulnscan-$s 2>/dev/null)\" = healthy ]; do sleep 3; done"
+          done
+
+      - name: Run backend/scanner/reports test suites
+        run: ./scripts/test-all.sh
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Type-check and build
+        run: npm run build
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: http://localhost:8001
+          VITE_API_KEY: ci-placeholder

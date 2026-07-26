@@ -2,13 +2,14 @@
 
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routers import health, reports, scans, targets
 from app.routers.reports import ReportFileUnavailableError
+from app.security import verify_api_key
 from app.services.pipeline_service import PipelineTriggerError
 from app.services.report_service import ReportGenerationError, ReportNotFoundError
 from app.services.scan_service import ScanNotFoundError
@@ -104,6 +105,6 @@ async def report_file_unavailable_handler(
 
 
 app.include_router(health.router)
-app.include_router(targets.router)
-app.include_router(scans.router)
-app.include_router(reports.router)
+app.include_router(targets.router, dependencies=[Depends(verify_api_key)])
+app.include_router(scans.router, dependencies=[Depends(verify_api_key)])
+app.include_router(reports.router, dependencies=[Depends(verify_api_key)])

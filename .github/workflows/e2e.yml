@@ -1,0 +1,48 @@
+name: E2E Pipeline Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure environment
+        run: cp .env.example .env
+
+      - name: Build and start the full stack
+        run: docker compose up -d --build
+
+      - name: Wait for services to be healthy
+        run: |
+          for s in backend scanner reports n8n frontend dvwa juice-shop; do
+            echo "Waiting for $s..."
+            timeout 180 sh -c "until [ \"\$(docker inspect -f '{{.State.Health.Status}}' vulnscan-$s 2>/dev/null)\" = healthy ]; do sleep 3; done"
+          done
+
+      # A fresh n8n instance has no workflow imported — it's normally done
+      # once by hand via the editor UI (see n8n/README.md). This mirrors
+      # that step non-interactively so the job needs no manual setup.
+      # Verified by hand while building Módulo 9: `import:workflow` alone
+      # leaves the workflow inactive, and `update:workflow --active=true`
+      # (deprecated but functional) requires an n8n restart to take effect.
+      - name: Import and activate the n8n pipeline workflow
+        run: |
+          docker compose exec -T n8n n8n import:workflow --input=/workflows/vulnscan-pipeline.json
+          docker compose exec -T n8n n8n update:workflow --id=vulnscan-pipeline --active=true
+          docker compose restart n8n
+          timeout 60 sh -c "until [ \"\$(docker inspect -f '{{.State.Health.Status}}' vulnscan-n8n 2>/dev/null)\" = healthy ]; do sleep 3; done"
+
+      - name: Run end-to-end pipeline test
+        run: ./scripts/test-e2e.sh
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

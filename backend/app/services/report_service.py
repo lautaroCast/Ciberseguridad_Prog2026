@@ -46,7 +46,12 @@ def generate_report(db: Session, scan_id: uuid.UUID, format: str) -> Report:
 
     settings = get_settings()
     try:
-        response = httpx.post(f"{settings.reports_base_url}/reports", json=payload, timeout=60.0)
+        response = httpx.post(
+            f"{settings.reports_base_url}/reports",
+            json=payload,
+            headers={"X-Internal-Token": settings.internal_api_key},
+            timeout=60.0,
+        )
         response.raise_for_status()
     except httpx.HTTPError as exc:
         raise ReportGenerationError(str(exc)) from exc

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     backend_cors_origins: str = ""
     n8n_webhook_base_url: str
     reports_base_url: str
+    backend_api_key: str
+    internal_api_key: str
 
     @field_validator("backend_allowed_lab_hosts")
     @classmethod
@@ -58,6 +60,29 @@ class Settings(BaseSettings):
                 "(see .env.example)."
             )
         return value.rstrip("/")
+
+    @field_validator("backend_api_key")
+    @classmethod
+    def _require_backend_api_key(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError(
+                "BACKEND_API_KEY must not be empty — every user-facing router would "
+                "boot successfully and then reject the X-API-Key check with no valid "
+                "value to ever match. Set it to a random secret (see .env.example)."
+            )
+        return value
+
+    @field_validator("internal_api_key")
+    @classmethod
+    def _require_internal_api_key(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError(
+                "INTERNAL_API_KEY must not be empty — calls to the Reports Service "
+                "would boot successfully and then fail every request once Reports "
+                "starts requiring X-Internal-Token. Set it to a random secret shared "
+                "with scanner/reports (see .env.example)."
+            )
+        return value
 
     @property
     def cors_origins(self) -> list[str]:

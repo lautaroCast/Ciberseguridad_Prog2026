@@ -2,11 +2,12 @@
 
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.adapters.registry import AdapterNotFoundError
 from app.routers import health, scans
+from app.security import verify_internal_token
 
 logging.basicConfig(level="INFO")
 
@@ -28,4 +29,4 @@ async def adapter_not_found_handler(request: Request, exc: AdapterNotFoundError)
 
 
 app.include_router(health.router)
-app.include_router(scans.router)
+app.include_router(scans.router, dependencies=[Depends(verify_internal_token)])

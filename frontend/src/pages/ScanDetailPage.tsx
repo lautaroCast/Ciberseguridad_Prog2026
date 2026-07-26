@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
-import { createReport, downloadReportUrl, getScan, isTerminalStatus, listFindings, listReports } from "../api";
+import { createReport, downloadReport, getScan, isTerminalStatus, listFindings, listReports } from "../api";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { SeverityBadge } from "../components/SeverityBadge";
 import { Spinner } from "../components/Spinner";
@@ -67,6 +67,10 @@ export function ScanDetailPage() {
   const createReportMutation = useMutation({
     mutationFn: (format: ReportFormat) => createReport(scanId, format),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["reports", scanId] }),
+  });
+
+  const downloadReportMutation = useMutation({
+    mutationFn: (reportId: string) => downloadReport(reportId),
   });
 
   const [severityFilter, setSeverityFilter] = useState<Set<Severity>>(new Set(ALL_SEVERITIES));
@@ -179,13 +183,19 @@ export function ScanDetailPage() {
       <ErrorBanner error={createReportMutation.error} />
 
       <ErrorBanner error={reportsQuery.error} />
+      <ErrorBanner error={downloadReportMutation.error} />
       {reportsQuery.data && reportsQuery.data.length > 0 && (
         <ul className="report-list">
           {reportsQuery.data.map((report) => (
             <li key={report.id}>
-              <a href={downloadReportUrl(report.id)} download>
+              <button
+                type="button"
+                className="report-list__download"
+                onClick={() => downloadReportMutation.mutate(report.id)}
+                disabled={downloadReportMutation.isPending}
+              >
                 {report.format.toUpperCase()} — {new Date(report.generated_at).toLocaleString()}
-              </a>
+              </button>
             </li>
           ))}
         </ul>

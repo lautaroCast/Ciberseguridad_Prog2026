@@ -1,10 +1,11 @@
 """FastAPI application entrypoint."""
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.routers import health, reports
 from app.routers.reports import ReportFileNotFoundError
+from app.security import verify_internal_token
 
 app = FastAPI(
     title="VulnScan Reports Service",
@@ -21,4 +22,4 @@ async def report_file_not_found_handler(
 
 
 app.include_router(health.router)
-app.include_router(reports.router)
+app.include_router(reports.router, dependencies=[Depends(verify_internal_token)])

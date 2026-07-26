@@ -33,14 +33,18 @@ RUN apt-get update \
 RUN git clone --depth 1 https://github.com/sullo/nikto /opt/nikto
 
 # --- nuclei (Go binary release) ------------------------------------------
+# Template fetch (-update-templates) happens further down, as `appuser`
+# with HOME already pointed at its real home — not here as root — so
+# build-time and runtime HOME match and nuclei finds the templates it
+# baked in, instead of them sitting under /root where a non-root runtime
+# user could never see them.
 RUN NUCLEI_URL="$(curl -sSL https://api.github.com/repos/projectdiscovery/nuclei/releases/latest \
         | grep -oE '"browser_download_url": *"[^"]*linux_amd64\.zip"' \
         | grep -oE 'https://[^"]*')" \
     && curl -sSL -o /tmp/nuclei.zip "$NUCLEI_URL" \
     && unzip -oq /tmp/nuclei.zip -d /usr/local/bin nuclei \
     && chmod +x /usr/local/bin/nuclei \
-    && rm /tmp/nuclei.zip \
-    && nuclei -update-templates
+    && rm /tmp/nuclei.zip
     # NOTE: -duc ("disable update check") must NOT be combined with
     # -update-templates — confirmed by hand while building this module: with
     # both flags together, nuclei silently no-ops (exits 0, prints the
@@ -67,6 +71,20 @@ COPY pytest.ini conftest.py ./
 COPY tests ./tests
 
 ENV PYTHONPATH=/app
+
+# Least privilege (Módulo 9): nmap loses CAP_NET_RAW under a non-root user
+# and auto-falls back from SYN scan (-sS) to TCP connect scan (-sT) — see
+# nmap_adapter.py, which doesn't pass -sS explicitly, so this degrades
+# gracefully rather than failing. docker-compose.yml re-adds NET_RAW/
+# NET_ADMIN anyway to preserve the original scan behavior. ZAP writes
+# session/config data under $HOME at scan time, so this container's
+# filesystem is deliberately left writable (no read_only) rather than
+# guessing every path ZAP/Nikto/Nuclei might touch at runtime.
+RUN useradd --create-home --uid 1000 appuser \
+    && chown -R appuser:appuser /opt/nikto /opt/zap /app
+ENV HOME=/home/appuser
+USER appuser
+RUN nuclei -update-templates
 
 EXPOSE 8100
 

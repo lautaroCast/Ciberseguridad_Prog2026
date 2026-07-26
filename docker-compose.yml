@@ -106,6 +106,11 @@ services:
       # Same reasoning as above: no :-default, see app/config.py's validator.
       N8N_WEBHOOK_BASE_URL: ${N8N_WEBHOOK_BASE_URL}
       REPORTS_BASE_URL: ${REPORTS_BASE_URL}
+      # No :-default on either: an unset key would boot successfully and
+      # then reject every request with no clear cause (see app/config.py's
+      # validators).
+      BACKEND_API_KEY: ${BACKEND_API_KEY}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     networks:
@@ -128,6 +133,13 @@ services:
   # The only service that bridges app-network and lab-network: n8n/backend
   # reach it over app-network, and it's the one thing allowed to reach the
   # lab targets. Stateless — no DB dependency, no persistence of its own.
+  #
+  # No `ports:` (Módulo 9): this service doesn't validate its `target`
+  # against any whitelist itself (that check lives only in the Backend),
+  # so publishing its port to the host would let anyone on the host
+  # network scan arbitrary hosts, bypassing the Backend entirely. Reachable
+  # only from app-network/lab-network now, and only n8n calls it directly,
+  # authenticated via X-Internal-Token (INTERNAL_API_KEY below).
   # --------------------------------------------------------------------
   scanner:
     build:
@@ -136,8 +148,19 @@ services:
     restart: unless-stopped
     environment:
       SCANNER_MAX_TIMEOUT_SECONDS: ${SCANNER_MAX_TIMEOUT_SECONDS:-900}
-    ports:
-      - "${SCANNER_PORT:-8100}:8100"
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+    cap_drop:
+      - ALL
+    # NET_RAW/NET_ADMIN preserve Nmap's SYN-scan behavior under the
+    # non-root `appuser` (see scanner/Dockerfile) — without them nmap
+    # still works, it just silently falls back to a slower TCP connect
+    # scan. No read_only here: ZAP writes session/config data under $HOME
+    # at scan time and that hasn't been verified path-by-path yet.
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
     networks:
       - app-network
       - lab-network
@@ -157,6 +180,10 @@ services:
   # serves files on its own private `reports-data` volume (not shared with
   # the Backend — downloads are proxied over HTTP, see
   # backend/app/routers/reports.py).
+  #
+  # No `ports:` (Módulo 9): nothing outside app-network needs to reach
+  # this directly — only the Backend calls it, authenticated via
+  # X-Internal-Token (INTERNAL_API_KEY below).
   # --------------------------------------------------------------------
   reports:
     build:
@@ -165,10 +192,17 @@ services:
     restart: unless-stopped
     environment:
       REPORTS_OUTPUT_DIR: ${REPORTS_OUTPUT_DIR:-/data/reports}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
     volumes:
       - reports-data:/data/reports
-    ports:
-      - "${REPORTS_PORT:-8200}:8200"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/appuser/.cache
     networks:
       - app-network
     healthcheck:
@@ -213,6 +247,19 @@ services:
       # Basic auth protects the editor UI/API only — it does not gate
       # webhook URLs, so the Backend's service-to-service call to the
       # pipeline trigger needs no credentials.
+      # Read by the workflow's HTTP Request nodes via `$env.*` expressions
+      # (Módulo 9) — every node calling the Backend/Scanner sends one of
+      # these as X-API-Key/X-Internal-Token. See
+      # n8n/workflows/vulnscan-pipeline.json.
+      BACKEND_API_KEY: ${BACKEND_API_KEY}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      # n8n >=2.0 blocks $env access in node expressions by default (a
+      # breaking change) — without this, every node above silently never
+      # resolves its header value and the pipeline stalls before ever
+      # reaching the Scanner Service. Confirmed empirically while building
+      # this module: the workflow hung indefinitely with zero calls ever
+      # reaching scanner/backend until this was set.
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n-data:/home/node/.n8n
       - ./n8n/workflows:/workflows:ro
@@ -241,8 +288,29 @@ services:
         # passing this at container-run time (e.g. via env_file) would be a
         # no-op against the already-compiled JS, so it has to arrive here.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        # Reuses BACKEND_API_KEY: the Frontend is a user-facing client of
+        # the Backend just like n8n is, so it needs the same secret. See
+        # docs/security.md for what this does and doesn't protect against
+        # once it's baked into a public JS bundle.
+        VITE_API_KEY: ${BACKEND_API_KEY}
     container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-frontend
     restart: unless-stopped
+    # nginx's master process needs root to bind port 80 and to set up its
+    # cache dirs/worker privilege drop on startup — cap_drop/cap_add here
+    # is the lighter-touch equivalent of the non-root Dockerfile treatment
+    # used for backend/reports, without risking a broken build. Confirmed
+    # empirically: CAP_CHOWN/SETUID/SETGID are all needed, not just
+    # NET_BIND_SERVICE — without them the official entrypoint fails at
+    # `chown("/var/cache/nginx/client_temp", ...)` before nginx even starts.
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "${FRONTEND_PORT:-8080}:80"
     networks:

@@ -29,6 +29,20 @@ COPY tests ./tests
 
 ENV PYTHONPATH=/app
 
+# Least privilege (Módulo 9): plain Python/uvicorn, no binaries that need
+# root or special capabilities. /data/reports is a named volume
+# (docker-compose.yml) mounted at this same path at runtime — Docker only
+# applies a fresh volume's initial ownership from what's baked into the
+# image *the first time* that volume is used, so this mkdir+chown matters
+# for a brand-new `reports-data` volume. An already-existing volume from
+# before this change keeps whatever ownership it had (confirmed the hard
+# way: PermissionError writing PDFs until the existing volume's contents
+# were rechowned by hand — see the Módulo 9 plan/PROGRESS.md).
+RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /data/reports \
+    && chown -R appuser:appuser /app /data/reports
+USER appuser
+
 EXPOSE 8200
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8200"]
