@@ -29,11 +29,11 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Esto construye y levanta los 8 servicios (base de datos, backend, scanner,
-reports, n8n, frontend cuando exista, y los dos targets del laboratorio).
-La primera vez puede tardar varios minutos (compila el Scanner Service, que
-instala Nmap/Nikto/Nuclei/ZAP, y el Reports Service, que instala
-WeasyPrint). Las siguientes veces es cuestión de segundos.
+Esto construye y levanta los 9 servicios (base de datos, backend, scanner,
+reports, n8n, frontend, y los dos targets del laboratorio más su
+inicializador). La primera vez puede tardar varios minutos (compila el
+Scanner Service, que instala Nmap/Nikto/Nuclei/ZAP, y el Reports Service,
+que instala WeasyPrint). Las siguientes veces es cuestión de segundos.
 
 Verificá que todo esté saludable:
 
@@ -84,6 +84,15 @@ Esto deja el workflow activo y listo para recibir ejecuciones.
 
 ## 4. Registrar un target
 
+Todas las llamadas al Backend (salvo `/health`) requieren el header
+`X-API-Key` con el valor de `BACKEND_API_KEY` (`.env` — por defecto
+`change_me_local_dev_only`). Los ejemplos de esta guía lo asumen en una
+variable de entorno:
+
+```bash
+export API_KEY=change_me_local_dev_only   # el valor real de BACKEND_API_KEY en tu .env
+```
+
 El sistema solo puede escanear los hosts del laboratorio incluido
 (`juice-shop` o `dvwa` — ver la whitelist en
 [`backend/README.md`](../backend/README.md#the-lab-whitelist)). Registrá
@@ -91,6 +100,7 @@ uno:
 
 ```bash
 curl -X POST http://localhost:8000/targets \
+  -H "X-API-Key: $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"name": "juice-shop-demo", "host": "juice-shop", "description": "Demo target"}'
 ```
@@ -105,7 +115,7 @@ paso siguiente. Ejemplo:
 Si en algún momento perdés ese id, pedilo de nuevo con:
 
 ```bash
-curl http://localhost:8000/targets
+curl http://localhost:8000/targets -H "X-API-Key: $API_KEY"
 ```
 
 ## 5. Ejecutar el pipeline
@@ -113,10 +123,11 @@ curl http://localhost:8000/targets
 Hay dos formas de disparar el escaneo completo. Para una demo en vivo, la
 opción B (sin terminal) suele ser la más práctica.
 
-### Opción A — vía API (como lo haría el futuro frontend)
+### Opción A — vía API (como lo hace el Frontend)
 
 ```bash
-curl -X POST http://localhost:8000/targets/{target_id}/pipeline
+curl -X POST http://localhost:8000/targets/{target_id}/pipeline \
+  -H "X-API-Key: $API_KEY"
 ```
 
 (reemplazando `{target_id}` por el id del paso anterior). Devuelve
@@ -148,7 +159,7 @@ iluminarse a medida que corre.
 ### Los hallazgos
 
 ```bash
-curl http://localhost:8000/scans/{scan_id}/findings
+curl http://localhost:8000/scans/{scan_id}/findings -H "X-API-Key: $API_KEY"
 ```
 
 El `scan_id` te lo devuelve tanto la Opción A como el nodo "Create Scan
@@ -161,20 +172,27 @@ El pipeline genera automáticamente un PDF al finalizar. Para bajarlo:
 
 ```bash
 # 1. Listar los reportes de ese scan
-curl http://localhost:8000/scans/{scan_id}/reports
+curl http://localhost:8000/scans/{scan_id}/reports -H "X-API-Key: $API_KEY"
 
 # 2. Descargar con el id que te devolvió el paso anterior
-curl http://localhost:8000/reports/{report_id}/download -o reporte.pdf
+curl http://localhost:8000/reports/{report_id}/download \
+  -H "X-API-Key: $API_KEY" \
+  -o reporte.pdf
 ```
 
-También podés pegar esa segunda URL directo en el navegador para
-descargarlo/abrirlo sin usar la terminal.
+Pegar esa segunda URL directo en el navegador **no** funciona — la
+descarga requiere el header `X-API-Key`, que un link plano no puede
+mandar (por eso el dashboard la resuelve con `fetch`, no con un `<a
+href>`; ver [`docs/security.md`](security.md)). Para bajarlo sin
+terminal, usá el dashboard (`http://localhost:8080`, ver el
+[manual de uso](usage.md)).
 
 Otros formatos (`html`, `markdown`, `json`) están disponibles bajo demanda,
 llamando al mismo endpoint de generación con otro `format`:
 
 ```bash
-curl -X POST "http://localhost:8000/scans/{scan_id}/reports?format=html"
+curl -X POST "http://localhost:8000/scans/{scan_id}/reports?format=html" \
+  -H "X-API-Key: $API_KEY"
 ```
 
 ### El mail (opcional)

@@ -47,9 +47,9 @@ Este proyecto se desarrolla de forma incremental, módulo por módulo, mantenien
 | 5 | Normalización y clasificación de hallazgos | ✅ Completo |
 | 6 | Orquestación n8n (pipeline de 12 etapas) | ✅ Completo |
 | 7 | Reports Service (PDF/HTML/MD/JSON) | ✅ Completo |
-| 8 | Frontend Dashboard (React + TS) | ⏳ Pendiente |
-| 9 | Integración y endurecimiento | ⏳ Pendiente |
-| 10 | Documentación final y pulido | ⏳ Pendiente |
+| 8 | Frontend Dashboard (React + TS) | ✅ Completo |
+| 9 | Integración y endurecimiento | ✅ Completo |
+| 10 | Documentación final y pulido | ⏳ En progreso |
 
 ---
 
@@ -79,11 +79,12 @@ assets/       # Diagramas fuente, capturas de pantalla
 
 ## Documentación
 
-- [Arquitectura completa y plan de desarrollo](docs/architecture.md) *(Módulo 10)*
-- [Manual de instalación](docs/installation.md) *(Módulo 10)*
-- [Manual de uso](docs/usage.md) *(Módulo 10)*
+- [Arquitectura completa y plan de desarrollo](docs/architecture.md)
+- [Manual de instalación](docs/installation.md)
+- [Manual de uso](docs/usage.md)
 - [Guía de demostración](docs/demo.md) — cómo correr una prueba completa de punta a punta
 - [Modelo de datos y diagrama ER](docs/database.md)
+- [Modelo de seguridad](docs/security.md)
 - [Alcance legal del laboratorio](docs/lab.md)
 
 ## Licencia
