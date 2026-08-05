@@ -203,6 +203,12 @@ services:
     tmpfs:
       - /tmp
       - /home/appuser/.cache
+      # fontconfig's own cachedir (/etc/fonts/fonts.conf) — neither /tmp nor
+      # ~/.cache cover it, so without this it silently rebuilds the font
+      # index on every PDF render instead of caching it. uid/gid must match
+      # appuser (1000) — tmpfs mounts default to root:root, unwritable by
+      # the non-root user this container runs as.
+      - /var/cache/fontconfig:uid=1000,gid=1000
     networks:
       - app-network
     healthcheck:
