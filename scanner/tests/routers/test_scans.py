@@ -61,6 +61,18 @@ def test_scan_timeout_seconds_validation(client):
     assert response.status_code == 422
 
 
+def test_scan_target_not_in_whitelist_is_rejected(client):
+    response = client.post("/scan/nmap", json={"target": "evil.example.com"})
+    assert response.status_code == 422
+    assert "not an allowed lab host" in response.json()["detail"]
+
+
+def test_scan_target_in_whitelist_is_allowed(client, monkeypatch):
+    monkeypatch.setattr(scan_runner, "execute", lambda *a, **k: _fake_result())
+    response = client.post("/scan/nmap", json={"target": "dvwa"})
+    assert response.status_code == 200
+
+
 def test_scan_happy_path(client, monkeypatch):
     monkeypatch.setattr(scan_runner, "execute", lambda *a, **k: _fake_result())
     response = client.post("/scan/nmap", json={"target": "juice-shop"})

@@ -1,6 +1,7 @@
 import os
 
 os.environ.setdefault("INTERNAL_API_KEY", "test-internal-api-key")
+os.environ.setdefault("SCANNER_ALLOWED_LAB_HOSTS", "juice-shop,dvwa")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

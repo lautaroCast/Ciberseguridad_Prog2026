@@ -132,14 +132,17 @@ services:
   #
   # The only service that bridges app-network and lab-network: n8n/backend
   # reach it over app-network, and it's the one thing allowed to reach the
-  # lab targets. Stateless — no DB dependency, no persistence of its own.
+  # lab targets. No DB coupling of its own (not "stateless" in the strict
+  # sense — see docs/security.md for why that wording was wrong).
   #
-  # No `ports:` (Módulo 9): this service doesn't validate its `target`
-  # against any whitelist itself (that check lives only in the Backend),
-  # so publishing its port to the host would let anyone on the host
-  # network scan arbitrary hosts, bypassing the Backend entirely. Reachable
-  # only from app-network/lab-network now, and only n8n calls it directly,
-  # authenticated via X-Internal-Token (INTERNAL_API_KEY below).
+  # No `ports:` (Módulo 9): reachable only from app-network/lab-network,
+  # authenticated via X-Internal-Token (INTERNAL_API_KEY below). It also
+  # independently validates `target` against SCANNER_ALLOWED_LAB_HOSTS on
+  # every /scan/{tool} call — the same whitelist the Backend checks at
+  # target-registration time, sourced from the same .env value below, but
+  # enforced here too because this is the only component with an actual
+  # network route to lab-network. A check only in the Backend would not be
+  # real defense in depth (see docs/security.md).
   # --------------------------------------------------------------------
   scanner:
     build:
@@ -149,6 +152,7 @@ services:
     environment:
       SCANNER_MAX_TIMEOUT_SECONDS: ${SCANNER_MAX_TIMEOUT_SECONDS:-900}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      SCANNER_ALLOWED_LAB_HOSTS: ${BACKEND_ALLOWED_LAB_HOSTS}
     cap_drop:
       - ALL
     # NET_RAW/NET_ADMIN preserve Nmap's SYN-scan behavior under the
