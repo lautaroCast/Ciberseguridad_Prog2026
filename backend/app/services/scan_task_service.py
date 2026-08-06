@@ -33,6 +33,19 @@ from app.repositories import (
 from app.services.scan_service import get_scan_or_raise
 from models import ScanTask, ScanTaskStatus
 
+
+def list_scan_tasks_for_scan(db: Session, scan_id: uuid.UUID) -> list[ScanTask]:
+    """Read-only accessor — no business rules beyond scan scoping.
+
+    Exposes per-tool `started_at`/`finished_at` timestamps already stored
+    on each ScanTask, used by scripts/measurement_campaign.py to derive
+    tool-execution-time vs. orchestration-time without re-deriving timing
+    from n8n's own logs, and by the ground-truth matcher
+    (scripts/ground_truth/) to know which tool produced each finding.
+    """
+    get_scan_or_raise(db, scan_id)  # 404s for an unknown scan instead of silently returning []
+    return scan_task_repository.list_scan_tasks_for_scan(db, scan_id)
+
 _STATUS_MAP: dict[str, ScanTaskStatus] = {
     "completed": ScanTaskStatus.COMPLETED,
     "failed": ScanTaskStatus.FAILED,

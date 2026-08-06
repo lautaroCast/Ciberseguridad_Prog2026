@@ -105,3 +105,16 @@ def ingest_scan_task(
 @router.get("/scans/{scan_id}/findings", response_model=list[FindingRead])
 def list_findings(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> list[FindingRead]:
     return finding_service.list_findings_for_scan(db, scan_id)
+
+
+@router.get("/scans/{scan_id}/tasks", response_model=list[ScanTaskRead])
+def list_scan_tasks(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> list[ScanTaskRead]:
+    """Per-tool execution record (start/finish timestamps, status), read-only.
+
+    Added for scripts/measurement_campaign.py and scripts/ground_truth/ —
+    lets those scripts derive tool-execution-time vs. orchestration-time
+    and per-tool finding counts from the same public API surface
+    scripts/integration_test.py already exercises, instead of querying
+    the database directly.
+    """
+    return scan_task_service.list_scan_tasks_for_scan(db, scan_id)

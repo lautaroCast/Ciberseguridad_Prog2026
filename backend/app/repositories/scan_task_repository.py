@@ -10,6 +10,7 @@ always has its normalized rows alongside it, never a partial result.
 import uuid
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models import ScanTask, ScanTaskStatus
@@ -40,3 +41,8 @@ def create_scan_task(
     db.add(scan_task)
     db.flush()  # assigns scan_task.id so findings below can reference it
     return scan_task
+
+
+def list_scan_tasks_for_scan(db: Session, scan_id: uuid.UUID) -> list[ScanTask]:
+    stmt = select(ScanTask).where(ScanTask.scan_id == scan_id).order_by(ScanTask.created_at)
+    return list(db.scalars(stmt))
