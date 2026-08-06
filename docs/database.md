@@ -128,7 +128,7 @@ consume ningún servicio en esta etapa del proyecto.
 
 | Tabla | Responsabilidad |
 |---|---|
-| `targets` | Sistemas registrados para análisis. `is_lab_target` es el flag que el Backend (Módulo 3) usa para aplicar la whitelist: solo se pueden escanear targets del laboratorio local. |
+| `targets` | Sistemas registrados para análisis. `is_lab_target` es el flag que el Backend (Módulo 3) usa para aplicar la whitelist al registrar; el Scanner Service la revalida de forma independiente en cada escaneo (Módulo 9) — ver `docs/security.md`. |
 | `scans` | Una ejecución del pipeline de 12 etapas sobre un target. `pipeline_run_id` correlaciona la fila con la ejecución de n8n que la origina. |
 | `scan_tasks` | Una invocación de una herramienta concreta (Nmap, Nuclei, Nikto, WhatWeb, ZAP...) dentro de un scan. `tool_name` es texto libre, no enum, para poder sumar herramientas nuevas sin migración. |
 | `services` | Puertos/servicios de red descubiertos durante el reconocimiento (Nmap). |

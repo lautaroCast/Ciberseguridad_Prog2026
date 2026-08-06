@@ -1,13 +1,17 @@
 # Reports Service — PDF/HTML/Markdown/JSON export (Módulo 7)
 
-Stateless FastAPI microservice: given a self-contained payload (target,
-scan, findings — see [`app/schemas/report.py`](app/schemas/report.py)) and
-a `format`, it renders a report file to disk and returns its filename. It
-has no database, no knowledge of scan IDs beyond what's in the request, and
-calls no other service — the Backend is the only caller, gathers all the
-data up front, and persists the resulting `Report` row itself (this
-service never touches Postgres, consistent with the Scanner Service's
-statelessness from Módulo 4).
+FastAPI microservice with no database coupling: given a self-contained
+payload (target, scan, findings — see
+[`app/schemas/report.py`](app/schemas/report.py)) and a `format`, it
+renders a report file to disk and returns its filename. It has no
+database, no knowledge of scan IDs beyond what's in the request, and calls
+no other service — the Backend is the only caller, gathers all the data up
+front, and persists the resulting `Report` row itself (this service never
+touches Postgres). It is *not* stateless in the strict sense, though:
+rendered files persist on its own `reports-data` volume and are served
+back across later requests (the download endpoint), which is exactly the
+kind of state a stateless service wouldn't carry between calls — "no DB
+coupling" is the accurate claim, not "stateless."
 
 ## Why push, not pull
 

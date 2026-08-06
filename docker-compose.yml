@@ -178,8 +178,10 @@ services:
   # --------------------------------------------------------------------
   # Reports Service — Jinja2 + WeasyPrint (Módulo 7)
   #
-  # Stateless like the Scanner Service: no DB access, no knowledge of any
-  # other service. The Backend gathers target/scan/findings data and
+  # No DB coupling and no knowledge of any other service (not "stateless"
+  # in the strict sense — it persists rendered files across requests on
+  # its own volume, see docs/security.md). The Backend gathers
+  # target/scan/findings data and
   # pushes it here in one request; this service only ever renders and
   # serves files on its own private `reports-data` volume (not shared with
   # the Backend — downloads are proxied over HTTP, see
@@ -225,9 +227,11 @@ services:
   # --------------------------------------------------------------------
   # n8n — pipeline orchestration (Módulo 6)
   #
-  # Orchestrator only: every node in n8n/workflows/vulnscan-pipeline.json
-  # is an HTTP call into the Backend or Scanner Service — no business logic
-  # lives in the workflow itself. Two entry points feed the same pipeline:
+  # Orchestrator: execution, normalization and severity classification
+  # live in the Backend/Scanner, not here — but two Code nodes do make
+  # real decisions of their own (which port to attack, resolving the two
+  # trigger shapes into one context); see n8n/README.md, not "no business
+  # logic at all." Two entry points feed the same pipeline:
   # the Webhook trigger (called by the Backend's
   # POST /targets/{id}/pipeline, the production path) and a Form trigger
   # (opened directly in n8n's UI, for running/demoing the pipeline without

@@ -30,8 +30,8 @@ Frontend (React/TS) → Backend API (FastAPI) → n8n (orquestador)
 | **Frontend** | Dashboard React + TypeScript: CRUD de targets, disparo del pipeline, findings, descarga de reportes | [`frontend/`](../frontend) |
 | **Backend** | Único punto público de la API: targets, scans, ingesta/normalización de resultados, reportes | [`backend/README.md`](../backend/README.md) |
 | **Scanner Service** | Ejecuta Nmap/WhatWeb/Nikto/Nuclei/ZAP, sin estado propio, sin base de datos | [`scanner/README.md`](../scanner/README.md) |
-| **Reports Service** | Renderiza PDF/HTML/Markdown/JSON a partir de un payload autocontenido, sin estado propio | [`reports/README.md`](../reports/README.md) |
-| **n8n** | Orquesta el pipeline de 12 etapas llamando al Backend y al Scanner por HTTP — sin lógica de negocio propia | [`n8n/README.md`](../n8n/README.md) |
+| **Reports Service** | Renderiza PDF/HTML/Markdown/JSON a partir de un payload autocontenido, sin acoplamiento a base de datos | [`reports/README.md`](../reports/README.md) |
+| **n8n** | Orquesta el pipeline de 12 etapas llamando al Backend y al Scanner por HTTP — la ejecución, normalización y clasificación viven en los servicios; n8n conserva la resolución de contexto y la selección de puerto | [`n8n/README.md`](../n8n/README.md) |
 | **PostgreSQL** | Persiste todo el ciclo de vida (targets → scans → findings → reportes) | [`docs/database.md`](database.md) |
 | **Lab (Juice Shop + DVWA)** | Aplicaciones vulnerables de laboratorio, red segmentada | [`lab/README.md`](../lab/README.md) |
 
@@ -41,10 +41,14 @@ Frontend (React/TS) → Backend API (FastAPI) → n8n (orquestador)
   comparte base de datos ni sistema de archivos salvo lo explícitamente
   documentado (ver "Por qué push, no pull" en
   [`reports/README.md`](../reports/README.md)).
-- **n8n como orquestador, no como ejecutor**: la lógica de negocio
-  (whitelist, normalización, clasificación de severidad) vive en código
-  Python versionado; n8n solo llama a esa lógica en el orden correcto.
-  Ver [`n8n/README.md`](../n8n/README.md).
+- **n8n como orquestador, no como ejecutor**: la ejecución de las
+  herramientas, la normalización y la clasificación de severidad viven en
+  código Python versionado, no en nodos del workflow. n8n sí conserva dos
+  decisiones propias — a qué puerto atacar (`Select HTTP Port`, a partir
+  de la respuesta de Nmap) y la resolución de contexto entre sus dos
+  triggers (`Resolve Pipeline Context`) — que no delegó a ningún servicio;
+  ver [`n8n/README.md`](../n8n/README.md) para el detalle y por qué esa
+  formulación es más precisa que "sin lógica de negocio".
 - **Patrón plugin en el motor de escaneo y en la normalización**: agregar
   una herramienta nueva es un adapter + una línea de registro, no tocar
   las herramientas existentes. Ver la sección "The plugin pattern" en
@@ -53,8 +57,14 @@ Frontend (React/TS) → Backend API (FastAPI) → n8n (orquestador)
   en el Backend.
 - **Laboratorio en red segmentada** (`lab-network`): solo el Scanner
   Service la conecta con el resto de la plataforma. La garantía real de
-  "nunca escanear nada fuera del laboratorio" la da la whitelist del
-  Backend, no la topología de red — ver [`docs/lab.md`](lab.md).
+  "nunca escanear nada fuera del laboratorio" no la da la topología de
+  red (deliberadamente no marcada como `internal`, ver `docs/lab.md`),
+  sino la whitelist de hosts — aplicada en **dos** puntos independientes:
+  el Backend al registrar un target, y el Scanner Service en cada llamada
+  a `/scan/{tool}`, ya que es el único componente con ruta de red real
+  hacia el laboratorio. Un solo punto de aplicación no sería defensa en
+  profundidad; ver [`docs/lab.md`](lab.md) y
+  [`docs/security.md`](security.md).
 - **El Backend es el único punto público de la API.** n8n no se expone al
   frontend directamente; su Form Trigger es un atajo de desarrollo/demo,
   no una vía de producción. Ver "Why the trigger isn't exposed directly
@@ -70,7 +80,7 @@ Frontend (React/TS) → Backend API (FastAPI) → n8n (orquestador)
 | # | Etapa | Dónde vive |
 |---|---|---|
 | 1 | Recepción del target | Webhook/Form Trigger de n8n |
-| 2 | Validación | Whitelist del Backend (`BACKEND_ALLOWED_LAB_HOSTS`) |
+| 2 | Validación | Whitelist del Backend al registrar el target (`BACKEND_ALLOWED_LAB_HOSTS`); revalidada de forma independiente por el Scanner en cada `/scan/{tool}` (`SCANNER_ALLOWED_LAB_HOSTS`) |
 | 3 | Normalización del target | `Resolve Pipeline Context` (n8n) |
 | 4 | Reconocimiento | Scanner: Nmap |
 | 5 | Identificación de tecnologías | Scanner: WhatWeb |

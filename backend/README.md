@@ -95,10 +95,12 @@ talks to the Reports Service: it gathers a target, its scan, and every
 finding (reusing `target_service`/`scan_service`/`finding_service`, no new
 queries), serializes them with the same `TargetRead`/`ScanRead`/
 `FindingRead` schemas the rest of the API already returns, and pushes the
-whole thing to the Reports Service in one request. The Reports Service is
-intentionally stateless (see [`reports/README.md`](../reports/README.md))
+whole thing to the Reports Service in one request. The Reports Service has
+no database coupling (see [`reports/README.md`](../reports/README.md))
 — it never queries Postgres or calls back into the Backend, so this is a
-one-way push, not a pull.
+one-way push, not a pull. It does persist rendered files on its own
+volume across requests, so "stateless" understates what it does — "no DB
+coupling" is what's actually true here.
 
 ## Normalization and severity classification (Módulo 5)
 

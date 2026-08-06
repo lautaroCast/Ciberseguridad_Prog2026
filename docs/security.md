@@ -7,6 +7,16 @@ allá de un laboratorio local de un solo operador.
 
 ## Qué existe hoy
 
+> **Nota sobre la auditoría externa (C-14):** el borrador de tesis que la
+> auditoría revisó describía la API del Backend como "sin ningún control
+> de acceso" (tabla `users` sin consumir, §11.7). Esa descripción
+> corresponde a un estado del proyecto anterior al Módulo 9 — la
+> autenticación por API key descrita en esta página ya existe en el
+> código y está verificada funcionando (401 sin `X-API-Key`, 200 con la
+> key correcta). El hallazgo C-14 está resuelto en la implementación; lo
+> que falta es que el texto de la tesis lo refleje (ver
+> `docs/audit-corrections/`).
+
 Dos niveles de secreto compartido, ninguno de los dos es un sistema de
 usuarios:
 
@@ -21,6 +31,57 @@ Ver `backend/app/security.py`, `scanner/app/security.py` y
 `reports/app/security.py` para la implementación (misma forma en los
 tres: `secrets.compare_digest` contra el valor esperado, 401 si no
 matchea o falta el header).
+
+## Defensa en profundidad: whitelist de hosts de laboratorio
+
+Además de las dos API keys de arriba, hay un tercer control relevante que
+no es de autenticación sino de autorización de *objetivo*: qué hosts
+puede escanear la plataforma. Hasta la corrección de este hallazgo
+(auditoría externa, C-13), esa whitelist solo se aplicaba en el Backend
+al registrar un target (`POST /targets`) — pero el Backend no es el
+componente con ruta de red hacia el laboratorio; el Scanner Service sí lo
+es (`lab-network`), y no validaba nada por su cuenta. Un chequeo único en
+un servicio que ni siquiera puede alcanzar el laboratorio no es defensa
+en profundidad real, aunque el proyecto la describiera así.
+
+Ahora la whitelist (`BACKEND_ALLOWED_LAB_HOSTS`/`SCANNER_ALLOWED_LAB_HOSTS`,
+mismo valor en `.env`, dos puntos de código independientes) se aplica en:
+
+1. **El Backend**, al registrar un target — administrativo, una vez.
+2. **El Scanner Service**, en cada `POST /scan/{tool_name}` — operacional,
+   hasta 5 veces por pipeline, y es el punto que efectivamente importa
+   porque es el único con ruta de red al laboratorio.
+
+Ver `scanner/app/config.py`/`scanner/app/routers/scans.py` para la
+implementación, y `docs/lab.md`/`docs/architecture.md` para el resto del
+modelo de red.
+
+## Sesgo conocido en la escala de severidad
+
+La escala unificada (`info`/`low`/`medium`/`high`/`critical`,
+`backend/app/normalization/severity.py`) no trata a las tres herramientas
+de detección de vulnerabilidades por igual, y esto no está impulsado por
+el objetivo analizado sino por la política de mapeo de cada una:
+
+- **ZAP** aporta un `riskcode` numérico de 0 a 3, mapeado directamente a
+  `info`/`low`/`medium`/`high` (`_ZAP_RISKCODE` en `severity.py`) — su
+  escala tiene 4 niveles, la del sistema tiene 5, así que **ningún
+  hallazgo de ZAP puede llegar nunca a `critical`**.
+- **Nikto** no reporta severidad ni CVSS en su salida, así que todos sus
+  hallazgos se fuerzan, sin excepción, a `low`
+  (`nikto_normalizer.py`) — no es una medición, es una decisión
+  conservadora de diseño para no inventar una señal que la herramienta
+  no da.
+- **Nuclei** es la única herramienta cuya etiqueta nativa se adopta
+  directamente y puede llegar a `critical`.
+
+En la práctica, esto significa que la distribución de severidad de un
+escaneo es en buena medida un artefacto de qué herramienta detectó cada
+hallazgo, no solo del objetivo analizado. Cualquier reporte de
+distribución de severidad (incluida la campaña de medición del
+`docs/audit-corrections/`) debe desagregarse por herramienta además de
+mostrar el agregado, para que este sesgo sea visible en los datos en vez
+de quedar oculto en un solo número.
 
 ## Limitaciones conocidas (a propósito, para revisar más adelante si hace falta)
 

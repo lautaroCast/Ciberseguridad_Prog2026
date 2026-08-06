@@ -37,12 +37,18 @@ estas técnicas de forma segura y legal, no para saltarse esa barrera.
    correcto), lo que dejaba Juice Shop y DVWA inalcanzables desde el
    navegador del host. La garantía real de que la plataforma nunca escanea
    nada fuera del laboratorio no depende de la topología de red, sino de la
-   whitelist aplicada por el Backend (punto 2 más abajo).
-2. **Whitelist en base de datos**: la tabla `targets` (Módulo 1) tiene la
-   columna `is_lab_target`. El Backend API (Módulo 3) rechazará cualquier
-   intento de registrar o escanear un host que no forme parte del
-   laboratorio declarado — el pipeline nunca acepta un target arbitrario
-   ingresado a mano.
+   whitelist de hosts — aplicada en dos puntos independientes (punto 2 más
+   abajo), no solo en el Backend.
+2. **Whitelist aplicada en dos puntos independientes**: la tabla `targets`
+   (Módulo 1) tiene la columna `is_lab_target`, y el Backend API (Módulo 3)
+   rechaza cualquier intento de *registrar* un host que no forme parte del
+   laboratorio declarado. Pero el Backend no es el componente con ruta de
+   red hacia el laboratorio — el Scanner Service sí lo es, y valida el
+   mismo host, de forma independiente, en cada llamada a `/scan/{tool}`
+   (Módulo 9, `SCANNER_ALLOWED_LAB_HOSTS`). Un solo punto de aplicación no
+   sería defensa en profundidad: cualquier llamador con el token interno
+   válido podría escanear un host arbitrario si el Scanner confiara
+   ciegamente en que ya fue validado río arriba.
 3. **Todo el laboratorio es reproducible y descartable**: `docker compose
    down -v` elimina por completo el estado de los targets vulnerables. No
    hay dependencia de infraestructura persistente ni compartida.

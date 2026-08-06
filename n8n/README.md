@@ -1,13 +1,22 @@
 # n8n — pipeline orchestration (Módulo 6)
 
-n8n's only job here is orchestration: every node in
-[`workflows/vulnscan-pipeline.json`](workflows/vulnscan-pipeline.json) is an
-HTTP call into the Backend (Módulo 3/5) or the Scanner Service (Módulo 4).
-No business logic — whitelist enforcement, normalization, severity
-classification — lives in n8n; all of that already exists as versioned
-Python code and n8n just calls it in the right order. This keeps the
-pipeline testable and portable: swapping n8n for another orchestrator later
-would not require moving any logic, only re-wiring HTTP calls.
+n8n's job here is orchestration: whitelist enforcement, normalization and
+severity classification all live as versioned Python code in the Backend
+and Scanner, not in n8n — that part is accurate and worth keeping precise
+rather than overclaiming "no business logic at all." Two Code nodes in
+[`workflows/vulnscan-pipeline.json`](workflows/vulnscan-pipeline.json) do
+make decisions of their own, and are worth naming honestly instead of
+glossing over: `Select HTTP Port` reads Nmap's own response and picks
+which port/scheme every subsequent web-scanning tool (WhatWeb, Nikto,
+Nuclei, ZAP) attacks — that is a decision with real security consequences,
+not just a re-wired HTTP call. `Resolve Pipeline Context` merges the two
+trigger branches (Webhook/Form) into one shape and validates that
+`scan_id`/`target_id`/`host` are present before the chain continues.
+Every other node is a plain HTTP call into the Backend (Módulo 3/5) or the
+Scanner Service (Módulo 4). This still keeps the pipeline testable and
+portable — swapping n8n for another orchestrator would mean re-implementing
+those two nodes' logic, not moving execution/normalization/classification
+logic that never lived here to begin with.
 
 ## The 12 pipeline stages, mapped to actual nodes
 
@@ -18,11 +27,11 @@ implement them as one atomic operation:
 | # | Stage | Node(s) |
 |---|---|---|
 | 1 | Recepción del target | `Webhook Trigger` / `Form Trigger` |
-| 2 | Validación | `Create Scan (Manual)` (manual path only — hits `POST /targets/{id}/scans`, which 404s/422s via the Backend's existing whitelist checks); the webhook path is pre-validated by the Backend before n8n is even called |
-| 3 | Normalización del target | `Resolve Pipeline Context` |
+| 2 | Validación | `Create Scan (Manual)` (manual path only — hits `POST /targets/{id}/scans`, which 404s/422s via the Backend's existing whitelist checks); the webhook path is pre-validated by the Backend before n8n is even called. Every subsequent `Scan: *` call is *also* independently re-validated by the Scanner itself (Módulo 9) — see `docs/security.md` for why one checkpoint isn't enough |
+| 3 | Normalización del target | `Resolve Pipeline Context` — the one node in this workflow that isn't a plain HTTP call; see the note above |
 | 4 | Reconocimiento | `Scan: Nmap` + `Ingest: Nmap` |
 | 5 | Identificación de tecnologías | `Scan: WhatWeb` + `Ingest: WhatWeb` |
-| 6 | Selección inteligente de herramientas | `Select HTTP Port` |
+| 6 | Selección inteligente de herramientas | `Select HTTP Port` — the other non-HTTP-call node; decides which port every web-scanning tool attacks, see the note above |
 | 7 | Escaneo | `Scan: Nikto` / `Scan: Nuclei` / `Scan: ZAP` |
 | 8-10 | Consolidación, clasificación, persistencia | Each `Ingest: *` node — `POST /scans/{id}/tasks` (Módulo 5) normalizes and persists in one transaction, so these three conceptual stages happen inside a single Backend call per tool |
 | 11 | Generación de reporte | `Generate Report` — `POST /scans/{id}/reports?format=pdf` (Módulo 7) |

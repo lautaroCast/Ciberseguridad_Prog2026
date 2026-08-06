@@ -74,7 +74,7 @@ assets/       # Diagramas fuente, capturas de pantalla
 - **Desacoplamiento por contrato HTTP** entre todos los servicios.
 - **n8n como orquestador, no como ejecutor**: la lógica de negocio vive en código versionado, no en nodos de workflow.
 - **Patrón plugin en el motor de escaneo**: agregar una herramienta nueva no requiere modificar las existentes.
-- **Laboratorio en red segmentada** (`lab-network`, sin ruta desde frontend/n8n/backend/db): solo el Scanner Service la conecta con el resto de la plataforma. Qué se puede escanear lo decide la whitelist del Backend, no la topología de red — ver [`docs/lab.md`](docs/lab.md).
+- **Laboratorio en red segmentada** (`lab-network`, sin ruta desde frontend/n8n/backend/db): solo el Scanner Service la conecta con el resto de la plataforma. Qué se puede escanear lo decide una whitelist de hosts, no la topología de red — aplicada en dos puntos independientes (Backend al registrar, Scanner en cada escaneo), no solo en el Backend — ver [`docs/lab.md`](docs/lab.md).
 - **Extensible sin romper nada**: nuevas herramientas, nuevas apps vulnerables o nuevos formatos de reporte se agregan como módulos nuevos.
 
 ## Documentación
