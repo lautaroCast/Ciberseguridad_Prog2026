@@ -1,0 +1,1142 @@
+[
+  {
+    "id": "JS-restfulXssChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "api-only"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 3,
+    "name": "API-only XSS"
+  },
+  {
+    "id": "JS-fileWriteChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "vulnerable_component",
+    "juice_shop_category": "Vulnerable Components",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "arbitrary",
+      "file",
+      "write"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "template_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 6,
+    "name": "Arbitrary File Write"
+  },
+  {
+    "id": "JS-nftUnlockChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "takeover"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 2,
+    "name": "NFT Takeover"
+  },
+  {
+    "id": "JS-christmasSpecialChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "christmas",
+      "special"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 4,
+    "name": "Christmas Special"
+  },
+  {
+    "id": "JS-usernameXssChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "bypass"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 4,
+    "name": "CSP Bypass"
+  },
+  {
+    "id": "JS-persistedXssUserChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "client-side",
+      "protection"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 3,
+    "name": "Client-side XSS Protection"
+  },
+  {
+    "id": "JS-directoryListingChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "confidential",
+      "document"
+    ],
+    "expected_severity": "low",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 1,
+    "name": "Confidential Document"
+  },
+  {
+    "id": "JS-localXssChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [],
+    "expected_severity": "low",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 1,
+    "name": "DOM XSS"
+  },
+  {
+    "id": "JS-dbSchemaChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "database",
+      "schema"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 3,
+    "name": "Database Schema"
+  },
+  {
+    "id": "JS-deprecatedInterfaceChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "security_misconfiguration",
+    "juice_shop_category": "Security Misconfiguration",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "deprecated",
+      "interface"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "misconfig_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 2,
+    "name": "Deprecated Interface"
+  },
+  {
+    "id": "JS-emailLeakChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "email",
+      "leak"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 5,
+    "name": "Email Leak"
+  },
+  {
+    "id": "JS-ephemeralAccountantChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "accountant",
+      "ephemeral"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 4,
+    "name": "Ephemeral Accountant"
+  },
+  {
+    "id": "JS-errorHandlingChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "security_misconfiguration",
+    "juice_shop_category": "Security Misconfiguration",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "error",
+      "handling"
+    ],
+    "expected_severity": "low",
+    "detectable_by_tool_class": [
+      "dast",
+      "misconfig_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 1,
+    "name": "Error Handling"
+  },
+  {
+    "id": "JS-jwtForgedChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "vulnerable_component",
+    "juice_shop_category": "Vulnerable Components",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "forged",
+      "signed"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "template_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 6,
+    "name": "Forged Signed JWT"
+  },
+  {
+    "id": "JS-forgottenDevBackupChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "backup",
+      "developer",
+      "forgotten"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 4,
+    "name": "Forgotten Developer Backup"
+  },
+  {
+    "id": "JS-forgottenBackupChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "backup",
+      "forgotten",
+      "sales"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 4,
+    "name": "Forgotten Sales Backup"
+  },
+  {
+    "id": "JS-typosquattingAngularChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "vulnerable_component",
+    "juice_shop_category": "Vulnerable Components",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "frontend",
+      "typosquatting"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "template_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 5,
+    "name": "Frontend Typosquatting"
+  },
+  {
+    "id": "JS-dataExportChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "data",
+      "gdpr",
+      "theft"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 4,
+    "name": "GDPR Data Theft"
+  },
+  {
+    "id": "JS-httpHeaderXssChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "http-header"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 4,
+    "name": "HTTP-Header XSS"
+  },
+  {
+    "id": "JS-dlpPastebinDataLeakChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "leaked",
+      "product",
+      "unsafe"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 4,
+    "name": "Leaked Unsafe Product"
+  },
+  {
+    "id": "JS-typosquattingNpmChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "vulnerable_component",
+    "juice_shop_category": "Vulnerable Components",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "legacy",
+      "typosquatting"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "template_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 4,
+    "name": "Legacy Typosquatting"
+  },
+  {
+    "id": "JS-loginAdminChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "admin",
+      "login"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 2,
+    "name": "Login Admin"
+  },
+  {
+    "id": "JS-loginAmyChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "login"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 3,
+    "name": "Login Amy"
+  },
+  {
+    "id": "JS-loginBenderChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "bender",
+      "login"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 3,
+    "name": "Login Bender"
+  },
+  {
+    "id": "JS-loginJimChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "login"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 3,
+    "name": "Login Jim"
+  },
+  {
+    "id": "JS-loginRapperChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "login",
+      "safesearch"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 2,
+    "name": "Login MC SafeSearch"
+  },
+  {
+    "id": "JS-loginSupportChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "security_misconfiguration",
+    "juice_shop_category": "Security Misconfiguration",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "login",
+      "support",
+      "team"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "dast",
+      "misconfig_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 6,
+    "name": "Login Support Team"
+  },
+  {
+    "id": "JS-noSqlCommandChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "nosql"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 4,
+    "name": "NoSQL DoS"
+  },
+  {
+    "id": "JS-noSqlOrdersChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "exfiltration",
+      "nosql"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 5,
+    "name": "NoSQL Exfiltration"
+  },
+  {
+    "id": "JS-noSqlReviewsChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "manipulation",
+      "nosql"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 4,
+    "name": "NoSQL Manipulation"
+  },
+  {
+    "id": "JS-reflectedXssChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "reflected"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 2,
+    "name": "Reflected XSS"
+  },
+  {
+    "id": "JS-retrieveBlueprintChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "blueprint",
+      "retrieve"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 5,
+    "name": "Retrieve Blueprint"
+  },
+  {
+    "id": "JS-sstiChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "ssti"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 6,
+    "name": "SSTi"
+  },
+  {
+    "id": "JS-persistedXssFeedbackChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "protection",
+      "server-side"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 4,
+    "name": "Server-side XSS Protection"
+  },
+  {
+    "id": "JS-supplyChainAttackChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "vulnerable_component",
+    "juice_shop_category": "Vulnerable Components",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "attack",
+      "chain",
+      "supply"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "template_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 5,
+    "name": "Supply Chain Attack"
+  },
+  {
+    "id": "JS-jwtUnsignedChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "vulnerable_component",
+    "juice_shop_category": "Vulnerable Components",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "unsigned"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "template_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 5,
+    "name": "Unsigned JWT"
+  },
+  {
+    "id": "JS-unionSqlInjectionChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "credentials",
+      "user"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 4,
+    "name": "User Credentials"
+  },
+  {
+    "id": "JS-videoXssChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "video"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 6,
+    "name": "Video XSS"
+  },
+  {
+    "id": "JS-knownVulnerableComponentChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "vulnerable_component",
+    "juice_shop_category": "Vulnerable Components",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "library",
+      "vulnerable"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "template_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 4,
+    "name": "Vulnerable Library"
+  },
+  {
+    "id": "JS-xxeFileDisclosureChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xxe",
+    "juice_shop_category": "XXE",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "access",
+      "data"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "difficulty": 3,
+    "name": "XXE Data Access"
+  },
+  {
+    "id": "JS-xxeDosChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xxe",
+    "juice_shop_category": "XXE",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "difficulty": 5,
+    "name": "XXE DoS"
+  },
+  {
+    "id": "JS-svgInjectionChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "security_misconfiguration",
+    "juice_shop_category": "Security Misconfiguration",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "cross-site",
+      "imaging"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "misconfig_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 5,
+    "name": "Cross-Site Imaging"
+  },
+  {
+    "id": "JS-xssBonusChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "xss",
+    "juice_shop_category": "XSS",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "bonus",
+      "payload"
+    ],
+    "expected_severity": "low",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 1,
+    "name": "Bonus Payload"
+  },
+  {
+    "id": "JS-resetPasswordUvoginChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "password",
+      "reset",
+      "uvogin's"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 4,
+    "name": "Reset Uvogin's Password"
+  },
+  {
+    "id": "JS-geoStalkingMetaChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "meta",
+      "stalking"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 2,
+    "name": "Meta Geo Stalking"
+  },
+  {
+    "id": "JS-geoStalkingVisualChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "stalking",
+      "visual"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 2,
+    "name": "Visual Geo Stalking"
+  },
+  {
+    "id": "JS-lfrChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "vulnerable_component",
+    "juice_shop_category": "Vulnerable Components",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "file",
+      "local",
+      "read"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "template_scanner",
+      "fingerprinter"
+    ],
+    "difficulty": 5,
+    "name": "Local File Read"
+  },
+  {
+    "id": "JS-exposedCredentialsChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "credentials",
+      "exposed"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 2,
+    "name": "Exposed credentials"
+  },
+  {
+    "id": "JS-leakedApiKeyChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "sensitive_data_exposure",
+    "juice_shop_category": "Sensitive Data Exposure",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "leaked"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "misconfig_scanner",
+      "dast"
+    ],
+    "difficulty": 5,
+    "name": "Leaked API Key"
+  },
+  {
+    "id": "JS-chatbotPromptInjectionChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "chatbot",
+      "injection",
+      "prompt"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 2,
+    "name": "Chatbot Prompt Injection"
+  },
+  {
+    "id": "JS-chatbotGreedyInjectionChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "chatbot",
+      "greedy",
+      "manipulation"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 3,
+    "name": "Greedy Chatbot Manipulation"
+  },
+  {
+    "id": "JS-systemPromptExtractionChallenge",
+    "source": "Juice Shop official challenges.yml (bundled in the running juice-shop image), category-filtered per this script's own docstring",
+    "vulnerability_type": "injection",
+    "juice_shop_category": "Injection",
+    "cve": null,
+    "location": {
+      "path": null,
+      "port": 3000
+    },
+    "description_keywords": [
+      "extraction",
+      "prompt",
+      "system"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "difficulty": 3,
+    "name": "System Prompt Extraction"
+  }
+]

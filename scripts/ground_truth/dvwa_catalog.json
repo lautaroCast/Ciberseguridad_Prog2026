@@ -1,0 +1,234 @@
+[
+  {
+    "id": "DVWA-csp",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "security_misconfiguration",
+    "dvwa_module": "Content Security Policy Bypass",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/csp/",
+      "port": 80
+    },
+    "description_keywords": [
+      "bypass",
+      "content",
+      "policy",
+      "security"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-csrf",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "security_misconfiguration",
+    "dvwa_module": "Cross Site Request Forgery (CSRF)",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/csrf/",
+      "port": 80
+    },
+    "description_keywords": [
+      "cross",
+      "csrf",
+      "forgery",
+      "request",
+      "site"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-exec",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "injection",
+    "dvwa_module": "Command Injection",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/exec/",
+      "port": 80
+    },
+    "description_keywords": [
+      "command",
+      "injection"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-fi",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "injection",
+    "dvwa_module": "File Inclusion",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/fi/",
+      "port": 80
+    },
+    "description_keywords": [
+      "file",
+      "inclusion"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-sqli",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "injection",
+    "dvwa_module": "SQL Injection",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/sqli/",
+      "port": 80
+    },
+    "description_keywords": [
+      "injection"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-sqli_blind",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "injection",
+    "dvwa_module": "SQL Injection (Blind)",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/sqli_blind/",
+      "port": 80
+    },
+    "description_keywords": [
+      "blind",
+      "injection"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-upload",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "security_misconfiguration",
+    "dvwa_module": "File Upload",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/upload/",
+      "port": 80
+    },
+    "description_keywords": [
+      "file",
+      "upload"
+    ],
+    "expected_severity": "critical",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-weak_id",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "security_misconfiguration",
+    "dvwa_module": "Weak Session IDs",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/weak_id/",
+      "port": 80
+    },
+    "description_keywords": [
+      "session",
+      "weak"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-xss_d",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "xss",
+    "dvwa_module": "Cross Site Scripting (DOM)",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/xss_d/",
+      "port": 80
+    },
+    "description_keywords": [
+      "cross",
+      "dom",
+      "scripting",
+      "site"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-xss_r",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "xss",
+    "dvwa_module": "Cross Site Scripting (Reflected)",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/xss_r/",
+      "port": 80
+    },
+    "description_keywords": [
+      "cross",
+      "reflected",
+      "scripting",
+      "site"
+    ],
+    "expected_severity": "medium",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "reachable_unauthenticated": false
+  },
+  {
+    "id": "DVWA-xss_s",
+    "source": "DVWA's own vulnerabilities/ directory structure (vulnerables/web-dvwa:latest, verified via `docker exec vulnscan-dvwa ls /var/www/html/vulnerabilities/` in this session)",
+    "vulnerability_type": "xss",
+    "dvwa_module": "Cross Site Scripting (Stored)",
+    "cve": null,
+    "location": {
+      "path": "/vulnerabilities/xss_s/",
+      "port": 80
+    },
+    "description_keywords": [
+      "cross",
+      "scripting",
+      "site",
+      "stored"
+    ],
+    "expected_severity": "high",
+    "detectable_by_tool_class": [
+      "dast",
+      "template_scanner"
+    ],
+    "reachable_unauthenticated": false
+  }
+]
