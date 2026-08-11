@@ -1,0 +1,47 @@
+sequenceDiagram
+    participant U as Cliente (Frontend/API)
+    participant BE as Backend
+    participant N8N as n8n
+    participant SC as Scanner Service
+    participant DB as PostgreSQL
+    participant REP as Reports Service
+    participant LAB as Juice Shop / DVWA
+
+    U->>BE: POST /targets/{id}/pipeline
+    BE->>DB: crear fila scan
+    BE->>N8N: webhook trigger (scan_id, target_id, host)
+    BE-->>U: 202 Accepted (no espera)
+
+    Note over N8N: Resolve Pipeline Context<br/>(única lógica no-HTTP #1)
+
+    N8N->>SC: POST /scan/nmap
+    Note over SC: valida whitelist (C-13)<br/>antes de ejecutar
+    SC->>LAB: nmap -sV -T4
+    SC-->>N8N: resultado Nmap
+    N8N->>BE: POST /scans/{id}/tasks (nmap)
+    BE->>DB: normaliza -> services
+
+    Note over N8N: Select HTTP Port<br/>(única lógica no-HTTP #2)
+
+    N8N->>SC: POST /scan/whatweb
+    SC->>LAB: whatweb
+    SC-->>N8N: resultado
+    N8N->>BE: POST /scans/{id}/tasks (whatweb)
+    BE->>DB: normaliza -> technologies
+
+    loop Nikto, Nuclei, ZAP (secuencial)
+        N8N->>SC: POST /scan/{tool}
+        SC->>LAB: ejecuta herramienta
+        SC-->>N8N: resultado
+        N8N->>BE: POST /scans/{id}/tasks ({tool})
+        BE->>DB: normaliza -> findings + cve_references
+    end
+
+    N8N->>BE: POST /scans/{id}/complete
+    N8N->>BE: POST /scans/{id}/reports?format=pdf
+    BE->>REP: payload autocontenido (target+scan+findings)
+    REP-->>BE: archivo generado
+    BE->>DB: crear fila report
+
+    U->>BE: GET /scans/{id} (polling)
+    BE-->>U: status=completed

@@ -100,7 +100,14 @@ def _location_overlaps(finding_evidence: str | None, catalog_path: str | None) -
         return False
     ev = _normalize_path(finding_evidence)
     cp = _normalize_path(catalog_path)
-    return bool(ev) and bool(cp) and cp in ev
+    if not ev or not cp:
+        return False
+    # Pad both with "/" boundaries so a plain substring check can't match
+    # across unrelated paths that merely share a prefix (e.g. catalog "/api"
+    # must not match evidence "/api-docs/...").
+    padded_ev = f"/{ev.strip('/')}/"
+    padded_cp = f"/{cp.strip('/')}/"
+    return padded_cp in padded_ev
 
 
 def _keyword_hit(finding: dict, keywords: list[str]) -> bool:
@@ -133,6 +140,8 @@ def match(
         # Tier 1: CVE
         if entry.get("cve"):
             for f in findings:
+                if f["id"] in matched_finding_ids:
+                    continue
                 if entry["cve"] in finding_cves.get(f["id"], set()):
                     report.matches.append(
                         MatchResult(
@@ -237,11 +246,12 @@ def build_report(
         recall_numerator = len(entries_matched_at_least_once_by_tool.get(tool, set()))
         precision = round(tp / total, 3) if total else None
         recall = round(recall_numerator / recall_denominator, 3) if recall_denominator else None
-        f1 = (
-            round(2 * precision * recall / (precision + recall), 3)
-            if precision and recall and (precision + recall) > 0
-            else None
-        )
+        if precision is None or recall is None:
+            f1 = None
+        elif precision + recall == 0:
+            f1 = 0.0
+        else:
+            f1 = round(2 * precision * recall / (precision + recall), 3)
         fpr = round(fp / total, 3) if total else None
         metrics[tool] = {
             "total_findings": total,

@@ -1,0 +1,109 @@
+erDiagram
+    targets ||--o{ scans : "target"
+    scans ||--o{ reports : "scan"
+    scans ||--o{ scan_tasks : "scan"
+    scans ||--o{ services : "scan"
+    scans ||--o{ technologies : "scan"
+    services ||--o{ findings : "service"
+    scans ||--o{ findings : "scan"
+    scan_tasks ||--o{ findings : "scan task"
+    findings ||--o{ cve_references : "finding"
+
+    targets {
+        VARCHAR name
+        VARCHAR host
+        TEXT description
+        BOOLEAN is_lab_target
+        BOOLEAN is_active
+        DATETIME updated_at
+        UUID id PK
+        DATETIME created_at
+    }
+    users {
+        VARCHAR email
+        VARCHAR hashed_password
+        VARCHAR full_name
+        VARCHAR role
+        BOOLEAN is_active
+        UUID id PK
+        DATETIME created_at
+    }
+    scans {
+        UUID target_id FK
+        VARCHAR status
+        VARCHAR pipeline_run_id
+        VARCHAR triggered_by
+        DATETIME started_at
+        DATETIME finished_at
+        TEXT error_message
+        UUID id PK
+        DATETIME created_at
+    }
+    reports {
+        UUID scan_id FK
+        VARCHAR format
+        VARCHAR file_path
+        DATETIME generated_at
+        VARCHAR generated_by
+        UUID id PK
+    }
+    scan_tasks {
+        UUID scan_id FK
+        VARCHAR tool_name
+        VARCHAR status
+        TEXT command
+        TEXT raw_output
+        VARCHAR raw_output_path
+        DATETIME started_at
+        DATETIME finished_at
+        TEXT error_message
+        UUID id PK
+        DATETIME created_at
+    }
+    services {
+        UUID scan_id FK
+        VARCHAR host
+        INTEGER port
+        VARCHAR protocol
+        VARCHAR service_name
+        VARCHAR product
+        VARCHAR version
+        TEXT banner
+        UUID id PK
+        DATETIME created_at
+    }
+    technologies {
+        UUID scan_id FK
+        VARCHAR name
+        VARCHAR version
+        VARCHAR category
+        VARCHAR detected_by
+        VARCHAR confidence
+        UUID id PK
+        DATETIME created_at
+    }
+    findings {
+        UUID scan_id FK
+        UUID scan_task_id FK
+        UUID service_id FK
+        VARCHAR title
+        TEXT description
+        VARCHAR finding_type
+        TEXT evidence
+        VARCHAR confidence
+        NUMERIC cvss_score
+        VARCHAR cvss_vector
+        VARCHAR severity
+        UUID id PK
+        DATETIME created_at
+    }
+    cve_references {
+        UUID finding_id FK
+        VARCHAR cve_id
+        NUMERIC cvss_score
+        VARCHAR cvss_vector
+        TEXT description
+        VARCHAR source_url
+        UUID id PK
+        DATETIME created_at
+    }

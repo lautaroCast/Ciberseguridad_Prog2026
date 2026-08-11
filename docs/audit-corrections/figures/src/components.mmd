@@ -1,0 +1,32 @@
+flowchart TB
+    subgraph client["Cliente"]
+        FE["Frontend<br/>React + TS<br/>(Módulo 8)"]
+    end
+
+    subgraph appnet["app-network"]
+        BE["Backend API<br/>FastAPI<br/>única superficie pública<br/>X-API-Key"]
+        N8N["n8n<br/>orquestador<br/>Select HTTP Port +<br/>Resolve Pipeline Context"]
+        DB[("PostgreSQL<br/>targets · scans · scan_tasks<br/>services · technologies<br/>findings · cve_references · reports")]
+        REP["Reports Service<br/>FastAPI, sin BD<br/>Jinja2 + WeasyPrint<br/>X-Internal-Token"]
+    end
+
+    subgraph bridge["Scanner Service — único puente entre redes"]
+        SC["Scanner Service<br/>FastAPI<br/>Nmap · WhatWeb · Nikto · Nuclei · ZAP<br/>whitelist propia (C-13) + X-Internal-Token"]
+    end
+
+    subgraph labnet["lab-network"]
+        JS["Juice Shop<br/>:3000"]
+        DVWA["DVWA<br/>:80"]
+    end
+
+    FE -- "X-API-Key" --> BE
+    BE -- "X-API-Key" --> N8N
+    BE --> DB
+    N8N -- "X-Internal-Token" --> SC
+    N8N -- "HTTP" --> BE
+    BE -- "X-Internal-Token" --> REP
+    SC -.->|"única ruta de red<br/>al laboratorio"| JS
+    SC -.-> DVWA
+
+    style bridge fill:#fff3cd,stroke:#856404
+    style client fill:#e7f3ff,stroke:#0066cc

@@ -1,0 +1,198 @@
+{
+  "target_host": "dvwa",
+  "runs": [
+    {
+      "run_index": 1,
+      "scan_id": "46d1c20c-eceb-4b9a-83bb-5dfc3e62600d",
+      "target_host": "dvwa",
+      "status": "completed",
+      "pipeline_total_seconds": 253.582507,
+      "tool_execution_seconds": 252.43751699999999,
+      "orchestration_seconds": 1.144990000000007,
+      "tool_durations_seconds": {
+        "nmap": 6.857185,
+        "whatweb": 18.718366,
+        "nikto": 120.043449,
+        "nuclei": 59.743442,
+        "zap": 47.075075
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "info": 21,
+        "low": 5,
+        "medium": 5,
+        "critical": 1
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 5,
+          "medium": 4
+        },
+        "nuclei": {
+          "info": 18,
+          "medium": 1,
+          "critical": 1
+        }
+      }
+    },
+    {
+      "run_index": 2,
+      "scan_id": "34bd6688-5e11-41b7-a68f-07d8b4730987",
+      "target_host": "dvwa",
+      "status": "completed",
+      "pipeline_total_seconds": 277.531683,
+      "tool_execution_seconds": 276.708809,
+      "orchestration_seconds": 0.822874000000013,
+      "tool_durations_seconds": {
+        "nmap": 6.886572,
+        "whatweb": 18.73266,
+        "nikto": 120.043691,
+        "nuclei": 60.59152,
+        "zap": 70.454366
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "info": 21,
+        "low": 5,
+        "medium": 5,
+        "critical": 1
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 5,
+          "medium": 4
+        },
+        "nuclei": {
+          "info": 18,
+          "medium": 1,
+          "critical": 1
+        }
+      }
+    },
+    {
+      "run_index": 3,
+      "scan_id": "0e03b4e5-1aa7-46c5-b3b7-9bca3a3b5ae0",
+      "target_host": "dvwa",
+      "status": "completed",
+      "pipeline_total_seconds": 259.334399,
+      "tool_execution_seconds": 258.52248,
+      "orchestration_seconds": 0.8119190000000458,
+      "tool_durations_seconds": {
+        "nmap": 6.972232,
+        "whatweb": 18.84732,
+        "nikto": 120.06624,
+        "nuclei": 61.164049,
+        "zap": 51.472639
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "info": 21,
+        "low": 5,
+        "medium": 5,
+        "critical": 1
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 5,
+          "medium": 4
+        },
+        "nuclei": {
+          "info": 18,
+          "medium": 1,
+          "critical": 1
+        }
+      }
+    },
+    {
+      "run_index": 4,
+      "scan_id": "7d1a517f-07c5-4625-b93c-a28b31a84306",
+      "target_host": "dvwa",
+      "status": "completed",
+      "pipeline_total_seconds": 253.191216,
+      "tool_execution_seconds": 252.438101,
+      "orchestration_seconds": 0.7531150000000082,
+      "tool_durations_seconds": {
+        "nmap": 6.957481,
+        "whatweb": 19.021619,
+        "nikto": 120.050288,
+        "nuclei": 60.492586,
+        "zap": 45.916127
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "info": 21,
+        "low": 5,
+        "medium": 5,
+        "critical": 1
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 5,
+          "medium": 4
+        },
+        "nuclei": {
+          "info": 18,
+          "medium": 1,
+          "critical": 1
+        }
+      }
+    },
+    {
+      "run_index": 5,
+      "scan_id": "078c6872-b60a-4f73-9c36-e08b1d6747d1",
+      "target_host": "dvwa",
+      "status": "completed",
+      "pipeline_total_seconds": 251.638548,
+      "tool_execution_seconds": 250.94046999999998,
+      "orchestration_seconds": 0.6980780000000095,
+      "tool_durations_seconds": {
+        "nmap": 6.885751,
+        "whatweb": 18.962875,
+        "nikto": 120.051116,
+        "nuclei": 59.437352,
+        "zap": 45.603376
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "info": 21,
+        "low": 5,
+        "medium": 5,
+        "critical": 1
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 5,
+          "medium": 4
+        },
+        "nuclei": {
+          "info": 18,
+          "medium": 1,
+          "critical": 1
+        }
+      }
+    }
+  ],
+  "environment": {
+    "captured_at": "2026-08-11T00:18:56.626631+00:00",
+    "docker_version": "Docker version 29.0.1, build eedd969",
+    "docker_compose_version": "Docker Compose version v2.40.3-desktop.1",
+    "host_cpu": "AMD Ryzen 7 5700U with Radeon Graphics",
+    "host_ram_gb": "31.4",
+    "host_disk_gb": "475.7",
+    "host_os": "Microsoft Windows 11 Home Single Language 10.0.26200",
+    "scanner_tool_versions": {
+      "nmap": "Nmap version 7.95 ( https://nmap.org )",
+      "whatweb": "WhatWeb version 0.5.5 ( https://www.morningstarsecurity.com/research/whatweb/ )",
+      "nikto": "Nikto 2.6.0 (LW 2.5)",
+      "nuclei_engine": "v3.11.0",
+      "nuclei_templates": "v10.4.7 (/home/appuser/nuclei-templates)",
+      "zap": "2.17.0"
+    },
+    "note": "Scanner tool versions captured live from the running Scanner container (docker compose exec scanner ...), not from the Dockerfile pins \u2014 nuclei's binary is downloaded from GitHub's `latest` release at build time and its template set is updated at build time too, so neither is actually pinned to a fixed version; the only reproducible record is what was running during this campaign."
+  }
+}

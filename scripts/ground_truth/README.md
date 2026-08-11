@@ -55,6 +55,24 @@ vulnerable. Una línea de trabajo futuro distinta de "escaneos
 autenticados" ya declarada: un paso de login previo en el pipeline antes
 de invocar las herramientas web.
 
+## Juice Shop: mismo síntoma, causa distinta
+
+Se corrió también contra Juice Shop (`sample_run_juice_shop_*.json`,
+scan real `c2421b99-...`, producido con
+`_run_juice_shop_scan.py` — a diferencia de DVWA, este sí tiene un script
+dedicado para reproducirlo). Juice Shop no tiene el problema de
+autenticación de DVWA — sus páginas son alcanzables sin sesión por
+diseño — pero el resultado es el mismo: **el 100% de los 6 matches
+obtenidos también son de nivel 3 (keyword débil)**, cero por CVE o
+tipo+ubicación. El recall aparente más alto fue 7,7% (ZAP). Como no hay
+un impedimento de acceso que lo explique, la causa más probable es un
+desalineamiento de vocabulario entre los catálogos oficiales (nombres de
+desafíos OWASP) y las descripciones que las propias herramientas generan
+para sus hallazgos — el matching por texto libre (nivel 3) no tiende ese
+puente de forma confiable. Ver
+`docs/audit-corrections/C-09.md` para el tratamiento completo con ambos
+targets y la redacción final para la tesis.
+
 ## Cómo correr esto contra un scan real
 
 ```bash

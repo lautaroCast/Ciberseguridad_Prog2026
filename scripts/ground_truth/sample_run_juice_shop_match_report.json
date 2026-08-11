@@ -1,0 +1,156 @@
+{
+  "target": "juice_shop",
+  "total_findings": 28,
+  "total_catalog_entries": 52,
+  "matches": [
+    {
+      "catalog_entry_id": "JS-fileWriteChallenge",
+      "finding_id": "1c6404be-ef6a-49c8-9727-e55943ec0696",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "JS-dataExportChallenge",
+      "finding_id": "53f2b025-1206-4bd2-9b37-9259f0b88564",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "JS-dataExportChallenge",
+      "finding_id": "b28fe63b-4882-4663-bbc8-b506ffa9252a",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "JS-retrieveBlueprintChallenge",
+      "finding_id": "55f970b3-9d6a-4a6c-afb3-000405bf0f20",
+      "tool": "nikto",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "JS-supplyChainAttackChallenge",
+      "finding_id": "9ca4be6b-dff4-4594-9af2-02b2dbc79ad1",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "JS-unionSqlInjectionChallenge",
+      "finding_id": "9fdbc09f-a1bf-45b4-82c5-c203071ae925",
+      "tool": "zap",
+      "tier": "keyword"
+    }
+  ],
+  "unmatched_finding_ids": [
+    "6b775458-a268-4cc1-8776-f8c93b29af5e",
+    "9bf99796-cfa1-482d-8abb-024abd862cad",
+    "d1fa846e-4aab-41e0-8191-2a6781283e89",
+    "0299c30a-05bc-427d-8df4-76c7d1847f61",
+    "afc40c59-dbb2-4dac-80ec-41970e2d059e",
+    "ee820f26-1de5-4555-97e6-9dc2d926e510",
+    "322d750d-d3dd-4cbd-ae17-bd4d08612a76",
+    "94b038db-0a4c-43f9-840b-44d5dee8cede",
+    "d9b160a8-19d8-4683-ad47-cadaa3a53eab",
+    "df9ef093-e874-4bd3-8960-166be2d3a4d5",
+    "963075c0-6c7f-42e0-a974-a98c78e9e399",
+    "3dfd3e3f-0996-412b-a777-ef7a587286e9",
+    "e5f18359-ea18-4acf-a69b-be97be175110",
+    "9177872c-c708-4d15-9006-85b76552efa6",
+    "d44ad29b-71bf-4784-ae0f-cadb5e25362e",
+    "400e8039-677f-418f-864b-e8d9889f1565",
+    "bd0d3463-b69e-442c-a709-00ff9c50b7a2",
+    "8d7d12a9-573c-4162-b4c4-2d7577289b71",
+    "7fe926f7-4ecb-40bf-bdaf-3250d66cdbff",
+    "db8de2ca-2f42-40de-b50c-c385a1e07038",
+    "f7d18579-0b0a-4359-8db8-857ec4f33f62",
+    "67c0da92-cba0-49f8-b58e-76fa6388150d"
+  ],
+  "uncovered_catalog_entry_ids": [
+    "JS-restfulXssChallenge",
+    "JS-nftUnlockChallenge",
+    "JS-christmasSpecialChallenge",
+    "JS-usernameXssChallenge",
+    "JS-persistedXssUserChallenge",
+    "JS-directoryListingChallenge",
+    "JS-localXssChallenge",
+    "JS-dbSchemaChallenge",
+    "JS-deprecatedInterfaceChallenge",
+    "JS-emailLeakChallenge",
+    "JS-ephemeralAccountantChallenge",
+    "JS-errorHandlingChallenge",
+    "JS-jwtForgedChallenge",
+    "JS-forgottenDevBackupChallenge",
+    "JS-forgottenBackupChallenge",
+    "JS-typosquattingAngularChallenge",
+    "JS-httpHeaderXssChallenge",
+    "JS-dlpPastebinDataLeakChallenge",
+    "JS-typosquattingNpmChallenge",
+    "JS-loginAdminChallenge",
+    "JS-loginAmyChallenge",
+    "JS-loginBenderChallenge",
+    "JS-loginJimChallenge",
+    "JS-loginRapperChallenge",
+    "JS-loginSupportChallenge",
+    "JS-noSqlCommandChallenge",
+    "JS-noSqlOrdersChallenge",
+    "JS-noSqlReviewsChallenge",
+    "JS-reflectedXssChallenge",
+    "JS-sstiChallenge",
+    "JS-persistedXssFeedbackChallenge",
+    "JS-jwtUnsignedChallenge",
+    "JS-videoXssChallenge",
+    "JS-knownVulnerableComponentChallenge",
+    "JS-xxeFileDisclosureChallenge",
+    "JS-xxeDosChallenge",
+    "JS-svgInjectionChallenge",
+    "JS-xssBonusChallenge",
+    "JS-resetPasswordUvoginChallenge",
+    "JS-geoStalkingMetaChallenge",
+    "JS-geoStalkingVisualChallenge",
+    "JS-lfrChallenge",
+    "JS-exposedCredentialsChallenge",
+    "JS-leakedApiKeyChallenge",
+    "JS-chatbotPromptInjectionChallenge",
+    "JS-chatbotGreedyInjectionChallenge",
+    "JS-systemPromptExtractionChallenge"
+  ],
+  "match_tier_breakdown": {
+    "keyword": 6
+  },
+  "inter_tool_overlap": {
+    "catalog_entries_matched_by_multiple_tools": {},
+    "count": 0,
+    "pct_of_matched_entries": 0.0
+  },
+  "metrics_by_tool": {
+    "nikto": {
+      "total_findings": 9,
+      "true_positive_findings": 1,
+      "false_positive_findings": 8,
+      "catalog_entries_matched": 1,
+      "precision": 0.111,
+      "recall": 0.019,
+      "f1": 0.032,
+      "false_positive_rate": 0.889
+    },
+    "nuclei": {
+      "total_findings": 13,
+      "true_positive_findings": 0,
+      "false_positive_findings": 13,
+      "catalog_entries_matched": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 1.0
+    },
+    "zap": {
+      "total_findings": 6,
+      "true_positive_findings": 5,
+      "false_positive_findings": 1,
+      "catalog_entries_matched": 4,
+      "precision": 0.833,
+      "recall": 0.077,
+      "f1": 0.141,
+      "false_positive_rate": 0.167
+    }
+  }
+}
