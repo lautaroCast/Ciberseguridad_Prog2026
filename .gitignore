@@ -58,3 +58,10 @@ logs/
 
 # Docker
 docker/volumes/
+
+# Local-only project files (deliberately untracked)
+.mcp.json
+CLAUDE.md
+*.docx.pdf
+Auditoria_Tesis_VulnScan_Racconto_Castillo.pdf
+Informe Tesis Escaneo Automatizado de Vulnerabilidades y Generación de Informes*.docx

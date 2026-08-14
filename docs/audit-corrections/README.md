@@ -40,7 +40,7 @@ maestro, fuera de este repo) para el detalle de la corrección.
 | C-15 | "Ninguna lógica de negocio en n8n" desmentido | 7 | fixed-in-docs | `C-15.md` |
 | C-16 | Referencia fabricada (Hussain et al.) | 5 | fixed-in-docs | `C-16.md` |
 | C-17 | Segunda referencia no verificable (Sharma y Bahl) | 5 | fixed-in-docs | `C-17.md` |
-| C-18 | Cero figuras y cero imágenes | 6 | parcial (diagramas sí, capturas bloqueadas) | `C-18.md` |
+| C-18 | Cero figuras y cero imágenes | 6 | fixed-in-docs | `C-18.md` |
 
 ## Hallazgos altos (A-XX) cubiertos dentro de los tramos 1-8
 
@@ -57,7 +57,7 @@ temáticamente más cercano, para no duplicar el esquema de archivos:
 | A-27 (contradicción "sin estado" del Reports Service) | resuelto en `docs/security.md`, commit `fd0be87` |
 | A-29 (precedencia CVSS score vs. etiqueta) | `C-11.md` |
 | A-38 (frontend representado como inexistente en el diagrama) | `C-18.md` (ya no aplica: Frontend implementado) |
-| A-39 (sin capturas del producto del sistema) | `C-18.md` (parcial, bloqueado) |
+| A-39 (sin capturas del producto del sistema) | `C-18.md` (resuelto) |
 
 Otros hallazgos altos dentro de 1-8 pero fuera del alcance elegido por el
 usuario para esta ronda (documentados como tal, no omitidos): A-08, A-09,
