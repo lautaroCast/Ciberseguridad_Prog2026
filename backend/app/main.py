@@ -12,7 +12,7 @@ from app.routers.reports import InvalidReportFilePathError, ReportFileUnavailabl
 from app.security import verify_api_key
 from app.services.pipeline_service import PipelineTriggerError
 from app.services.report_service import ReportGenerationError, ReportNotFoundError
-from app.services.scan_service import ScanNotFoundError
+from app.services.scan_service import ScanAlreadyTerminalError, ScanNotFoundError
 from app.services.target_service import (
     TargetInactiveError,
     TargetNameConflictError,
@@ -79,6 +79,15 @@ async def target_inactive_handler(request: Request, exc: TargetInactiveError) ->
 @app.exception_handler(ScanNotFoundError)
 async def scan_not_found_handler(request: Request, exc: ScanNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": f"Scan '{exc}' not found."})
+
+
+@app.exception_handler(ScanAlreadyTerminalError)
+async def scan_already_terminal_handler(
+    request: Request, exc: ScanAlreadyTerminalError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=409, content={"detail": f"Scan '{exc}' already reached a terminal status."}
+    )
 
 
 @app.exception_handler(PipelineTriggerError)

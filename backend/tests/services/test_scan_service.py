@@ -3,6 +3,7 @@ import uuid
 import pytest
 
 from app.services import scan_service, target_service
+from models import ScanStatus
 
 
 def _make_target(db_session, name="juice-shop-demo"):
@@ -45,6 +46,15 @@ def test_create_scan_on_inactive_target_raises(db_session):
 
     with pytest.raises(target_service.TargetInactiveError):
         scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+
+def test_complete_scan_twice_raises(db_session):
+    target = _make_target(db_session)
+    scan = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+    scan_service.complete_scan(db_session, scan.id, status=ScanStatus.COMPLETED, error_message=None)
+
+    with pytest.raises(scan_service.ScanAlreadyTerminalError):
+        scan_service.complete_scan(db_session, scan.id, status=ScanStatus.FAILED, error_message="x")
 
 
 def test_list_scans_for_target_does_not_leak_other_targets_scans(db_session):
