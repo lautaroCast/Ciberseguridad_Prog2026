@@ -7,7 +7,8 @@ trigger is notified with just enough context (`scan_id`, `target_id`,
 `host`) to run the rest of the pipeline on its own, calling back into the
 Backend's own `/scans/{id}/tasks` and `/scans/{id}/complete` endpoints as
 it goes. The Backend never waits for the pipeline to finish — n8n's
-webhook responds immediately (see the trigger node's `responseMode` in
+webhook responds immediately, right after checking the shared
+`X-Webhook-Secret` header (see the `Check Webhook Secret` node in
 n8n/workflows/vulnscan-pipeline.json), so this call returns in well under
 a second regardless of how long the scan itself takes.
 """
@@ -34,7 +35,12 @@ def trigger_pipeline(db: Session, target_id: uuid.UUID) -> Scan:
     settings = get_settings()
     payload = {"scan_id": str(scan.id), "target_id": str(target_id), "host": target.host}
     try:
-        response = httpx.post(settings.n8n_pipeline_webhook_url, json=payload, timeout=10.0)
+        response = httpx.post(
+            settings.n8n_pipeline_webhook_url,
+            json=payload,
+            headers={"X-Webhook-Secret": settings.n8n_webhook_secret},
+            timeout=10.0,
+        )
         response.raise_for_status()
     except httpx.HTTPError as exc:
         # The scan row already exists but nothing will ever process it —

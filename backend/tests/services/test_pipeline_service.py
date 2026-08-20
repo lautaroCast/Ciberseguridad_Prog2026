@@ -4,6 +4,8 @@ has a failure branch (mark the just-created Scan FAILED on httpx.HTTPError)
 that was completely unverified. No prior test in this repo mocks httpx, so
 this establishes the pattern via monkeypatch.setattr(httpx, "post", ...)."""
 
+import os
+
 import httpx
 import pytest
 
@@ -30,9 +32,10 @@ def test_trigger_pipeline_success_sends_expected_payload(db_session, monkeypatch
     target = _make_target(db_session)
     captured = {}
 
-    def _fake_post(url, json, timeout):
+    def _fake_post(url, json, headers, timeout):
         captured["url"] = url
         captured["json"] = json
+        captured["headers"] = headers
         captured["timeout"] = timeout
         return _FakeResponse(200)
 
@@ -48,12 +51,13 @@ def test_trigger_pipeline_success_sends_expected_payload(db_session, monkeypatch
         "target_id": str(target.id),
         "host": "juice-shop",
     }
+    assert captured["headers"] == {"X-Webhook-Secret": os.environ["N8N_WEBHOOK_SECRET"]}
 
 
 def test_trigger_pipeline_failure_marks_scan_failed(db_session, monkeypatch):
     target = _make_target(db_session)
 
-    def _fake_post(url, json, timeout):
+    def _fake_post(url, json, headers, timeout):
         raise httpx.ConnectError("connection refused")
 
     monkeypatch.setattr(httpx, "post", _fake_post)

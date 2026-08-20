@@ -118,6 +118,7 @@ services:
       # validators).
       BACKEND_API_KEY: ${BACKEND_API_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     # Runs as non-root `appuser` (see backend/Dockerfile) with no need for
@@ -276,14 +277,24 @@ services:
       # told explicitly what the real external address is.
       N8N_EDITOR_BASE_URL: ${N8N_PROTOCOL:-http}://${N8N_HOST:-localhost}:${N8N_PORT:-5678}/
       # Basic auth protects the editor UI/API only — it does not gate
-      # webhook URLs, so the Backend's service-to-service call to the
-      # pipeline trigger needs no credentials.
+      # webhook URLs. The Webhook Trigger node itself checks
+      # N8N_WEBHOOK_SECRET (below) against the Backend's X-Webhook-Secret
+      # header before running the pipeline, so the webhook is not
+      # unauthenticated even though basic auth doesn't cover it.
       # Read by the workflow's HTTP Request nodes via `$env.*` expressions
       # (Módulo 9) — every node calling the Backend/Scanner sends one of
       # these as X-API-Key/X-Internal-Token. See
       # n8n/workflows/vulnscan-pipeline.json.
       BACKEND_API_KEY: ${BACKEND_API_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      # Checked by the "Check Webhook Secret" node right after Webhook
+      # Trigger, against the X-Webhook-Secret header the Backend sends
+      # (backend/app/services/pipeline_service.py) — same shared-secret
+      # pattern as BACKEND_API_KEY/INTERNAL_API_KEY, not a native n8n
+      # credential (see docs/security.md: native credentials were
+      # discarded because they need a manual UI setup step, breaking the
+      # "everything boots via docker compose up -d" premise).
+      N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET}
       # Read by Scan: ZAP's HTTP timeout expression (COD-7) so it stays
       # tied to the Scanner Service's own hard cap below instead of a
       # second, independent number that can silently drift out of sync

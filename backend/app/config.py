@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     reports_base_url: str
     backend_api_key: str
     internal_api_key: str
+    n8n_webhook_secret: str
 
     @field_validator("backend_allowed_lab_hosts")
     @classmethod
@@ -81,6 +82,18 @@ class Settings(BaseSettings):
                 "would boot successfully and then fail every request once Reports "
                 "starts requiring X-Internal-Token. Set it to a random secret shared "
                 "with scanner/reports (see .env.example)."
+            )
+        return value
+
+    @field_validator("n8n_webhook_secret")
+    @classmethod
+    def _require_n8n_webhook_secret(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError(
+                "N8N_WEBHOOK_SECRET must not be empty — the pipeline trigger would boot "
+                "successfully and then have n8n's Webhook Trigger reject every call with "
+                "no valid value to ever match. Set it to a random secret shared with n8n "
+                "(see .env.example)."
             )
         return value
 

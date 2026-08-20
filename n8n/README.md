@@ -50,10 +50,19 @@ Form Trigger ──────────┘
   path. The Backend's `POST /targets/{id}/pipeline` (see
   `backend/app/services/pipeline_service.py`) already validated the target,
   created the `Scan` row, and calls this webhook with
-  `{scan_id, target_id, host}` in the body. The trigger responds
-  immediately (`responseMode: onReceived`) — the Backend's call returns in
-  well under a second regardless of how long the scan itself takes; poll
-  `GET /scans/{id}` or `GET /scans/{id}/findings` for progress.
+  `{scan_id, target_id, host}` in the body plus an `X-Webhook-Secret`
+  header. `Check Webhook Secret` (an IF node right after the trigger)
+  compares that header against `$env.N8N_WEBHOOK_SECRET`: no match →
+  `Respond Unauthorized` (401), nothing else runs; match → `Respond OK`
+  (200) and `Edit Fields - From Webhook` run in parallel, so the response
+  is still effectively immediate (`responseMode: responseNode`, not the
+  default `onReceived`, since a real response now has to encode
+  accept/reject) — the Backend's call returns in well under a second
+  regardless of how long the scan itself takes; poll `GET /scans/{id}` or
+  `GET /scans/{id}/findings` for progress. See `docs/security.md` for why
+  this uses `$env.*` instead of n8n's native Header Auth credential
+  (same reasoning as the outbound HTTP Request nodes below: no manual UI
+  setup step).
 - **Form Trigger** exists for running the whole pipeline **without** the
   Backend or a frontend involved — useful for demos before Módulo 8
   (frontend) is done. Open the node's "Test URL"/"Production URL" in a

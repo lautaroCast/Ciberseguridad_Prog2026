@@ -26,11 +26,28 @@ usuarios:
   `/health`), que además dejaron de publicar su puerto al host. Lo mandan
   n8n (al llamar a Scanner) y el Backend (al llamar a Reports), header
   `X-Internal-Token`.
+- **`N8N_WEBHOOK_SECRET`** — protege el Webhook Trigger de n8n
+  (`POST /webhook/vulnscan-pipeline`), la única entrada externa al
+  workflow. Lo manda el Backend (header `X-Webhook-Secret`, ver
+  `backend/app/services/pipeline_service.py`); el nodo `Check Webhook
+  Secret`, ubicado inmediatamente después del trigger, lo compara contra
+  `$env.N8N_WEBHOOK_SECRET` y responde 401 (`Respond Unauthorized`) antes
+  de que se cree ningún hallazgo si no matchea, o 200 (`Respond OK`) y
+  continúa el pipeline en paralelo si matchea (ver
+  `n8n/workflows/vulnscan-pipeline.json`, `n8n/README.md`). Verificado en
+  vivo: sin el header o con un valor incorrecto, 401; con el valor
+  correcto, 200 y el pipeline corre de punta a punta con normalidad.
+  Antes de esto (Recomendación #7,
+  `docs/independent-evaluation-report.md`), el webhook aceptaba
+  cualquier `POST` con un `scan_id`/`target_id` con forma válida sin
+  ninguna verificación — el basic auth de n8n protege el editor/API,
+  nunca cubrió las URLs de webhook.
 
 Ver `backend/app/security.py`, `scanner/app/security.py` y
-`reports/app/security.py` para la implementación (misma forma en los
-tres: `secrets.compare_digest` contra el valor esperado, 401 si no
-matchea o falta el header).
+`reports/app/security.py` para la implementación de los dos primeros
+(misma forma en los tres: `secrets.compare_digest` contra el valor
+esperado, 401 si no matchea o falta el header). El tercero se valida
+dentro del propio workflow de n8n, no en un Backend — ver más arriba.
 
 ## Defensa en profundidad: whitelist de hosts de laboratorio
 
