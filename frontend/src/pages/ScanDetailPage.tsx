@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
@@ -76,6 +76,7 @@ export function ScanDetailPage() {
   const [severityFilter, setSeverityFilter] = useState<Set<Severity>>(new Set(ALL_SEVERITIES));
   const [sortKey, setSortKey] = useState<SortKey>("severity");
   const [ascending, setAscending] = useState(true);
+  const [expandedFindingId, setExpandedFindingId] = useState<string | null>(null);
 
   const visibleFindings = useMemo(() => {
     const findings = findingsQuery.data ?? [];
@@ -147,17 +148,47 @@ export function ScanDetailPage() {
             </tr>
           </thead>
           <tbody>
-            {visibleFindings.map((finding) => (
-              <tr key={finding.id}>
-                <td>
-                  <SeverityBadge severity={finding.severity} />
-                </td>
-                <td>{finding.title}</td>
-                <td>{finding.finding_type}</td>
-                <td>{finding.cvss_score ?? "-"}</td>
-                <td>{finding.cve_references.map((cve) => cve.cve_id).join(", ") || "-"}</td>
-              </tr>
-            ))}
+            {visibleFindings.map((finding) => {
+              const isExpanded = expandedFindingId === finding.id;
+              const hasDetail = Boolean(finding.description || finding.evidence);
+              return (
+                <Fragment key={finding.id}>
+                  <tr
+                    className={hasDetail ? "findings-table__row--expandable" : undefined}
+                    onClick={() =>
+                      hasDetail && setExpandedFindingId(isExpanded ? null : finding.id)
+                    }
+                  >
+                    <td>
+                      <SeverityBadge severity={finding.severity} />
+                    </td>
+                    <td>
+                      {finding.title}
+                      {hasDetail && <span className="findings-table__expand-hint">{isExpanded ? " ▲" : " ▼"}</span>}
+                    </td>
+                    <td>{finding.finding_type}</td>
+                    <td>{finding.cvss_score ?? "-"}</td>
+                    <td>{finding.cve_references.map((cve) => cve.cve_id).join(", ") || "-"}</td>
+                  </tr>
+                  {isExpanded && (
+                    <tr className="findings-table__detail-row">
+                      <td colSpan={5}>
+                        {finding.description && (
+                          <p>
+                            <strong>Descripción:</strong> {finding.description}
+                          </p>
+                        )}
+                        {finding.evidence && (
+                          <p>
+                            <strong>Evidencia:</strong> {finding.evidence}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
             {visibleFindings.length === 0 && (
               <tr>
                 <td colSpan={5}>Sin findings para los filtros seleccionados.</td>

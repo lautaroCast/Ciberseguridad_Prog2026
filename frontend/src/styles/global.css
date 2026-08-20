@@ -75,6 +75,28 @@ th {
   cursor: pointer;
 }
 
+.findings-table__row--expandable {
+  cursor: pointer;
+}
+
+.findings-table__row--expandable:hover {
+  background: #f9f9f9;
+}
+
+.findings-table__expand-hint {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.findings-table__detail-row td {
+  background: #fafafa;
+  white-space: pre-wrap;
+}
+
+.findings-table__detail-row p {
+  margin: 4px 0;
+}
+
 .target-form {
   display: flex;
   gap: 8px;
@@ -244,6 +266,17 @@ button:disabled {
   border-radius: 4px;
   margin-bottom: 16px;
   font-size: 14px;
+}
+
+.error-boundary {
+  max-width: 480px;
+  margin: 64px auto;
+  text-align: center;
+  padding: 24px;
+}
+
+.error-boundary button {
+  margin-top: 12px;
 }
 
 .spinner {
