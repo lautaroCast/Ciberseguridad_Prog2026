@@ -31,7 +31,7 @@ implement them as one atomic operation:
 | 3 | Normalización del target | `Resolve Pipeline Context` — the one node in this workflow that isn't a plain HTTP call; see the note above |
 | 4 | Reconocimiento | `Scan: Nmap` + `Ingest: Nmap` |
 | 5 | Identificación de tecnologías | `Scan: WhatWeb` + `Ingest: WhatWeb` |
-| 6 | Selección inteligente de herramientas | `Select HTTP Port` — the other non-HTTP-call node; decides which port every web-scanning tool attacks, see the note above |
+| 6 | Selección inteligente de herramientas | `Select HTTP Port` — the other non-HTTP-call node; decides which port every web-scanning tool attacks, see the note above. If Nmap found no open HTTP port (or Nmap itself failed), `IF: No HTTP Service Found` routes to `Mark Scan Failed - Sin Puerto HTTP` instead of silently stopping the chain — see "Tool selection and sequencing" below |
 | 7 | Escaneo | `Scan: Nikto` / `Scan: Nuclei` / `Scan: ZAP` |
 | 8-10 | Consolidación, clasificación, persistencia | Each `Ingest: *` node — `POST /scans/{id}/tasks` (Módulo 5) normalizes and persists in one transaction, so these three conceptual stages happen inside a single Backend call per tool |
 | 11 | Generación de reporte | `Generate Report` — `POST /scans/{id}/reports?format=pdf` (Módulo 7) |
@@ -64,22 +64,38 @@ Form Trigger ──────────┘
   pre-created `Scan` to work with.
 
 Both branches converge at **Resolve Pipeline Context**, the only node that
-has to figure out which trigger actually fired — it looks up whichever of
-`Edit Fields - From Webhook` / `Edit Fields - From Manual` has run data,
-using a `try`/`catch` around `$('NodeName')` since referencing a node with
-no execution data throws in n8n. Every node after it can reference
-`Resolve Pipeline Context` directly and unconditionally, since by that
-point in the graph both branches have already merged.
+has to figure out which trigger actually fired. It reads `$input.all()` —
+n8n's own connection routing already resolves which upstream branch
+produced this node's input, so there's no need to go hunting for a node by
+name. An earlier version of this node did that with `try`/`catch` around
+`$('NodeName')`, but that turned out to be fragile: on n8n's external Task
+Runner, referencing a node that didn't execute doesn't reliably throw the
+way it does in the legacy in-process VM, so the `try`/`catch` silently
+produced an "incomplete context" error instead of actually catching
+anything — `$input.all()` doesn't have that failure mode. Every node after
+it can reference `Resolve Pipeline Context` directly and unconditionally,
+since by that point in the graph both branches have already merged.
 
 ## Tool selection and sequencing
 
 `Select HTTP Port` reads **Nmap's own HTTP response** directly (not a
 database query) and picks the first open port whose `service_name` looks
-like HTTP(S), defaulting to the first open port found otherwise. If Nmap
-found zero open ports, the node returns zero items, which stops every
-downstream node automatically — this is the "selección inteligente de
-herramientas" stage, deliberately kept simple per the architecture doc
-rather than building a rules engine.
+like HTTP(S), defaulting to the first open port found otherwise — this is
+the "selección inteligente de herramientas" stage, deliberately kept
+simple per the architecture doc rather than building a rules engine.
+
+If Nmap found zero open ports — or Nmap itself failed, since
+`continueOnFail: true` on `Scan: Nmap` means a failed call still reaches
+this node, just without a `.parsed` field, which also yields zero
+services — the node flags `no_http_service: true` instead of returning an
+empty result. `IF: No HTTP Service Found` reads that flag: on true, it
+routes to `Mark Scan Failed - Sin Puerto HTTP`, which calls
+`POST /scans/{id}/complete` with `status: "failed"` and an explanatory
+`error_message`, so the `Scan` row reaches a terminal state instead of
+being left `running` forever with the frontend polling indefinitely. This
+replaced an earlier version where the chain just silently stopped —
+returning zero items looks like "nothing to do" to n8n, not a failure, so
+nothing downstream ever ran and no one was ever told why.
 
 WhatWeb, Nikto, Nuclei and ZAP then run **sequentially**, not as parallel
 branches — this keeps the workflow a single linear chain (straightforward
@@ -91,10 +107,23 @@ requirement.
 Nikto and Nuclei are called with bounded options (`max_time: "90s"` and
 `tags: "exposure,misconfig,tech,default-login"` respectively) to keep a
 full pipeline run predictable for a demo; ZAP runs its default quick active
-scan with no artificial bound, since cutting it short would defeat the
+scan with no tool-level bound, since cutting it short would defeat the
 point of running it. These are workflow-level defaults, not tool
 limitations — adjust the relevant `Scan: *` node's JSON body to change
 them.
+
+The one thing every `Scan: *` node still needs is an HTTP Request timeout
+of its own (n8n has to give up eventually even if the tool never would).
+For Nmap/WhatWeb/Nikto/Nuclei these are fixed, generous multiples of their
+own bounded options above. `Scan: ZAP` is different: since it's meant to
+run unbounded, its timeout is an expression —
+`(Number($env.SCANNER_MAX_TIMEOUT_SECONDS) || 900) * 1000 + 30000` —
+tied to the Scanner Service's own `SCANNER_MAX_TIMEOUT_SECONDS` hard cap
+plus a 30s margin for HTTP overhead, instead of a second, independent
+number that can drift out of sync with it. It used to be a hardcoded
+600000ms (10 min), which was *shorter* than the scanner's own 900s (15
+min) default — meaning n8n could kill a ZAP scan that was still legitimately
+running within the scanner's own configured limit.
 
 ## Report generation
 

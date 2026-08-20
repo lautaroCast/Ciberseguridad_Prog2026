@@ -18,7 +18,7 @@
     },
     {
       "parameters": {
-        "content": "## Recon -> tool selection\n\nNmap runs first and unscoped (no port needed). **Select HTTP Port** reads Nmap's own response directly (not the DB) and picks the first open port that looks like HTTP(S) — this is the \"selección inteligente de herramientas\" stage from the architecture doc, kept intentionally simple. If Nmap found no open ports at all, this node returns zero items, which stops every downstream node automatically — no explicit IF/skip logic needed.",
+        "content": "## Recon -> tool selection\n\nNmap runs first and unscoped (no port needed). **Select HTTP Port** reads Nmap's own response directly (not the DB) and picks the first open port that looks like HTTP(S) — this is the \"selección inteligente de herramientas\" stage from the architecture doc, kept intentionally simple. If Nmap found no open ports at all (or Nmap itself failed), this node flags `no_http_service: true` instead of returning an empty result; **IF: No HTTP Service Found** routes that case to **Mark Scan Failed - Sin Puerto HTTP**, which calls `POST /scans/{id}/complete` with `status: \"failed\"` so the scan reaches a terminal state instead of hanging in `running` forever.",
         "height": 260,
         "width": 460
       },
@@ -286,7 +286,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const nmapResult = $('Scan: Nmap').item.json;\nconst context = $('Resolve Pipeline Context').item.json;\n\nconst services = (nmapResult && nmapResult.parsed) || [];\n\n// \"Selección inteligente de herramientas\" (etapa 6 del pipeline): si Nmap\n// no encontró ningún puerto abierto, correr las herramientas HTTP no\n// tiene sentido. Devolver 0 items detiene el resto de la cadena.\nif (services.length === 0) {\n  return [];\n}\n\nconst httpService = services.find((s) => /http/i.test(s.service_name || ''));\nconst chosen = httpService || services[0];\nconst scheme = /https/i.test(chosen.service_name || '') ? 'https' : 'http';\n\nreturn [{\n  json: {\n    ...context,\n    port: chosen.port,\n    scheme,\n  },\n}];"
+        "jsCode": "const nmapResult = $('Scan: Nmap').item.json;\nconst context = $('Resolve Pipeline Context').item.json;\n\nconst services = (nmapResult && nmapResult.parsed) || [];\n\n// \"Selección inteligente de herramientas\" (etapa 6 del pipeline): si Nmap\n// no encontró ningún puerto abierto, correr las herramientas HTTP no\n// tiene sentido. Se marca no_http_service para que el nodo IF que sigue derive el pipeline a Mark Scan Failed en vez de dejarlo colgado en 'running' (COD-2).\nif (services.length === 0) {\n  return [{ json: { ...context, no_http_service: true } }];\n}\n\nconst httpService = services.find((s) => /http/i.test(s.service_name || ''));\nconst chosen = httpService || services[0];\nconst scheme = /https/i.test(chosen.service_name || '') ? 'https' : 'http';\n\nreturn [{\n  json: {\n    ...context,\n    port: chosen.port,\n    scheme,\n  },\n}];"
       },
       "id": "a73ba9be-1948-4be8-8fb8-26f275208690",
       "name": "Select HTTP Port",
@@ -485,7 +485,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ { \"target\": $('Select HTTP Port').item.json.host, \"port\": $('Select HTTP Port').item.json.port, \"scheme\": $('Select HTTP Port').item.json.scheme } }}",
         "options": {
-          "timeout": 600000
+          "timeout": "={{ (Number($env.SCANNER_MAX_TIMEOUT_SECONDS) || 900) * 1000 + 30000 }}"
         },
         "sendHeaders": true,
         "headerParameters": {
@@ -677,6 +677,69 @@
         }
       },
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "570fd2b9-443d-45e7-ba1e-5dd74df0448f",
+              "leftValue": "={{ $json.no_http_service === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a7b521be-8eb1-4fca-854d-a4aecf2070b8",
+      "name": "IF: No HTTP Service Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5488,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/complete",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"status\": \"failed\", \"error_message\": \"No se encontró ningún puerto HTTP abierto tras el escaneo Nmap (o Nmap falló). Pipeline detenido antes de correr WhatWeb/Nikto/Nuclei/ZAP.\" } }}",
+        "options": {
+          "timeout": 15000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.BACKEND_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "7d456529-2d81-4a12-8476-f5066796e6dd",
+      "name": "Mark Scan Failed - Sin Puerto HTTP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5680,
+        1650
+      ],
+      "continueOnFail": true
     }
   ],
   "pinData": {},
@@ -784,7 +847,7 @@
       "main": [
         [
           {
-            "node": "Scan: WhatWeb",
+            "node": "IF: No HTTP Service Found",
             "type": "main",
             "index": 0
           }
@@ -917,6 +980,24 @@
         [
           {
             "node": "Pipeline Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: No HTTP Service Found": {
+      "main": [
+        [
+          {
+            "node": "Mark Scan Failed - Sin Puerto HTTP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Scan: WhatWeb",
             "type": "main",
             "index": 0
           }
