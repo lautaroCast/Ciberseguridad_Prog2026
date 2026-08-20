@@ -21,6 +21,7 @@ import uuid  # noqa: E402
 
 import pytest  # noqa: E402
 from sqlalchemy import create_engine, event, text  # noqa: E402
+from sqlalchemy.exc import OperationalError  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
@@ -124,6 +125,53 @@ def db_session(sqlite_engine) -> Session:
     finally:
         session.rollback()
         session.close()
+
+
+@pytest.fixture
+def postgres_session():
+    """A `Session` against the *real* Postgres instance (`DATABASE_URL`),
+    isolated in a throwaway schema so it never touches real dev data.
+
+    Recomendación #4 (docs/independent-evaluation-report.md): the
+    `sqlite_engine` fixture above is fast but SQLite doesn't enforce
+    `VARCHAR(n)` width the way Postgres does, so a bug like the one fixed
+    in `finding_repository`/`service_repository` (untruncated tool output
+    overflowing a bounded column) is structurally invisible to it — no
+    amount of testing against SQLite could ever have caught it. Tests
+    using this fixture must be marked `@pytest.mark.postgres`: they're
+    opt-in, not part of the fast suite's guarantee, and skip automatically
+    if Postgres isn't reachable (e.g. running pytest outside the Docker
+    stack, where `DATABASE_URL` still points at the container hostname
+    `db`) rather than failing the whole run.
+    """
+    from models import Base
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url.startswith("postgresql"):
+        pytest.skip("DATABASE_URL is not a Postgres URL — skipping postgres-only test")
+
+    schema = f"pytest_{uuid.uuid4().hex[:8]}"
+    engine = create_engine(database_url)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(f'CREATE SCHEMA "{schema}"'))
+            conn.commit()
+    except OperationalError as exc:
+        pytest.skip(f"Postgres not reachable: {exc}")
+
+    engine = engine.execution_options(schema_translate_map={None: schema})
+    Base.metadata.create_all(engine)
+
+    session = sessionmaker(bind=engine, autoflush=False, autocommit=False)()
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()
+        with engine.connect() as conn:
+            conn.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+            conn.commit()
+        engine.dispose()
 
 
 @pytest.fixture

@@ -146,6 +146,40 @@ def test_ingest_truncates_oversized_service_fields(db_session):
     assert len(service.version) == 100
 
 
+@pytest.mark.postgres
+def test_ingest_truncates_oversized_service_fields_against_real_postgres(postgres_session):
+    # Recomendación #4: the SQLite-backed version of this test
+    # (test_ingest_truncates_oversized_service_fields above) can't actually
+    # prove the fix works, because SQLite never enforced VARCHAR(100) in
+    # the first place — this is the one test in the suite that runs
+    # against a database that would genuinely reject an untruncated value.
+    scan = _make_scan(postgres_session)
+    result = _ingest(
+        postgres_session,
+        scan.id,
+        tool="nmap",
+        parsed=[
+            {
+                "host": "juice-shop",
+                "port": 80,
+                "service_name": "http",
+                "product": "x" * 150,
+                "version": "y" * 150,
+            }
+        ],
+    )
+    assert result.services_upserted == 1
+
+    from sqlalchemy import select as sa_select
+    from models import Service
+
+    service = postgres_session.execute(
+        sa_select(Service).where(Service.scan_id == scan.id)
+    ).scalar_one()
+    assert len(service.product) == 100
+    assert len(service.version) == 100
+
+
 def test_ingest_rolls_back_partial_writes_on_db_error_without_losing_scan_task(
     db_session, monkeypatch
 ):
