@@ -14,6 +14,16 @@ from sqlalchemy.orm import Session
 
 from models import Service
 
+# Tool-derived strings (Nmap's own service/product/version guesses) have no
+# length guarantee, but these three columns are all String(100)
+# (database/models/service.py) — truncate here, once, rather than trusting
+# every caller (currently only nmap_normalizer.py) to do it themselves.
+_MAX_LENGTH = 100
+
+
+def _truncate(value: str | None) -> str | None:
+    return value[:_MAX_LENGTH] if value is not None else None
+
 
 def get_or_create_service(
     db: Session,
@@ -26,6 +36,10 @@ def get_or_create_service(
     product: str | None,
     version: str | None,
 ) -> Service:
+    service_name = _truncate(service_name)
+    product = _truncate(product)
+    version = _truncate(version)
+
     stmt = select(Service).where(
         Service.scan_id == scan_id,
         Service.host == host,

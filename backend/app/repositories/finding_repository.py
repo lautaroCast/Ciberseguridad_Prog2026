@@ -7,6 +7,19 @@ from sqlalchemy.orm import Session
 
 from models import CveReference, Finding, SeverityLevel
 
+# Tool-derived strings have no length guarantee; these columns are bounded
+# (database/models/finding.py, cve_reference.py) — truncate here, once,
+# rather than trusting every one of the 5 normalizers to do it themselves
+# (only `title` currently gets that treatment, at the normalizer level).
+_FINDING_TYPE_MAX = 100
+_CONFIDENCE_MAX = 20
+_CVSS_VECTOR_MAX = 100
+_CVE_ID_MAX = 20
+
+
+def _truncate(value: str | None, max_length: int) -> str | None:
+    return value[:max_length] if value is not None else None
+
 
 def create_finding(
     db: Session,
@@ -29,11 +42,11 @@ def create_finding(
         service_id=service_id,
         title=title,
         description=description,
-        finding_type=finding_type,
+        finding_type=finding_type[:_FINDING_TYPE_MAX],
         evidence=evidence,
-        confidence=confidence,
+        confidence=_truncate(confidence, _CONFIDENCE_MAX),
         cvss_score=cvss_score,
-        cvss_vector=cvss_vector,
+        cvss_vector=_truncate(cvss_vector, _CVSS_VECTOR_MAX),
         severity=severity,
     )
     db.add(finding)
@@ -53,9 +66,9 @@ def create_cve_reference(
 ) -> CveReference:
     reference = CveReference(
         finding_id=finding_id,
-        cve_id=cve_id,
+        cve_id=cve_id[:_CVE_ID_MAX],
         cvss_score=cvss_score,
-        cvss_vector=cvss_vector,
+        cvss_vector=_truncate(cvss_vector, _CVSS_VECTOR_MAX),
         description=description,
         source_url=source_url,
     )

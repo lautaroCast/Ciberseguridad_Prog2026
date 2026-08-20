@@ -92,64 +92,78 @@ def ingest_scan_task(
     normalizer = get_normalizer(tool) if status == "completed" and parsed is not None else None
     if normalizer is not None:
         try:
-            normalized = normalizer(parsed)
-        except Exception as exc:  # noqa: BLE001 — a bad normalizer input shouldn't 500 the ingest
+            # A SAVEPOINT around normalization *and* the writes it drives:
+            # a normalizer bug is not the only way this block can fail — a
+            # value that overflows a column's width (a defense already
+            # added in the repositories below, but not the only possible
+            # DB-level failure) or any other constraint violation must be
+            # rolled back the same way, without losing the ScanTask row
+            # already flushed above. Without begin_nested(), a DB error
+            # here would poison the whole session and roll back that row
+            # too — exactly what this module's own docstring says must
+            # never happen.
+            with db.begin_nested():
+                normalized = normalizer(parsed)
+
+                for svc in normalized.services:
+                    service_repository.get_or_create_service(
+                        db,
+                        scan_id=scan_id,
+                        host=svc.host,
+                        port=svc.port,
+                        protocol=svc.protocol,
+                        service_name=svc.service_name,
+                        product=svc.product,
+                        version=svc.version,
+                    )
+                    services_upserted += 1
+
+                for tech in normalized.technologies:
+                    technology_repository.create_technology(
+                        db,
+                        scan_id=scan_id,
+                        name=tech.name,
+                        detected_by=tech.detected_by,
+                        version=tech.version,
+                        category=tech.category,
+                        confidence=tech.confidence,
+                    )
+                    technologies_created += 1
+
+                for finding in normalized.findings:
+                    finding_row = finding_repository.create_finding(
+                        db,
+                        scan_id=scan_id,
+                        scan_task_id=scan_task.id,
+                        service_id=None,
+                        title=finding.title,
+                        description=finding.description,
+                        finding_type=finding.finding_type,
+                        evidence=finding.evidence,
+                        confidence=finding.confidence,
+                        cvss_score=finding.cvss_score,
+                        cvss_vector=finding.cvss_vector,
+                        severity=finding.severity,
+                    )
+                    findings_created += 1
+                    for cve in finding.cve_references:
+                        finding_repository.create_cve_reference(
+                            db,
+                            finding_id=finding_row.id,
+                            cve_id=cve.cve_id,
+                            cvss_score=cve.cvss_score,
+                            cvss_vector=cve.cvss_vector,
+                            description=cve.description,
+                            source_url=cve.source_url,
+                        )
+        except Exception as exc:  # noqa: BLE001 — normalization/write failures shouldn't 500 the ingest
+            # The SAVEPOINT above already rolled back any partial writes
+            # from this block, so the counts must reset to match.
+            services_upserted = technologies_created = findings_created = 0
             note = f"Normalization failed: {exc}"
             scan_task.error_message = (
                 f"{scan_task.error_message}; {note}" if scan_task.error_message else note
             )
-        else:
-            for svc in normalized.services:
-                service_repository.get_or_create_service(
-                    db,
-                    scan_id=scan_id,
-                    host=svc.host,
-                    port=svc.port,
-                    protocol=svc.protocol,
-                    service_name=svc.service_name,
-                    product=svc.product,
-                    version=svc.version,
-                )
-                services_upserted += 1
-
-            for tech in normalized.technologies:
-                technology_repository.create_technology(
-                    db,
-                    scan_id=scan_id,
-                    name=tech.name,
-                    detected_by=tech.detected_by,
-                    version=tech.version,
-                    category=tech.category,
-                    confidence=tech.confidence,
-                )
-                technologies_created += 1
-
-            for finding in normalized.findings:
-                finding_row = finding_repository.create_finding(
-                    db,
-                    scan_id=scan_id,
-                    scan_task_id=scan_task.id,
-                    service_id=None,
-                    title=finding.title,
-                    description=finding.description,
-                    finding_type=finding.finding_type,
-                    evidence=finding.evidence,
-                    confidence=finding.confidence,
-                    cvss_score=finding.cvss_score,
-                    cvss_vector=finding.cvss_vector,
-                    severity=finding.severity,
-                )
-                findings_created += 1
-                for cve in finding.cve_references:
-                    finding_repository.create_cve_reference(
-                        db,
-                        finding_id=finding_row.id,
-                        cve_id=cve.cve_id,
-                        cvss_score=cve.cvss_score,
-                        cvss_vector=cve.cvss_vector,
-                        description=cve.description,
-                        source_url=cve.source_url,
-                    )
 
     db.commit()
     db.refresh(scan_task)

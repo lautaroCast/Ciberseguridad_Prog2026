@@ -113,3 +113,74 @@ def test_ingest_unknown_scan_raises(db_session):
 
     with pytest.raises(scan_service.ScanNotFoundError):
         _ingest(db_session, uuid.uuid4(), tool="nmap")
+
+
+def test_ingest_truncates_oversized_service_fields(db_session):
+    # Recomendación #3 (docs/independent-evaluation-report.md): product/
+    # version have no length guarantee from the tool and the column is
+    # String(100) — must be truncated, not raise.
+    scan = _make_scan(db_session)
+    result = _ingest(
+        db_session,
+        scan.id,
+        tool="nmap",
+        parsed=[
+            {
+                "host": "juice-shop",
+                "port": 80,
+                "service_name": "http",
+                "product": "x" * 150,
+                "version": "y" * 150,
+            }
+        ],
+    )
+    assert result.services_upserted == 1
+
+    from sqlalchemy import select as sa_select
+    from models import Service
+
+    service = db_session.execute(
+        sa_select(Service).where(Service.scan_id == scan.id)
+    ).scalar_one()
+    assert len(service.product) == 100
+    assert len(service.version) == 100
+
+
+def test_ingest_rolls_back_partial_writes_on_db_error_without_losing_scan_task(
+    db_session, monkeypatch
+):
+    # A DB-level failure mid-write (not a normalizer exception) must be
+    # caught the same way: the ScanTask row already flushed must survive,
+    # and the counts must reflect that nothing from this normalizer run
+    # actually persisted (the SAVEPOINT rolled it all back).
+    from app.repositories import finding_repository
+
+    def _broken_create_finding(*args, **kwargs):
+        raise RuntimeError("simulated DB constraint violation")
+
+    monkeypatch.setattr(finding_repository, "create_finding", _broken_create_finding)
+
+    scan = _make_scan(db_session)
+    result = _ingest(
+        db_session,
+        scan.id,
+        tool="nuclei",
+        parsed=[
+            {
+                "template-id": "exposed-panel",
+                "type": "http",
+                "host": "juice-shop",
+                "info": {"name": "Exposed Admin Panel", "severity": "high"},
+            }
+        ],
+    )
+
+    assert result.findings_created == 0
+    assert "Normalization failed" in result.scan_task.error_message
+    assert "simulated DB constraint violation" in result.scan_task.error_message
+
+    from app.services import scan_task_service as sts
+
+    tasks = sts.list_scan_tasks_for_scan(db_session, scan.id)
+    assert len(tasks) == 1
+    assert tasks[0].id == result.scan_task.id
