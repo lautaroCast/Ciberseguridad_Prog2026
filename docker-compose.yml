@@ -52,6 +52,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    # Published to the host for local inspection during development (psql/
+    # DBeaver/etc.) — nothing inside the stack needs this: only `backend`
+    # and `migrate` talk to `db`, and both already reach it over
+    # app-network without a published port. Unlike `scanner`/`reports`
+    # below (which have no legitimate reason to ever be reached from the
+    # host), this one is a deliberate developer-convenience trade-off, not
+    # an oversight.
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
@@ -113,6 +120,16 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    # Runs as non-root `appuser` (see backend/Dockerfile) with no need for
+    # binaries or capabilities beyond plain Python/uvicorn — same
+    # justification `reports` already uses for its own cap_drop/
+    # security_opt below. `read_only`/`tmpfs` aren't added here: unlike
+    # `reports`, that filesystem-write footprint hasn't been verified for
+    # this service, so it's left out rather than guessed at.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     networks:
       - app-network
     depends_on:
@@ -267,6 +284,11 @@ services:
       # n8n/workflows/vulnscan-pipeline.json.
       BACKEND_API_KEY: ${BACKEND_API_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      # Read by Scan: ZAP's HTTP timeout expression (COD-7) so it stays
+      # tied to the Scanner Service's own hard cap below instead of a
+      # second, independent number that can silently drift out of sync
+      # with it — same mirroring pattern as SCANNER_ALLOWED_LAB_HOSTS.
+      SCANNER_MAX_TIMEOUT_SECONDS: ${SCANNER_MAX_TIMEOUT_SECONDS:-900}
       # n8n >=2.0 blocks $env access in node expressions by default (a
       # breaking change) — without this, every node above silently never
       # resolves its header value and the pipeline stalls before ever
