@@ -11,6 +11,7 @@ formats and they're unlikely to grow into a real plugin list).
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.paths import PathEscapesOutputDirError, resolve_within
 from app.renderers.html_renderer import render_html
 from app.renderers.json_renderer import render_json
 from app.renderers.markdown_renderer import render_markdown
@@ -20,10 +21,25 @@ from app.schemas.report import ReportRequest, ReportResult
 _EXTENSIONS = {"pdf": "pdf", "html": "html", "markdown": "md", "json": "json"}
 
 
+class InvalidReportRequestError(Exception):
+    """Raised when `data.scan.id` would resolve to a path outside `output_dir`.
+
+    `scan.id` is a bare `str` (no UUID/pattern constraint at the schema
+    level) and flows directly into the output filename. In the documented
+    flow it's always a Backend-generated UUID, but this service trusts the
+    caller completely otherwise (see routers/reports.py's module
+    docstring) — this is the only guard against a `"../../etc/x"`-style
+    value, mirroring the one `download_report` already has.
+    """
+
+
 def generate(data: ReportRequest, output_dir: Path) -> ReportResult:
     output_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{data.scan.id}.{_EXTENSIONS[data.format]}"
-    path = output_dir / filename
+    try:
+        path = resolve_within(output_dir, filename)
+    except PathEscapesOutputDirError as exc:
+        raise InvalidReportRequestError(data.scan.id) from exc
 
     if data.format == "pdf":
         path.write_bytes(render_pdf(data))

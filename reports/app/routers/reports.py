@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 
 from app.config import Settings, get_settings
+from app.paths import PathEscapesOutputDirError, resolve_within
 from app.schemas.report import ReportRequest, ReportResult
 from app.services import report_generator
 
@@ -41,13 +42,16 @@ def create_report(
 
 @router.get("/reports/{filename}")
 def download_report(filename: str, settings: Settings = Depends(get_settings)) -> FileResponse:
-    output_dir = Path(settings.reports_output_dir).resolve()
+    output_dir = Path(settings.reports_output_dir)
     # `filename` is caller-controlled input reflected straight into a
-    # filesystem path — resolve and re-check it's still inside
+    # filesystem path — resolve and re-check it's still directly inside
     # output_dir before touching disk, so "../../etc/passwd"-style values
     # can't escape the reports directory.
-    candidate = (output_dir / filename).resolve()
-    if output_dir not in candidate.parents or not candidate.is_file():
+    try:
+        candidate = resolve_within(output_dir, filename)
+    except PathEscapesOutputDirError as exc:
+        raise ReportFileNotFoundError(filename) from exc
+    if not candidate.is_file():
         raise ReportFileNotFoundError(filename)
 
     extension = candidate.suffix.lstrip(".")

@@ -30,6 +30,20 @@ def test_create_report_writes_file(sample_report_request, tmp_path: Path):
         app.dependency_overrides.clear()
 
 
+def test_create_report_path_traversal_rejected(sample_report_request, tmp_path: Path):
+    client = _client_with_output_dir(tmp_path)
+    try:
+        malicious_scan = sample_report_request.scan.model_copy(update={"id": "../../evil"})
+        request = sample_report_request.model_copy(
+            update={"format": "json", "scan": malicious_scan}
+        )
+        response = client.post("/reports", json=request.model_dump(mode="json"))
+        assert response.status_code == 400
+        assert list(tmp_path.iterdir()) == []
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_download_report_happy_path(sample_report_request, tmp_path: Path):
     client = _client_with_output_dir(tmp_path)
     try:

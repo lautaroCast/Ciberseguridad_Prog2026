@@ -1,7 +1,37 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from app.services import report_generator
+
+
+def test_generate_path_traversal_rejected(sample_report_request, tmp_path: Path):
+    malicious_scan = sample_report_request.scan.model_copy(update={"id": "../../evil"})
+    request = sample_report_request.model_copy(update={"format": "json", "scan": malicious_scan})
+
+    escaped_path = tmp_path.parent.parent / "evil.json"
+
+    with pytest.raises(report_generator.InvalidReportRequestError):
+        report_generator.generate(request, tmp_path)
+
+    # nothing should have been written outside (or inside) output_dir
+    assert not escaped_path.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_generate_rejects_same_dir_subpath(sample_report_request, tmp_path: Path):
+    # Regression: a scan.id containing "/" that still resolves *inside*
+    # output_dir (e.g. "abc/def") used to pass the old parents-only check
+    # and then crash with an unhandled FileNotFoundError, since only
+    # output_dir itself (not "abc/") was ever created.
+    malicious_scan = sample_report_request.scan.model_copy(update={"id": "abc/def"})
+    request = sample_report_request.model_copy(update={"format": "json", "scan": malicious_scan})
+
+    with pytest.raises(report_generator.InvalidReportRequestError):
+        report_generator.generate(request, tmp_path)
+
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_generate_json(sample_report_request, tmp_path: Path):
