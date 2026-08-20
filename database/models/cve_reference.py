@@ -27,7 +27,10 @@ class CveReference(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """
 
     __tablename__ = "cve_references"
-    __table_args__ = (Index("ix_cve_references_cve_id", "cve_id"),)
+    __table_args__ = (
+        Index("ix_cve_references_cve_id", "cve_id"),
+        Index("ix_cve_references_finding_id", "finding_id"),
+    )
 
     finding_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("findings.id", ondelete="CASCADE"), nullable=False

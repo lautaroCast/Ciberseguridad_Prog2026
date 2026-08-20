@@ -17,7 +17,7 @@ erDiagram
     SCANS ||--o{ FINDINGS : "produce"
     SCANS ||--o{ REPORTS : "genera"
     SCAN_TASKS ||--o{ FINDINGS : "reporta"
-    SERVICES ||--o{ FINDINGS : "asociado a (opcional)"
+    SERVICES ||--o{ FINDINGS : "columna existe, no poblada aún"
     FINDINGS ||--o{ CVE_REFERENCES : "referencia"
 
     TARGETS {
@@ -80,7 +80,7 @@ erDiagram
         uuid id PK
         uuid scan_id FK
         uuid scan_task_id FK
-        uuid service_id FK "nullable"
+        uuid service_id FK "nullable, siempre NULL hoy -- ver nota abajo"
         string title
         text description
         string finding_type
@@ -123,6 +123,16 @@ erDiagram
 `USERS` no tiene FK hacia el resto del esquema todavía: es un placeholder
 (Módulo 1) para una futura capa de autenticación multiusuario y no lo
 consume ningún servicio en esta etapa del proyecto.
+
+`FINDINGS.service_id` es una columna real del esquema (FK nullable hacia
+`services.id`), pero ningún código de la implementación actual la puebla:
+`scan_task_service.ingest_scan_task` la crea siempre en `NULL`. Vincular
+cada finding con el `Service` correspondiente (por host+puerto) es una
+mejora identificada pero no implementada — no hay lógica de matching en
+ningún normalizador ni en el servicio de ingesta hoy. Tratarla como una
+relación activa (como sugería una versión anterior de este documento)
+sería inexacto; queda documentada como limitación conocida hasta que se
+implemente.
 
 ## Descripción de cada tabla
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +24,7 @@ class Technology(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """
 
     __tablename__ = "technologies"
+    __table_args__ = (Index("ix_technologies_scan_id", "scan_id"),)
 
     scan_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("scans.id", ondelete="CASCADE"), nullable=False

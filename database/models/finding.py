@@ -36,6 +36,7 @@ class Finding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "findings"
     __table_args__ = (
         Index("ix_findings_scan_id_severity", "scan_id", "severity"),
+        Index("ix_findings_scan_task_id", "scan_task_id"),
     )
 
     scan_id: Mapped[uuid.UUID] = mapped_column(

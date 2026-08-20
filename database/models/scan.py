@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,7 @@ class Scan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """
 
     __tablename__ = "scans"
+    __table_args__ = (Index("ix_scans_target_id", "target_id"),)
 
     target_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("targets.id", ondelete="CASCADE"), nullable=False
