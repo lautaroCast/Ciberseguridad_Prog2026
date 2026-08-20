@@ -1,4 +1,35 @@
+import json
+
+import pytest
+
 from app.adapters.nuclei_adapter import NucleiAdapter
+
+
+def test_build_command_includes_url_with_no_optional_flags():
+    adapter = NucleiAdapter()
+    command = adapter.build_command(
+        target="juice-shop", port=80, scheme="http", options={}, output_path=""
+    )
+    assert command == ["nuclei", "-u", "http://juice-shop:80", "-jsonl", "-silent", "-duc"]
+
+
+def test_build_command_with_severity_and_tags():
+    adapter = NucleiAdapter()
+    command = adapter.build_command(
+        target="juice-shop",
+        port=80,
+        scheme="http",
+        options={"severity": "high,critical", "tags": "cve"},
+        output_path="",
+    )
+    assert "-severity" in command and command[command.index("-severity") + 1] == "high,critical"
+    assert "-tags" in command and command[command.index("-tags") + 1] == "cve"
+
+
+def test_malformed_jsonl_line_raises():
+    adapter = NucleiAdapter()
+    with pytest.raises(json.JSONDecodeError):
+        adapter.parse_output('{"template-id": "a"}\n{"template-id": truncated')
 
 
 def test_parses_multiple_jsonl_lines():

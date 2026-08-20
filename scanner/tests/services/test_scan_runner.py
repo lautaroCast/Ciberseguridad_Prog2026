@@ -112,3 +112,24 @@ def test_output_file_adapter_reads_from_file_not_stdout(monkeypatch, tmp_path):
     assert result.parsed == [{"vulnerabilities": []}]
     # scan_runner must have cleaned up the temp file afterwards.
     assert not written_path["value"].exists()
+
+
+def test_output_file_adapter_cleans_up_partial_file_on_timeout(monkeypatch, tmp_path):
+    # COD-3 regression: a killed Nikto/ZAP process may have already written
+    # partial output to its temp file before the timeout fired — that file
+    # must not be leaked on disk.
+    adapter = NiktoAdapter()
+    written_path: dict[str, Path] = {}
+
+    def _fake_run(command, capture_output, text, timeout):
+        output_path = Path(command[command.index("-output") + 1])
+        output_path.write_text('{"partial": true')  # truncated, as if killed mid-write
+        written_path["value"] = output_path
+        raise subprocess.TimeoutExpired(cmd="nikto", timeout=timeout)
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    result = scan_runner.execute(
+        adapter, target="juice-shop", port=80, scheme="http", options={}, timeout=30
+    )
+    assert result.status == "failed"
+    assert not written_path["value"].exists()

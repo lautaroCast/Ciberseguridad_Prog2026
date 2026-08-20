@@ -43,6 +43,16 @@ def execute(
     try:
         proc = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
+        # A killed tool may have already written partial output before the
+        # timeout — clean it up here explicitly (the success path below
+        # never runs, and this file is otherwise leaked forever). This
+        # can't be a `finally` block: `output_path` is only ever truthy
+        # when `adapter.uses_output_file` is True, so a `finally` that
+        # also checks `uses_output_file` would run for every exit path,
+        # including success, and would delete the file the success branch
+        # still needs to read.
+        if output_path and Path(output_path).exists():
+            Path(output_path).unlink(missing_ok=True)
         return RawScanResult(
             tool=adapter.tool_name,
             target=target,
@@ -54,6 +64,8 @@ def execute(
             error_message=f"Scan exceeded the {timeout}s timeout and was terminated.",
         )
     except FileNotFoundError as exc:
+        if output_path and Path(output_path).exists():
+            Path(output_path).unlink(missing_ok=True)
         return RawScanResult(
             tool=adapter.tool_name,
             target=target,
@@ -64,11 +76,6 @@ def execute(
             raw_output="",
             error_message=f"Tool binary not found: {exc}",
         )
-    finally:
-        if output_path and Path(output_path).exists() and not adapter.uses_output_file:
-            # Defensive cleanup only; adapters that don't use an output
-            # file never see this path created in the first place.
-            Path(output_path).unlink(missing_ok=True)
 
     if adapter.uses_output_file:
         raw_output = Path(output_path).read_text() if Path(output_path).exists() else ""

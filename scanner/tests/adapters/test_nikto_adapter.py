@@ -1,4 +1,32 @@
+import json
+
+import pytest
+
 from app.adapters.nikto_adapter import NiktoAdapter
+
+
+def test_build_command_includes_url_and_default_maxtime():
+    adapter = NiktoAdapter()
+    command = adapter.build_command(
+        target="dvwa", port=80, scheme="http", options={}, output_path="/tmp/out.json"
+    )
+    assert "-h" in command and command[command.index("-h") + 1] == "http://dvwa:80"
+    assert "-output" in command and command[command.index("-output") + 1] == "/tmp/out.json"
+    assert "-maxtime" in command and command[command.index("-maxtime") + 1] == "120s"
+
+
+def test_build_command_with_custom_maxtime():
+    adapter = NiktoAdapter()
+    command = adapter.build_command(
+        target="dvwa", port=80, scheme="http", options={"max_time": "30s"}, output_path=""
+    )
+    assert command[command.index("-maxtime") + 1] == "30s"
+
+
+def test_malformed_json_raises():
+    adapter = NiktoAdapter()
+    with pytest.raises(json.JSONDecodeError):
+        adapter.parse_output('[{"vulnerabilities": [truncated')
 
 
 def test_parses_valid_json():

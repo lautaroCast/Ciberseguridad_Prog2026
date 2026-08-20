@@ -10,12 +10,24 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ScanRequest(BaseModel):
     target: str = Field(min_length=1, max_length=255, description="Hostname resolvable on lab-network, e.g. 'juice-shop'.")
     port: int = Field(default=80, ge=1, le=65535)
+
+    @field_validator("target")
+    @classmethod
+    def _target_must_not_look_like_a_flag(cls, value: str) -> str:
+        # NmapAdapter appends `target` as a bare, standalone argv token (the
+        # other adapters embed it inside a "scheme://target:port" string,
+        # where a leading "-" is inert). A target starting with "-" would be
+        # parsed by nmap as a CLI flag instead of a hostname — reject it here
+        # so every adapter is covered by a single check, not just nmap's own.
+        if value.startswith("-"):
+            raise ValueError("target must not start with '-' (would be interpreted as a CLI flag)")
+        return value
     scheme: Literal["http", "https"] = "http"
     # Adapter-specific knobs (e.g. nuclei's `severity`, nikto's `max_time`).
     # Each adapter documents which keys it understands; unknown keys are
