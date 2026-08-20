@@ -12,6 +12,32 @@ from typing import Any
 from app.normalization import severity
 from app.normalization.types import FindingData, NormalizedData
 
+# `Finding.evidence` is an uncapped `Text` column DB-side, and a single ZAP
+# alert can be reported at dozens/hundreds of URIs — joining every
+# instance's evidence with no ceiling would let one alert produce a
+# multi-hundred-KB string that then gets returned in every findings-list
+# API response. Truncated at the normalizer, not the DB layer, since this
+# is specifically about the join fan-out, not a general finding-size limit.
+_MAX_EVIDENCE_LENGTH = 10_000
+
+
+def _evidence_from_instances(alert: dict[str, Any]) -> str | None:
+    # Each alert can occur at multiple URIs, each with its own `evidence`
+    # string (the actual matched content, e.g. a response header or
+    # snippet) under `instances[]`. `alert["solution"]` is remediation
+    # advice, a different concept — it must not be used as evidence.
+    # `FindingData` has one `evidence` field per alert (not per instance),
+    # so every instance's evidence is joined into one string.
+    parts = [
+        instance["evidence"]
+        for instance in (alert.get("instances") or [])
+        if instance.get("evidence")
+    ]
+    if not parts:
+        return None
+    joined = "; ".join(parts)
+    return joined[:_MAX_EVIDENCE_LENGTH]
+
 
 def normalize(parsed: dict[str, Any] | None) -> NormalizedData:
     if not parsed:
@@ -25,7 +51,7 @@ def normalize(parsed: dict[str, Any] | None) -> NormalizedData:
                     finding_type="web_vulnerability",
                     severity=severity.from_zap_riskcode(alert.get("riskcode")),
                     description=alert.get("desc"),
-                    evidence=alert.get("solution"),
+                    evidence=_evidence_from_instances(alert),
                     confidence=alert.get("confidence"),
                 )
             )

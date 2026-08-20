@@ -8,12 +8,13 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routers import health, reports, scans, targets
-from app.routers.reports import ReportFileUnavailableError
+from app.routers.reports import InvalidReportFilePathError, ReportFileUnavailableError
 from app.security import verify_api_key
 from app.services.pipeline_service import PipelineTriggerError
 from app.services.report_service import ReportGenerationError, ReportNotFoundError
 from app.services.scan_service import ScanNotFoundError
 from app.services.target_service import (
+    TargetInactiveError,
     TargetNameConflictError,
     TargetNotAllowedError,
     TargetNotFoundError,
@@ -67,6 +68,14 @@ async def target_name_conflict_handler(
     )
 
 
+@app.exception_handler(TargetInactiveError)
+async def target_inactive_handler(request: Request, exc: TargetInactiveError) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={"detail": f"Target '{exc}' is inactive; reactivate it before scanning."},
+    )
+
+
 @app.exception_handler(ScanNotFoundError)
 async def scan_not_found_handler(request: Request, exc: ScanNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": f"Scan '{exc}' not found."})
@@ -101,6 +110,18 @@ async def report_file_unavailable_handler(
 ) -> JSONResponse:
     return JSONResponse(
         status_code=502, content={"detail": f"Could not download the report file: {exc}"}
+    )
+
+
+@app.exception_handler(InvalidReportFilePathError)
+async def invalid_report_file_path_handler(
+    request: Request, exc: InvalidReportFilePathError
+) -> JSONResponse:
+    # A stored Report row with an unsafe file_path is a server-side data
+    # integrity problem (the Reports Service is the only writer of this
+    # value), not a bad request from the caller — 500, not 4xx.
+    return JSONResponse(
+        status_code=500, content={"detail": f"Report has an invalid stored file path: {exc}"}
     )
 
 

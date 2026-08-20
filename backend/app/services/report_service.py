@@ -8,6 +8,7 @@ the resulting `Report` row here, since the Backend is the schema's owner
 Módulo 4/5, n8n in Módulo 6).
 """
 
+import re
 import uuid
 
 import httpx
@@ -21,6 +22,20 @@ from app.schemas.target import TargetRead
 from app.services import finding_service, scan_service, target_service
 from models import Report, ReportFormat
 
+# `file_path` is always generated server-side by the Reports Service as
+# "{scan_id}.{ext}" — but it arrives here as an untyped field in an HTTP
+# JSON response, not something this service constrains itself. Checked
+# once here (write time, when the value is first persisted) and reused by
+# the download router (read time) rather than duplicated in both places.
+_SAFE_FILENAME = re.compile(r"[A-Za-z0-9._-]+")
+
+
+def is_safe_filename(value: str) -> bool:
+    # `fullmatch` (not `match` + `^...$`) so a trailing "\n" can't sneak
+    # through — `$` alone matches immediately before one trailing newline,
+    # `fullmatch` requires consuming the entire string.
+    return _SAFE_FILENAME.fullmatch(value) is not None
+
 
 class ReportNotFoundError(Exception):
     """Raised when a report id does not exist."""
@@ -28,6 +43,11 @@ class ReportNotFoundError(Exception):
 
 class ReportGenerationError(Exception):
     """Raised when the Reports Service can't be reached or fails to render."""
+
+
+class InvalidReportFilePathError(Exception):
+    """Raised when a Report.file_path doesn't look like a filename the
+    Reports Service could have generated."""
 
 
 def generate_report(db: Session, scan_id: uuid.UUID, format: str) -> Report:
@@ -57,11 +77,14 @@ def generate_report(db: Session, scan_id: uuid.UUID, format: str) -> Report:
         raise ReportGenerationError(str(exc)) from exc
 
     result = response.json()
+    file_path = result["filename"]
+    if not is_safe_filename(file_path):
+        raise InvalidReportFilePathError(file_path)
     return report_repository.create_report(
         db,
         scan_id=scan_id,
         format=ReportFormat(result["format"]),
-        file_path=result["filename"],
+        file_path=file_path,
         generated_by="backend",
     )
 

@@ -19,6 +19,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.schemas.report import ReportRead
 from app.services import report_service
+from app.services.report_service import InvalidReportFilePathError, is_safe_filename
 
 router = APIRouter(tags=["reports"])
 
@@ -53,6 +54,8 @@ def list_reports(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> list[Repo
 @router.get("/reports/{report_id}/download")
 def download_report(report_id: uuid.UUID, db: Session = Depends(get_db)) -> Response:
     report = report_service.get_report_or_raise(db, report_id)
+    if not is_safe_filename(report.file_path):
+        raise InvalidReportFilePathError(report.file_path)
     settings = get_settings()
     url = f"{settings.reports_base_url}/reports/{report.file_path}"
     try:

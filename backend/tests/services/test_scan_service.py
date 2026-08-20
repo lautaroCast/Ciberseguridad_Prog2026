@@ -39,6 +39,14 @@ def test_list_scans_for_target_unknown_target_raises(db_session):
         scan_service.list_scans_for_target(db_session, uuid.uuid4())
 
 
+def test_create_scan_on_inactive_target_raises(db_session):
+    target = _make_target(db_session)
+    target_service.update_target(db_session, target.id, {"is_active": False})
+
+    with pytest.raises(target_service.TargetInactiveError):
+        scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+
 def test_list_scans_for_target_does_not_leak_other_targets_scans(db_session):
     target_a = _make_target(db_session, name="target-a")
     target_b = _make_target(db_session, name="target-b")

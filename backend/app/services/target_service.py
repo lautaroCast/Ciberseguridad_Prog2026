@@ -28,6 +28,13 @@ class TargetNotFoundError(Exception):
     """Raised when a target id does not exist."""
 
 
+class TargetInactiveError(Exception):
+    """Raised when a scan/pipeline is requested against a target that's
+    been marked inactive via PATCH /targets/{id}. Read access (GET, list)
+    to inactive targets is intentionally still allowed — this only gates
+    the two places that would launch new work against one."""
+
+
 def list_targets(db: Session, *, is_active: bool | None = None) -> list[Target]:
     return target_repository.list_targets(db, is_active=is_active)
 
@@ -36,6 +43,20 @@ def get_target_or_raise(db: Session, target_id: uuid.UUID) -> Target:
     target = target_repository.get_target(db, target_id)
     if target is None:
         raise TargetNotFoundError(str(target_id))
+    return target
+
+
+def get_active_target_or_raise(db: Session, target_id: uuid.UUID) -> Target:
+    """Same as `get_target_or_raise`, plus an `is_active` gate.
+
+    Only for call sites that launch new work (create_scan,
+    trigger_pipeline) — everything else should keep using
+    `get_target_or_raise` so reading/listing an inactive target still
+    works.
+    """
+    target = get_target_or_raise(db, target_id)
+    if not target.is_active:
+        raise TargetInactiveError(str(target_id))
     return target
 
 

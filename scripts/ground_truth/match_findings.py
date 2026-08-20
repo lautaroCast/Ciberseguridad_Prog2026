@@ -111,8 +111,15 @@ def _location_overlaps(finding_evidence: str | None, catalog_path: str | None) -
 
 
 def _keyword_hit(finding: dict, keywords: list[str]) -> bool:
-    haystack = f"{finding.get('title', '')} {finding.get('evidence', '')} " \
-               f"{finding.get('description', '')}".lower()
+    # `.get(key, "")` only substitutes the default when the key is
+    # missing, not when its value is None (e.g. a finding with no
+    # evidence still has an "evidence": null key from the API) — `or ""`
+    # catches both, so a None field can't turn into the literal
+    # substring "none" in the haystack and spuriously match a keyword.
+    title = finding.get("title") or ""
+    evidence = finding.get("evidence") or ""
+    description = finding.get("description") or ""
+    haystack = f"{title} {evidence} {description}".lower()
     return any(kw in haystack for kw in keywords)
 
 

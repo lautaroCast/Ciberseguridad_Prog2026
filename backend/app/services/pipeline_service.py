@@ -28,7 +28,7 @@ class PipelineTriggerError(Exception):
 
 
 def trigger_pipeline(db: Session, target_id: uuid.UUID) -> Scan:
-    target = target_service.get_target_or_raise(db, target_id)
+    target = target_service.get_active_target_or_raise(db, target_id)
     scan = scan_repository.create_scan(db, target_id=target_id, triggered_by="n8n-pipeline")
 
     settings = get_settings()

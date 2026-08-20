@@ -19,7 +19,7 @@ class ScanNotFoundError(Exception):
 
 
 def create_scan(db: Session, *, target_id: uuid.UUID, triggered_by: str | None) -> Scan:
-    target_service.get_target_or_raise(db, target_id)
+    target_service.get_active_target_or_raise(db, target_id)
     return scan_repository.create_scan(db, target_id=target_id, triggered_by=triggered_by)
 
 
