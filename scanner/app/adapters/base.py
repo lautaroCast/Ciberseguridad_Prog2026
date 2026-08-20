@@ -30,13 +30,27 @@ class ScannerAdapter(ABC):
 
     @abstractmethod
     def build_command(
-        self, *, target: str, port: int, scheme: str, options: dict[str, Any], output_path: str
+        self,
+        *,
+        target: str,
+        port: int,
+        scheme: str,
+        options: dict[str, Any],
+        output_path: str,
+        auth_cookie: str | None = None,
     ) -> list[str]:
         """Return the argv to execute for this scan.
 
         `output_path` is a pre-created (but empty/absent) temp file path,
         populated only when `uses_output_file` is True; adapters that
         stream to stdout ignore it.
+
+        `auth_cookie` is a pre-authenticated session `Cookie` header value
+        (e.g. `"security=low; PHPSESSID=..."`), set only when the caller
+        requested `options={"authenticated": true}` and `scan_runner`
+        successfully authenticated against the target (currently DVWA
+        only, see `app/services/dvwa_auth.py`). Adapters that don't have a
+        way to inject a cookie (Nmap, WhatWeb) ignore it.
         """
 
     def parse_output(self, raw_output: str) -> Any:

@@ -21,11 +21,18 @@ class NiktoAdapter(ScannerAdapter):
     output_file_extension: ClassVar[str] = ".json"
 
     def build_command(
-        self, *, target: str, port: int, scheme: str, options: dict[str, Any], output_path: str
+        self,
+        *,
+        target: str,
+        port: int,
+        scheme: str,
+        options: dict[str, Any],
+        output_path: str,
+        auth_cookie: str | None = None,
     ) -> list[str]:
         url = f"{scheme}://{target}:{port}"
         max_time = str(options.get("max_time", "120s"))
-        return [
+        command = [
             "perl",
             "/opt/nikto/program/nikto.pl",
             "-h",
@@ -38,6 +45,12 @@ class NiktoAdapter(ScannerAdapter):
             "-maxtime",
             max_time,
         ]
+        if auth_cookie:
+            # -Add-header can be repeated; one "Cookie: ..." pair is
+            # enough to carry an authenticated session (verified by hand
+            # against the running DVWA lab).
+            command += ["-Add-header", f"Cookie: {auth_cookie}"]
+        return command
 
     def parse_output(self, raw_output: str) -> Any:
         return json.loads(raw_output) if raw_output.strip() else None

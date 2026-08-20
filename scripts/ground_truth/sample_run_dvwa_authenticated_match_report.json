@@ -1,0 +1,323 @@
+{
+  "target": "dvwa-authenticated",
+  "total_findings": 56,
+  "total_catalog_entries": 11,
+  "matches": [
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "59707cff-b88f-4736-90cb-282a2fb774c1",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "c319d396-8583-47a4-a8db-2404eddcccd6",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "73e451b4-63bb-48ce-a862-b5b6b6200055",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "142ca77e-259e-475c-8b8a-7194755a3738",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "4d9489b0-29d8-47e2-b39a-c1c688b2e6cc",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "6ceb3bc7-784c-41b2-b715-d920d7f339e9",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "0d3dbb21-0c56-440f-a199-2fe7ecd259c8",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "90dd56a9-c926-46ca-9cd2-691eecbb579f",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "0c8457ed-12af-41cb-83e6-bbb818c02c16",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "6e3d8625-e990-4f62-9170-486c3888d637",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "cb96d69c-0210-4121-83be-c3f33c37630b",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "62dcc332-d394-4b25-8c8f-560f398cf9e1",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "ec9bc97a-a3f3-4a8d-9447-49e19574c616",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "6690ea49-4c45-48eb-81ad-c70b7584156b",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "bc40c522-4f0c-4613-a4f4-8188e2d11859",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "da11f7cd-40c6-494e-aaf9-e842455a0ce4",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "5c9a4a51-b17a-4533-ad61-eed4a3476044",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "7cf2c056-ecdd-4f70-b04c-dac15ab22620",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "b3147696-03b8-460a-a956-3612811d56fe",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "f053ec6e-b3f6-464d-8294-a1312b6d6193",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "e9e9daaa-ea53-4ef9-ae7b-e36df00bb9d5",
+      "tool": "nikto",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "ef0bd6a6-fded-4c2a-84fb-418eada5dd9e",
+      "tool": "nikto",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "f2654e0f-a9dc-4f99-a685-d6be71ca4322",
+      "tool": "nikto",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "a969c470-6794-42f3-a276-6b435ed614de",
+      "tool": "nikto",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csp",
+      "finding_id": "6736dfb5-f4df-42d8-8bb8-3b736f677a7c",
+      "tool": "nikto",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csrf",
+      "finding_id": "f68b10f2-54a8-43f7-8795-16f9ed3f3a74",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csrf",
+      "finding_id": "1f3b4688-074e-4575-a65f-e62b4871322f",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csrf",
+      "finding_id": "8e6713e7-5821-4449-8a74-bb444e28af0c",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csrf",
+      "finding_id": "27ce8dd4-ba42-4528-bf00-449272dec897",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csrf",
+      "finding_id": "1a7b0f6d-501e-4f24-88fa-8ae2fca4cd73",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-csrf",
+      "finding_id": "cc9f5a50-138a-4bfc-b4f9-d02f2dcf671f",
+      "tool": "nikto",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-exec",
+      "finding_id": "9261937d-ebad-4032-abfc-6d6acd651fe0",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-exec",
+      "finding_id": "ee63d252-5362-4327-91df-85334783c4ea",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-fi",
+      "finding_id": "5437c842-4137-4b34-9f7f-05adc922cf22",
+      "tool": "zap",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-fi",
+      "finding_id": "e070c412-513b-4495-a51b-5d8b24791450",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-fi",
+      "finding_id": "c37c602b-9ded-415e-bee5-4f2a5ef56c39",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-fi",
+      "finding_id": "1fb6cb3a-f442-44ba-834a-cc89f7478f3c",
+      "tool": "nuclei",
+      "tier": "keyword"
+    },
+    {
+      "catalog_entry_id": "DVWA-fi",
+      "finding_id": "f118006e-00df-4e9c-a7a8-128841a5e865",
+      "tool": "nikto",
+      "tier": "keyword"
+    }
+  ],
+  "unmatched_finding_ids": [
+    "d127c770-4d4c-4bb6-b2ce-2467a9642df5",
+    "57b0f516-a5bb-49d4-a12b-0dcdbdcb273c",
+    "3ad80456-657d-4be7-ba9f-622e88e0d33a",
+    "f05ecea3-6626-49d2-a4e2-f837ad579400",
+    "f033e618-1065-47d1-b3cd-0f99e4939359",
+    "dc3296ea-ac57-4f0f-a40c-9deb4c6c2169",
+    "4e262d49-de81-491d-89ed-df7a4753b4eb",
+    "e329a020-a7cb-40b6-aa9a-19236a20c8f2",
+    "7d177972-1c79-4898-b2e8-c11a6ff7d23f",
+    "39ff209e-0a94-4dbf-95a5-5897864e45e8",
+    "f9d03cae-9a3a-4062-adb7-cf45d4c49563",
+    "fbf3ad58-6e7e-46fe-a5eb-6e8195cffaed",
+    "563109a4-d13e-4691-93b3-19d544d5d9be",
+    "5ea17441-536e-4b11-9334-5aac531cd853",
+    "aa8defbe-5ef4-4b37-921c-b5cfe1b017bb",
+    "06d04635-b16b-4d99-a525-44d279778555",
+    "659059a8-99ac-4851-bd0d-2b299b810824",
+    "88ea0c93-e362-4eec-99df-f3466276ea3b"
+  ],
+  "uncovered_catalog_entry_ids": [
+    "DVWA-sqli",
+    "DVWA-sqli_blind",
+    "DVWA-upload",
+    "DVWA-weak_id",
+    "DVWA-xss_d",
+    "DVWA-xss_r",
+    "DVWA-xss_s"
+  ],
+  "match_tier_breakdown": {
+    "keyword": 38
+  },
+  "inter_tool_overlap": {
+    "catalog_entries_matched_by_multiple_tools": {
+      "DVWA-csp": [
+        "nikto",
+        "nuclei",
+        "zap"
+      ],
+      "DVWA-csrf": [
+        "nikto",
+        "zap"
+      ],
+      "DVWA-exec": [
+        "nuclei",
+        "zap"
+      ],
+      "DVWA-fi": [
+        "nikto",
+        "nuclei",
+        "zap"
+      ]
+    },
+    "count": 4,
+    "pct_of_matched_entries": 100.0
+  },
+  "metrics_by_tool": {
+    "nikto": {
+      "total_findings": 15,
+      "true_positive_findings": 7,
+      "false_positive_findings": 8,
+      "catalog_entries_matched": 3,
+      "precision": 0.467,
+      "recall": 0.273,
+      "f1": 0.345,
+      "false_positive_rate": 0.533
+    },
+    "nuclei": {
+      "total_findings": 19,
+      "true_positive_findings": 15,
+      "false_positive_findings": 4,
+      "catalog_entries_matched": 3,
+      "precision": 0.789,
+      "recall": 0.273,
+      "f1": 0.406,
+      "false_positive_rate": 0.211
+    },
+    "zap": {
+      "total_findings": 22,
+      "true_positive_findings": 16,
+      "false_positive_findings": 6,
+      "catalog_entries_matched": 4,
+      "precision": 0.727,
+      "recall": 0.364,
+      "f1": 0.485,
+      "false_positive_rate": 0.273
+    }
+  }
+}

@@ -17,7 +17,14 @@ class NucleiAdapter(ScannerAdapter):
     tool_name: ClassVar[str] = "nuclei"
 
     def build_command(
-        self, *, target: str, port: int, scheme: str, options: dict[str, Any], output_path: str
+        self,
+        *,
+        target: str,
+        port: int,
+        scheme: str,
+        options: dict[str, Any],
+        output_path: str,
+        auth_cookie: str | None = None,
     ) -> list[str]:
         url = f"{scheme}://{target}:{port}"
         command = ["nuclei", "-u", url, "-jsonl", "-silent", "-duc"]
@@ -27,6 +34,8 @@ class NucleiAdapter(ScannerAdapter):
         tags = options.get("tags")
         if tags:
             command += ["-tags", str(tags)]
+        if auth_cookie:
+            command += ["-H", f"Cookie: {auth_cookie}"]
         return command
 
     def parse_output(self, raw_output: str) -> list[dict[str, Any]]:

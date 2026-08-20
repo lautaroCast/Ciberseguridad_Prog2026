@@ -26,6 +26,29 @@ def test_build_command_with_severity_and_tags():
     assert "-tags" in command and command[command.index("-tags") + 1] == "cve"
 
 
+def test_build_command_without_auth_cookie_omits_header_flag():
+    adapter = NucleiAdapter()
+    command = adapter.build_command(
+        target="dvwa", port=80, scheme="http", options={}, output_path=""
+    )
+    assert "-H" not in command
+
+
+def test_build_command_with_auth_cookie_adds_header_flag():
+    adapter = NucleiAdapter()
+    command = adapter.build_command(
+        target="dvwa",
+        port=80,
+        scheme="http",
+        options={},
+        output_path="",
+        auth_cookie="security=low; PHPSESSID=abc123",
+    )
+    assert "-H" in command
+    idx = command.index("-H")
+    assert command[idx + 1] == "Cookie: security=low; PHPSESSID=abc123"
+
+
 def test_malformed_jsonl_line_raises():
     adapter = NucleiAdapter()
     with pytest.raises(json.JSONDecodeError):

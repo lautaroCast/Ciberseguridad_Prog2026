@@ -6,7 +6,7 @@ import pytest
 
 from app.adapters.nikto_adapter import NiktoAdapter
 from app.adapters.nmap_adapter import NmapAdapter
-from app.services import scan_runner
+from app.services import dvwa_auth, scan_runner
 
 
 def _completed(stdout="", stderr="", returncode=0):
@@ -133,3 +133,65 @@ def test_output_file_adapter_cleans_up_partial_file_on_timeout(monkeypatch, tmp_
     )
     assert result.status == "failed"
     assert not written_path["value"].exists()
+
+
+def test_authenticated_option_fetches_cookie_and_passes_it_to_build_command(monkeypatch):
+    # Recomendación #5 (docs/independent-evaluation-report.md).
+    adapter = NiktoAdapter()
+    monkeypatch.setattr(
+        dvwa_auth, "get_authenticated_cookie", lambda target, port, scheme: "security=low; PHPSESSID=abc"
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _completed(stdout=""))
+
+    result = scan_runner.execute(
+        adapter, target="dvwa", port=80, scheme="http", options={"authenticated": True}, timeout=30
+    )
+    assert "Cookie: security=low; PHPSESSID=abc" in result.command
+
+
+def test_authenticated_option_ignored_for_tools_without_cookie_support(monkeypatch):
+    adapter = NmapAdapter()
+    calls = []
+    monkeypatch.setattr(
+        dvwa_auth,
+        "get_authenticated_cookie",
+        lambda target, port, scheme: calls.append(1) or "should-not-be-used",
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _completed(stdout="<nmaprun></nmaprun>"))
+
+    scan_runner.execute(
+        adapter, target="dvwa", port=80, scheme="http", options={"authenticated": True}, timeout=30
+    )
+    assert calls == []  # nmap isn't in _SUPPORTS_AUTH_COOKIE — never even attempted
+
+
+def test_authentication_failure_fails_the_scan_without_running_the_tool(monkeypatch):
+    adapter = NiktoAdapter()
+
+    def _raise(*a, **k):
+        raise dvwa_auth.DvwaAuthError("login failed with status 500")
+
+    monkeypatch.setattr(dvwa_auth, "get_authenticated_cookie", _raise)
+    subprocess_calls = []
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess_calls.append(1))
+
+    result = scan_runner.execute(
+        adapter, target="dvwa", port=80, scheme="http", options={"authenticated": True}, timeout=30
+    )
+    assert result.status == "failed"
+    assert "Authentication against dvwa failed" in result.error_message
+    assert subprocess_calls == []  # the tool must never run against an unauthenticated session
+
+
+def test_unauthenticated_option_never_calls_auth_helper(monkeypatch):
+    adapter = NiktoAdapter()
+    calls = []
+    monkeypatch.setattr(
+        dvwa_auth, "get_authenticated_cookie", lambda target, port, scheme: calls.append(1)
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _completed(stdout=""))
+
+    scan_runner.execute(
+        adapter, target="dvwa", port=80, scheme="http", options={}, timeout=30
+    )
+    assert calls == []

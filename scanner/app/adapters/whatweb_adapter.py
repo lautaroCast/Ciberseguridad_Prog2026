@@ -16,8 +16,19 @@ class WhatWebAdapter(ScannerAdapter):
     tool_name: ClassVar[str] = "whatweb"
 
     def build_command(
-        self, *, target: str, port: int, scheme: str, options: dict[str, Any], output_path: str
+        self,
+        *,
+        target: str,
+        port: int,
+        scheme: str,
+        options: dict[str, Any],
+        output_path: str,
+        auth_cookie: str | None = None,
     ) -> list[str]:
+        # Technology fingerprinting is out of scope for authenticated
+        # scanning (it's not one of the vulnerability-finding tools the
+        # ground-truth recall measurement covers) — auth_cookie accepted
+        # for a uniform call site, ignored here.
         url = f"{scheme}://{target}:{port}"
         aggression = str(options.get("aggression", 3))
         return ["whatweb", "--log-json=-", "-q", "--color=never", "-a", aggression, url]

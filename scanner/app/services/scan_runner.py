@@ -15,6 +15,13 @@ from typing import Any
 
 from app.adapters.base import ScannerAdapter
 from app.schemas.scan import RawScanResult
+from app.services import dvwa_auth
+
+# Only these three tools actually find vulnerabilities on authenticated
+# pages (Nmap/WhatWeb don't operate at the application-auth layer — see
+# their own build_command docstrings) — no point paying an extra HTTP
+# round-trip against a target that won't use the cookie anyway.
+_SUPPORTS_AUTH_COOKIE = {"nikto", "nuclei", "zap"}
 
 
 def execute(
@@ -26,6 +33,29 @@ def execute(
     options: dict[str, Any],
     timeout: int,
 ) -> RawScanResult:
+    started_at = datetime.now(UTC)
+
+    auth_cookie: str | None = None
+    if options.get("authenticated") and adapter.tool_name in _SUPPORTS_AUTH_COOKIE:
+        # options={"authenticated": true} (Recomendación #5,
+        # docs/independent-evaluation-report.md) — currently only DVWA's
+        # login+security-level flow is implemented; a target without it
+        # (e.g. juice-shop) fails this step and the scan is reported
+        # failed rather than silently running unauthenticated.
+        try:
+            auth_cookie = dvwa_auth.get_authenticated_cookie(target, port=port, scheme=scheme)
+        except Exception as exc:  # noqa: BLE001 — DvwaAuthError, network errors, etc.
+            return RawScanResult(
+                tool=adapter.tool_name,
+                target=target,
+                command="",
+                status="failed",
+                started_at=started_at,
+                finished_at=datetime.now(UTC),
+                raw_output="",
+                error_message=f"Authentication against {target} failed: {exc}",
+            )
+
     output_path = ""
     if adapter.uses_output_file:
         fd, output_path = tempfile.mkstemp(suffix=adapter.output_file_extension)
@@ -35,10 +65,14 @@ def execute(
         os.unlink(output_path)
 
     command = adapter.build_command(
-        target=target, port=port, scheme=scheme, options=options, output_path=output_path
+        target=target,
+        port=port,
+        scheme=scheme,
+        options=options,
+        output_path=output_path,
+        auth_cookie=auth_cookie,
     )
     command_str = " ".join(command)
-    started_at = datetime.now(UTC)
 
     try:
         proc = subprocess.run(command, capture_output=True, text=True, timeout=timeout)

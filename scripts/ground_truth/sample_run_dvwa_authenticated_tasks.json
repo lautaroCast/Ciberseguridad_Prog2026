@@ -1,0 +1,35 @@
+[
+  {
+    "id": "87e9a08f-d00f-44da-8f23-071d6c2896f6",
+    "scan_id": "0a605f82-c622-4987-a00a-f693baa02fc9",
+    "tool_name": "nikto",
+    "status": "completed",
+    "command": "perl /opt/nikto/program/nikto.pl -h http://dvwa:80 -Format json -output /tmp/tmphkpehsjy.json -nointeractive -maxtime 120s -Add-header Cookie: PHPSESSID=f82lg8pjqpnongiuu41f9agio5; security=low",
+    "started_at": "2026-08-20T04:46:00.720928Z",
+    "finished_at": "2026-08-20T04:48:24.734690Z",
+    "error_message": null,
+    "created_at": "2026-08-20T04:48:24.839462Z"
+  },
+  {
+    "id": "06687151-77c4-4463-8629-bf69af10e043",
+    "scan_id": "0a605f82-c622-4987-a00a-f693baa02fc9",
+    "tool_name": "nuclei",
+    "status": "completed",
+    "command": "nuclei -u http://dvwa:80 -jsonl -silent -duc -H Cookie: PHPSESSID=s7vcnki2dgktpt9l6bjkrnbe32; security=low",
+    "started_at": "2026-08-20T04:48:24.996185Z",
+    "finished_at": "2026-08-20T04:51:07.010773Z",
+    "error_message": null,
+    "created_at": "2026-08-20T04:51:07.130131Z"
+  },
+  {
+    "id": "d40c6d08-ea2f-4fb9-b1cd-540e364b7ebd",
+    "scan_id": "0a605f82-c622-4987-a00a-f693baa02fc9",
+    "tool_name": "zap",
+    "status": "completed",
+    "command": "zap.sh -cmd -quickurl http://dvwa:80 -quickout /tmp/tmpu1dtn74h.json -config replacer.full_list(0).description=auth-cookie -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Cookie -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=PHPSESSID=s4nss30lgkggir3j38a11qbq00; security=low",
+    "started_at": "2026-08-20T04:51:07.283270Z",
+    "finished_at": "2026-08-20T04:52:41.222562Z",
+    "error_message": null,
+    "created_at": "2026-08-20T04:52:41.275144Z"
+  }
+]

@@ -10,8 +10,18 @@ class NmapAdapter(ScannerAdapter):
     tool_name: ClassVar[str] = "nmap"
 
     def build_command(
-        self, *, target: str, port: int, scheme: str, options: dict[str, Any], output_path: str
+        self,
+        *,
+        target: str,
+        port: int,
+        scheme: str,
+        options: dict[str, Any],
+        output_path: str,
+        auth_cookie: str | None = None,
     ) -> list[str]:
+        # nmap operates below the application layer — no notion of an
+        # authenticated HTTP session applies here, so auth_cookie is
+        # accepted (for a uniform call site in scan_runner) and ignored.
         # nmap scans a port range, not a single URL — `port`/`scheme` (used
         # by the HTTP-oriented adapters) don't apply here. `options["ports"]`
         # overrides the default top-1000-ports scan, e.g. "1-1000" or "80,443".

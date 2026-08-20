@@ -23,6 +23,29 @@ def test_build_command_with_custom_maxtime():
     assert command[command.index("-maxtime") + 1] == "30s"
 
 
+def test_build_command_without_auth_cookie_omits_add_header():
+    adapter = NiktoAdapter()
+    command = adapter.build_command(
+        target="dvwa", port=80, scheme="http", options={}, output_path="/tmp/out.json"
+    )
+    assert "-Add-header" not in command
+
+
+def test_build_command_with_auth_cookie_adds_cookie_header():
+    adapter = NiktoAdapter()
+    command = adapter.build_command(
+        target="dvwa",
+        port=80,
+        scheme="http",
+        options={},
+        output_path="/tmp/out.json",
+        auth_cookie="security=low; PHPSESSID=abc123",
+    )
+    assert "-Add-header" in command
+    idx = command.index("-Add-header")
+    assert command[idx + 1] == "Cookie: security=low; PHPSESSID=abc123"
+
+
 def test_malformed_json_raises():
     adapter = NiktoAdapter()
     with pytest.raises(json.JSONDecodeError):
