@@ -13,6 +13,24 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 
+
+# The `options` keys that flow, largely unvalidated until now, straight into
+# a subprocess argv token by some adapter's `build_command` (nmap: `ports`,
+# nuclei: `severity`/`tags`, nikto: `max_time`, whatweb: `aggression` — see
+# each adapter module). Same injection class `target` guards against below:
+# a value starting with "-" gets parsed by the underlying tool as a CLI flag
+# instead of the value it's supposed to be.
+_OPTION_KEYS_TO_GUARD = ("ports", "severity", "tags", "max_time", "aggression")
+
+
+def _reject_if_looks_like_a_flag(label: str, value: Any) -> None:
+    # Shared by both `target` and `options`' guarded keys so the two can't
+    # drift apart (e.g. one getting refined to also reject a bare "-" or
+    # "--" while the other doesn't).
+    if str(value).startswith("-"):
+        raise ValueError(f"{label} must not start with '-' (would be interpreted as a CLI flag)")
+
+
 class ScanRequest(BaseModel):
     target: str = Field(min_length=1, max_length=255, description="Hostname resolvable on lab-network, e.g. 'juice-shop'.")
     port: int = Field(default=80, ge=1, le=65535)
@@ -25,8 +43,7 @@ class ScanRequest(BaseModel):
         # where a leading "-" is inert). A target starting with "-" would be
         # parsed by nmap as a CLI flag instead of a hostname — reject it here
         # so every adapter is covered by a single check, not just nmap's own.
-        if value.startswith("-"):
-            raise ValueError("target must not start with '-' (would be interpreted as a CLI flag)")
+        _reject_if_looks_like_a_flag("target", value)
         return value
     scheme: Literal["http", "https"] = "http"
     # Adapter-specific knobs (e.g. nuclei's `severity`, nikto's `max_time`).
@@ -34,6 +51,14 @@ class ScanRequest(BaseModel):
     # ignored rather than rejected, so callers can pass a shared options
     # dict across tools without per-tool branching.
     options: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("options")
+    @classmethod
+    def _known_option_values_must_not_look_like_flags(cls, value: dict[str, Any]) -> dict[str, Any]:
+        for key in _OPTION_KEYS_TO_GUARD:
+            if key in value:
+                _reject_if_looks_like_a_flag(f"options.{key}", value[key])
+        return value
     timeout_seconds: int | None = Field(
         default=None, ge=1, description="Capped at SCANNER_MAX_TIMEOUT_SECONDS regardless of what's requested here."
     )
