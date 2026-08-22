@@ -175,7 +175,71 @@
       "position": [
         4480,
         1728
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "9f1a2b3c-4d5e-4a1a-9a11-1000000000a1",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000001",
+      "name": "IF: Target Lookup Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4480,
+        1856
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $('Create Scan (Manual)').item.json.id }}/complete",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"status\": \"failed\", \"error_message\": \"No se pudo confirmar el target antes de iniciar el pipeline (fallo de red o el target fue eliminado). Pipeline detenido antes del reconocimiento.\", \"pipeline_run_id\": $execution.id } }}",
+        "options": {
+          "timeout": 15000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.BACKEND_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000002",
+      "name": "Mark Scan Failed - Target No Disponible",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4480,
+        1984
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -214,7 +278,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Both trigger branches connect into THIS node's input — n8n's own\n// connection routing already resolves \"whichever branch actually ran\";\n// there's no need to go hunting for a node by name (an earlier version\n// of this node did that with $('NodeName'), which is fragile: on n8n's\n// external Task Runner, referencing a node that didn't execute doesn't\n// reliably throw the way it does in the legacy in-process VM, so the\n// try/catch silently produced 'incomplete context' instead of catching\n// anything). $input always reflects this node's real incoming data.\nconst items = $input.all();\n\nif (!items.length) {\n  throw new Error('Pipeline context is incomplete: no input reached this node from either trigger branch.');\n}\n\nconst ctx = items[0].json;\n\nif (!ctx.scan_id || !ctx.target_id || !ctx.host) {\n  throw new Error('Pipeline context is incomplete: expected target_id, scan_id and host, got: ' + JSON.stringify(ctx));\n}\n\nreturn [{ json: ctx }];"
+        "jsCode": "// Both trigger branches connect into THIS node's input — n8n's own\n// connection routing already resolves \"whichever branch actually ran\";\n// there's no need to go hunting for a node by name (an earlier version\n// of this node did that with $('NodeName'), which is fragile: on n8n's\n// external Task Runner, referencing a node that didn't execute doesn't\n// reliably throw the way it does in the legacy in-process VM, so the\n// try/catch silently produced 'incomplete context' instead of catching\n// anything). $input always reflects this node's real incoming data.\n//\n// This node used to `throw` on a malformed context, which halts the\n// whole n8n execution with no chance for a downstream node to call\n// POST /scans/{id}/complete — a scan already created upstream (either\n// trigger path creates it before this node runs) would be stuck in\n// 'running' forever. It now returns a marker item instead; the two IF\n// nodes right after this one route a marked item to\n// 'Mark Scan Failed - Contexto Invalido' when a scan_id is known, or\n// let the execution end quietly when it isn't (the one truly\n// irreducible case: no scan row exists, so nothing can be marked).\nconst items = $input.all();\n\nif (!items.length) {\n  return [{ json: { context_invalid: true, _error: 'Pipeline context is incomplete: no input reached this node from either trigger branch.' } }];\n}\n\nconst ctx = items[0].json;\n\nif (!ctx.scan_id || !ctx.target_id || !ctx.host) {\n  return [{ json: { ...ctx, context_invalid: true, _error: 'Pipeline context is incomplete: expected target_id, scan_id and host, got: ' + JSON.stringify(ctx) } }];\n}\n\nreturn [{ json: ctx }];"
       },
       "id": "d71bf89b-7e58-4752-b2db-becfbc9c332c",
       "name": "Resolve Pipeline Context",
@@ -287,7 +351,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const nmapResult = $('Scan: Nmap').item.json;\nconst context = $('Resolve Pipeline Context').item.json;\n\nconst services = (nmapResult && nmapResult.parsed) || [];\n\n// \"Selección inteligente de herramientas\" (etapa 6 del pipeline): si Nmap\n// no encontró ningún puerto abierto, correr las herramientas HTTP no\n// tiene sentido. Se marca no_http_service para que el nodo IF que sigue derive el pipeline a Mark Scan Failed en vez de dejarlo colgado en 'running' (COD-2).\nif (services.length === 0) {\n  return [{ json: { ...context, no_http_service: true } }];\n}\n\nconst httpService = services.find((s) => /http/i.test(s.service_name || ''));\nconst chosen = httpService || services[0];\nconst scheme = /https/i.test(chosen.service_name || '') ? 'https' : 'http';\n\nreturn [{\n  json: {\n    ...context,\n    port: chosen.port,\n    scheme,\n  },\n}];"
+        "jsCode": "const context = $('Resolve Pipeline Context').item.json;\n\ntry {\n  const nmapResult = $('Scan: Nmap').item.json;\n  const services = (nmapResult && nmapResult.parsed) || [];\n\n  // \"Selección inteligente de herramientas\" (etapa 6 del pipeline): si Nmap\n  // no encontró ningún puerto abierto, correr las herramientas HTTP no\n  // tiene sentido. Se marca no_http_service para que el nodo IF que sigue derive el pipeline a Mark Scan Failed en vez de dejarlo colgado en 'running' (COD-2).\n  if (services.length === 0) {\n    return [{ json: { ...context, no_http_service: true } }];\n  }\n\n  const httpService = services.find((s) => /http/i.test(s.service_name || ''));\n  const chosen = httpService || services[0];\n  const scheme = /https/i.test(chosen.service_name || '') ? 'https' : 'http';\n\n  return [{\n    json: {\n      ...context,\n      port: chosen.port,\n      scheme,\n    },\n  }];\n} catch (err) {\n  // Any unexpected shape here (not just \"Nmap found nothing\", which the\n  // branch above already handles) must still reach a terminal state\n  // instead of throwing and leaving the scan stuck in 'running'.\n  return [{ json: { ...context, no_http_service: true } }];\n}"
       },
       "id": "a73ba9be-1948-4be8-8fb8-26f275208690",
       "name": "Select HTTP Port",
@@ -655,7 +719,7 @@
     {
       "parameters": {
         "fromEmail": "vulnscan@lab.local",
-        "toEmail": "cathryn.considine@ethereal.email",
+        "toEmail": "test@ethereal.email",
         "subject": "=VulnScan Platform — Report for scan {{ $('Resolve Pipeline Context').item.json.scan_id }}",
         "text": "=Automated report attached for target host {{ $('Resolve Pipeline Context').item.json.host }} (scan {{ $('Resolve Pipeline Context').item.json.scan_id }}).\n\nGenerated by the VulnScan Platform pipeline — local lab use only, see docs/lab.md.",
         "emailFormat": "text",
@@ -754,11 +818,12 @@
           "conditions": [
             {
               "id": "b1c9a001-1111-4a1a-9a11-0f1a2b3c4d5e",
-              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
-              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "leftValue": "={{ $json.secret_matches }}",
+              "rightValue": "",
               "operator": {
-                "type": "string",
-                "operation": "equals"
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
               }
             }
           ],
@@ -808,6 +873,115 @@
         4592,
         1620
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "9f1a2b3c-4d5e-4a1a-9a11-1000000000b1",
+              "leftValue": "={{ $json.context_invalid === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000003",
+      "name": "IF: Invalid Pipeline Context",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5040,
+        1728
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "9f1a2b3c-4d5e-4a1a-9a11-1000000000c1",
+              "leftValue": "={{ !!$json.scan_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000004",
+      "name": "IF: Has Scan Id",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5040,
+        1856
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/scans/{{ $json.scan_id }}/complete",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"status\": \"failed\", \"error_message\": \"Contexto de pipeline incompleto tras resolver el trigger (falta target_id, scan_id o host). Pipeline detenido antes del reconocimiento. Detalle: \" + ($json._error || 'sin detalle'), \"pipeline_run_id\": $execution.id } }}",
+        "options": {
+          "timeout": 15000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.BACKEND_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000005",
+      "name": "Mark Scan Failed - Contexto Invalido",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5040,
+        1984
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Constant-time comparison, mirroring secrets.compare_digest used\n// elsewhere in this platform (backend/scanner/reports) for the\n// equivalent shared-secret checks — n8n's IF node only offers a plain\n// string-equals operator, which short-circuits on the first differing\n// character.\nconst received = String(($json.headers && $json.headers['x-webhook-secret']) || '');\nconst expected = String($env.N8N_WEBHOOK_SECRET || '');\n\nlet diff = received.length === expected.length ? 0 : 1;\nconst maxLen = Math.max(received.length, expected.length);\nfor (let i = 0; i < maxLen; i++) {\n  const a = i < received.length ? received.charCodeAt(i) : 0;\n  const b = i < expected.length ? expected.charCodeAt(i) : 0;\n  diff |= a ^ b;\n}\n\nreturn [{ json: { ...$json, secret_matches: diff === 0 } }];"
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000006",
+      "name": "Compare Webhook Secret (Constant-Time)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4592,
+        1290
+      ]
     }
   ],
   "pinData": {},
@@ -816,7 +990,7 @@
       "main": [
         [
           {
-            "node": "Check Webhook Secret",
+            "node": "Compare Webhook Secret (Constant-Time)",
             "type": "main",
             "index": 0
           }
@@ -860,6 +1034,24 @@
       "main": [
         [
           {
+            "node": "IF: Target Lookup Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Target Lookup Failed": {
+      "main": [
+        [
+          {
+            "node": "Mark Scan Failed - Target No Disponible",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Edit Fields - From Manual",
             "type": "main",
             "index": 0
@@ -882,7 +1074,7 @@
       "main": [
         [
           {
-            "node": "Scan: Nmap",
+            "node": "IF: Invalid Pipeline Context",
             "type": "main",
             "index": 0
           }
@@ -1089,6 +1281,47 @@
         [
           {
             "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Invalid Pipeline Context": {
+      "main": [
+        [
+          {
+            "node": "IF: Has Scan Id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Scan: Nmap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Has Scan Id": {
+      "main": [
+        [
+          {
+            "node": "Mark Scan Failed - Contexto Invalido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Compare Webhook Secret (Constant-Time)": {
+      "main": [
+        [
+          {
+            "node": "Check Webhook Secret",
             "type": "main",
             "index": 0
           }
