@@ -321,6 +321,27 @@ services:
       - ./n8n/workflows:/workflows:ro
     ports:
       - "${N8N_PORT:-5678}:5678"
+    # Same justification as backend/scanner/reports below: no need for
+    # capabilities beyond what n8n's own Node.js process uses.
+    # n8n-data already covers /home/node/.n8n (SQLite DB, binary-data
+    # cache, credentials) — read_only + tmpfs verified live: workflow
+    # reimported/reactivated and a real end-to-end scan completed
+    # against a read_only root filesystem. /home/node/.cache is a second,
+    # separate path n8n's own startup (`generateStaticAssets`) writes to —
+    # confirmed by a real crash-loop (`ENOENT: mkdir '/home/node/.cache'`,
+    # then `EACCES` until uid/gid were added) before this was right, same
+    # class of gotcha `reports` already hit with its own fontconfig cache
+    # dir. uid/gid 1000 confirmed live (`docker run --entrypoint id
+    # n8nio/n8n:latest`) — tmpfs mounts default to root:root, unwritable
+    # by the non-root `node` user this container runs as.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/node/.cache:uid=1000,gid=1000
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     networks:
       - app-network
     depends_on:
