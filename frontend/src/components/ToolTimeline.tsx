@@ -1,3 +1,4 @@
+import { AlertIcon } from "./Icon";
 import { StatusIcon } from "./StatusIcon";
 import { statusColor, statusLabel } from "../lib/status";
 import { elapsedSeconds, formatDuration, stripAnsi } from "../lib/format";
@@ -36,14 +37,7 @@ export function ToolTimeline({ rows }: { rows: ToolBreakdownRow[] }) {
         const seconds = durations[index];
         const running = status === "running";
         const width = running ? 46 : Math.round((seconds / longest) * 100);
-        const barColor =
-          status === "failed"
-            ? "var(--bad)"
-            : running
-              ? "var(--accent)"
-              : status === "completed"
-                ? "var(--ok)"
-                : "var(--line-2)";
+        const barColor = statusColor(status);
 
         return (
           <div
@@ -123,7 +117,7 @@ export function ToolErrors({ rows }: { rows: ToolBreakdownRow[] }) {
       {failed.map((row) => (
         <div key={row.tool} className="callout callout--bad stack" style={{ gap: 8 }}>
           <div className="row" style={{ gap: 8, color: "var(--bad)" }}>
-            <AlertGlyph />
+            <AlertIcon />
             <span style={{ fontSize: 13, fontWeight: 500 }}>
               {row.label} falló — el pipeline continuó con las herramientas restantes
             </span>
@@ -132,24 +126,5 @@ export function ToolErrors({ rows }: { rows: ToolBreakdownRow[] }) {
         </div>
       ))}
     </div>
-  );
-}
-
-function AlertGlyph() {
-  return (
-    <svg
-      width={14}
-      height={14}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.2}
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v5" />
-      <path d="M12 16.5v.01" />
-    </svg>
   );
 }
