@@ -86,8 +86,12 @@ Part of the root `docker-compose.yml`. To work on it in isolation:
 
 ```bash
 docker compose up -d reports
-curl http://localhost:${REPORTS_PORT:-8200}/health
+docker compose exec reports curl http://localhost:8200/health
 ```
+
+(No `ports:` is published to the host for this service — Módulo 9,
+nothing outside `app-network` needs to reach it directly — so the health
+check has to run from inside the container, not from the host.)
 
 It's normally called by the Backend (`app/services/report_service.py`
 there), via `POST /scans/{scan_id}/reports?format=pdf` on the Backend —

@@ -86,4 +86,16 @@ describe("TargetDetailPage — deleting a target", () => {
     await screen.findByText("Este objetivo nunca se escaneó");
     expect(deleteButton).not.toBeDisabled();
   });
+
+  // Before this fix, `disabled={!scansQuery.isSuccess}` meant a query that
+  // *fails* never becomes true either — the button was stuck disabled
+  // forever with no recovery path short of a full page reload.
+  it("re-enables the Eliminar button when the scan history query errors, not just when it succeeds", async () => {
+    vi.mocked(getTarget).mockResolvedValue(ACTIVE_TARGET);
+    vi.mocked(listScansForTarget).mockRejectedValue(new Error("network error"));
+
+    renderPage();
+    const deleteButton = await screen.findByRole("button", { name: "Eliminar" });
+    await waitFor(() => expect(deleteButton).not.toBeDisabled());
+  });
 });

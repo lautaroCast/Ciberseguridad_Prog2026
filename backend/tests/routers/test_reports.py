@@ -97,6 +97,43 @@ def test_create_report_upstream_error_returns_502(client, monkeypatch):
     assert response.status_code == 502
 
 
+def test_create_report_malformed_json_returns_502(client, monkeypatch):
+    # A 200 response isn't a guarantee of a well-formed body — e.g. a proxy
+    # in front of the Reports Service returning its own HTML error page
+    # with a 200. response.json() raising ValueError used to fall through
+    # as an unhandled 500 instead of the same 502 path as an unreachable
+    # upstream.
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+
+    class _BrokenJsonResponse(_FakeResponse):
+        def json(self):
+            raise ValueError("not valid JSON")
+
+    def _fake_post(url, json, headers, timeout):
+        return _BrokenJsonResponse(200)
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+
+    response = client.post(f"/scans/{scan['id']}/reports", params={"format": "pdf"})
+    assert response.status_code == 502
+
+
+def test_create_report_missing_key_returns_502(client, monkeypatch):
+    # Valid JSON, but missing the "filename" key generate_report expects —
+    # same fix as the malformed-JSON case above, same regression class.
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+
+    def _fake_post(url, json, headers, timeout):
+        return _FakeResponse(200, json_body={"format": "pdf"})
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+
+    response = client.post(f"/scans/{scan['id']}/reports", params={"format": "pdf"})
+    assert response.status_code == 502
+
+
 def test_list_reports_for_scan(client, monkeypatch):
     target = _create_target(client)
     scan = _create_scan(client, target["id"])

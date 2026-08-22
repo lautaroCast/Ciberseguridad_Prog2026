@@ -56,6 +56,27 @@ def execute(
                 error_message=f"Authentication against {target} failed: {exc}",
             )
 
+        # auth_cookie flows into 3 different adapters' argv (Nikto's
+        # -Add-header, Nuclei's -H, ZAP's -config replacer value) — not the
+        # same shape of risk `target`/`options` guard against (this is a
+        # "name=value; name=value" cookie string, not a bare CLI token, so
+        # a leading "-" check wouldn't protect anything real here), but an
+        # embedded CR/LF has no legitimate reason to be in a session cookie
+        # and could otherwise smuggle extra lines into whatever config/log
+        # format each tool builds around this value. Checked once here
+        # rather than in each of the 3 adapters separately.
+        if auth_cookie is not None and ("\r" in auth_cookie or "\n" in auth_cookie):
+            return RawScanResult(
+                tool=adapter.tool_name,
+                target=target,
+                command="",
+                status="failed",
+                started_at=started_at,
+                finished_at=datetime.now(UTC),
+                raw_output="",
+                error_message=f"Authentication against {target} failed: session cookie contained an embedded newline",
+            )
+
     output_path = ""
     if adapter.uses_output_file:
         fd, output_path = tempfile.mkstemp(suffix=adapter.output_file_extension)
