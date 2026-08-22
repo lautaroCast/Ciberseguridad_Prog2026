@@ -1,0 +1,171 @@
+{
+  "target_host": "juice-shop",
+  "runs": [
+    {
+      "run_index": 1,
+      "scan_id": "db874611-ee32-4e83-9a35-db7b8c25bb88",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 266.848481,
+      "tool_execution_seconds": 266.095674,
+      "orchestration_seconds": 0.7528070000000184,
+      "tool_durations_seconds": {
+        "nmap": 12.117466,
+        "whatweb": 6.33859,
+        "nikto": 92.738295,
+        "nuclei": 152.67146,
+        "zap": 2.229863
+      },
+      "findings_count": 9,
+      "severity_distribution_overall": {
+        "info": 1,
+        "low": 8
+      },
+      "severity_distribution_by_tool": {
+        "nuclei": {
+          "info": 1
+        },
+        "nikto": {
+          "low": 8
+        }
+      }
+    },
+    {
+      "run_index": 2,
+      "scan_id": "3149b4c1-0410-4ab1-92cf-2251e02063c4",
+      "target_host": "juice-shop",
+      "status": "failed",
+      "pipeline_total_seconds": 0.905414,
+      "tool_execution_seconds": 0.569782,
+      "orchestration_seconds": 0.33563200000000004,
+      "tool_durations_seconds": {
+        "nmap": 0.569782
+      },
+      "findings_count": 0,
+      "severity_distribution_overall": {},
+      "severity_distribution_by_tool": {}
+    },
+    {
+      "run_index": 3,
+      "scan_id": "f74a6720-2384-46df-9a45-68fda86c4831",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 375.273883,
+      "tool_execution_seconds": 374.682672,
+      "orchestration_seconds": 0.591210999999987,
+      "tool_durations_seconds": {
+        "nmap": 11.850706,
+        "whatweb": 5.402982,
+        "nikto": 91.520697,
+        "nuclei": 91.241414,
+        "zap": 174.666873
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "info": 15,
+        "medium": 3,
+        "low": 14
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "medium": 2,
+          "low": 1
+        },
+        "nuclei": {
+          "info": 12,
+          "medium": 1
+        },
+        "nikto": {
+          "low": 13
+        }
+      }
+    },
+    {
+      "run_index": 4,
+      "scan_id": "ba7a9e84-07e4-44a2-81b5-3fa741b3af92",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 333.351015,
+      "tool_execution_seconds": 332.818587,
+      "orchestration_seconds": 0.5324280000000385,
+      "tool_durations_seconds": {
+        "nmap": 11.984105,
+        "whatweb": 5.497812,
+        "nikto": 118.04437,
+        "nuclei": 7.216501,
+        "zap": 190.075799
+      },
+      "findings_count": 14,
+      "severity_distribution_overall": {
+        "info": 3,
+        "low": 9,
+        "medium": 2
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 1,
+          "medium": 2
+        },
+        "nikto": {
+          "low": 8
+        }
+      }
+    },
+    {
+      "run_index": 5,
+      "scan_id": "28094cb9-2cd7-4687-9f7b-793006db1fea",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 371.458718,
+      "tool_execution_seconds": 370.800725,
+      "orchestration_seconds": 0.6579929999999763,
+      "tool_durations_seconds": {
+        "nmap": 11.843754,
+        "whatweb": 5.486724,
+        "nikto": 92.070988,
+        "nuclei": 89.666875,
+        "zap": 171.732384
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "medium": 3,
+        "info": 15,
+        "low": 14
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "medium": 2,
+          "info": 3,
+          "low": 1
+        },
+        "nuclei": {
+          "info": 12,
+          "medium": 1
+        },
+        "nikto": {
+          "low": 13
+        }
+      }
+    }
+  ],
+  "environment": {
+    "captured_at": "2026-08-22T18:06:40.290113+00:00",
+    "docker_version": "<capture failed: [Errno 2] No such file or directory: 'docker'>",
+    "docker_compose_version": "<capture failed: [Errno 2] No such file or directory: 'docker'>",
+    "host_cpu": "<not captured>",
+    "host_ram_gb": "<not captured>",
+    "host_disk_gb": "<not captured>",
+    "host_os": "<not captured>",
+    "scanner_tool_versions": {
+      "nmap": "<not captured>",
+      "whatweb": "<not captured>",
+      "nikto": "<not captured>",
+      "nuclei_engine": "<not captured>",
+      "nuclei_templates": "<not captured>",
+      "zap": "<not captured>"
+    },
+    "note": "Scanner tool versions captured live from the running Scanner container (docker compose exec scanner ...), not from the Dockerfile pins \u2014 nuclei's binary is downloaded from GitHub's `latest` release at build time and its template set is updated at build time too, so neither is actually pinned to a fixed version; the only reproducible record is what was running during this campaign."
+  }
+}
