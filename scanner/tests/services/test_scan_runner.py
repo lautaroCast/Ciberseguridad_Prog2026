@@ -183,6 +183,24 @@ def test_authentication_failure_fails_the_scan_without_running_the_tool(monkeypa
     assert subprocess_calls == []  # the tool must never run against an unauthenticated session
 
 
+def test_cookie_with_embedded_newline_fails_the_scan_without_running_the_tool(monkeypatch):
+    adapter = NiktoAdapter()
+    monkeypatch.setattr(
+        dvwa_auth,
+        "get_authenticated_cookie",
+        lambda target, port, scheme: "security=low; PHPSESSID=abc\r\nX-Injected: evil",
+    )
+    subprocess_calls = []
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess_calls.append(1))
+
+    result = scan_runner.execute(
+        adapter, target="dvwa", port=80, scheme="http", options={"authenticated": True}, timeout=30
+    )
+    assert result.status == "failed"
+    assert "embedded newline" in result.error_message
+    assert subprocess_calls == []
+
+
 def test_unauthenticated_option_never_calls_auth_helper(monkeypatch):
     adapter = NiktoAdapter()
     calls = []
