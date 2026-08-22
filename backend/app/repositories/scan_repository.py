@@ -34,11 +34,18 @@ def get_scan(db: Session, scan_id: uuid.UUID) -> Scan | None:
 
 
 def complete_scan(
-    db: Session, scan: Scan, *, status: ScanStatus, error_message: str | None
+    db: Session,
+    scan: Scan,
+    *,
+    status: ScanStatus,
+    error_message: str | None,
+    pipeline_run_id: str | None = None,
 ) -> Scan:
     scan.status = status
     scan.finished_at = datetime.now(UTC)
     scan.error_message = error_message
+    if pipeline_run_id is not None:
+        scan.pipeline_run_id = pipeline_run_id
     db.commit()
     db.refresh(scan)
     return scan

@@ -57,6 +57,36 @@ def test_complete_scan_twice_raises(db_session):
         scan_service.complete_scan(db_session, scan.id, status=ScanStatus.FAILED, error_message="x")
 
 
+def test_complete_scan_persists_pipeline_run_id(db_session):
+    # n8n sends its own $execution.id on the Complete Scan / Mark Scan
+    # Failed nodes so this column (docs/database.md) actually correlates
+    # a scan with the n8n execution that produced it, instead of staying
+    # unpopulated.
+    target = _make_target(db_session)
+    scan = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+    updated = scan_service.complete_scan(
+        db_session,
+        scan.id,
+        status=ScanStatus.COMPLETED,
+        error_message=None,
+        pipeline_run_id="12345",
+    )
+
+    assert updated.pipeline_run_id == "12345"
+
+
+def test_complete_scan_without_pipeline_run_id_leaves_it_unset(db_session):
+    target = _make_target(db_session)
+    scan = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+    updated = scan_service.complete_scan(
+        db_session, scan.id, status=ScanStatus.COMPLETED, error_message=None
+    )
+
+    assert updated.pipeline_run_id is None
+
+
 def test_list_scans_for_target_does_not_leak_other_targets_scans(db_session):
     target_a = _make_target(db_session, name="target-a")
     target_b = _make_target(db_session, name="target-b")

@@ -544,7 +544,7 @@
         "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/complete",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"status\": \"completed\" } }}",
+        "jsonBody": "={{ { \"status\": \"completed\", \"pipeline_run_id\": $execution.id } }}",
         "options": {
           "timeout": 15000
         },
@@ -719,7 +719,7 @@
         "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/complete",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"status\": \"failed\", \"error_message\": \"No se encontró ningún puerto HTTP abierto tras el escaneo Nmap (o Nmap falló). Pipeline detenido antes de correr WhatWeb/Nikto/Nuclei/ZAP.\" } }}",
+        "jsonBody": "={{ { \"status\": \"failed\", \"error_message\": \"No se encontró ningún puerto HTTP abierto tras el escaneo Nmap (o Nmap falló). Pipeline detenido antes de correr WhatWeb/Nikto/Nuclei/ZAP.\", \"pipeline_run_id\": $execution.id } }}",
         "options": {
           "timeout": 15000
         },

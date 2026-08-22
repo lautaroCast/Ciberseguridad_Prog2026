@@ -71,6 +71,7 @@ def complete_scan(
         scan_id,
         status=_COMPLETE_STATUS_MAP[payload.status],
         error_message=payload.error_message,
+        pipeline_run_id=payload.pipeline_run_id,
     )
 
 
