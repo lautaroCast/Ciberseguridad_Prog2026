@@ -124,9 +124,18 @@ services:
     # Runs as non-root `appuser` (see backend/Dockerfile) with no need for
     # binaries or capabilities beyond plain Python/uvicorn — same
     # justification `reports` already uses for its own cap_drop/
-    # security_opt below. `read_only`/`tmpfs` aren't added here: unlike
-    # `reports`, that filesystem-write footprint hasn't been verified for
-    # this service, so it's left out rather than guessed at.
+    # security_opt below. Filesystem-write footprint verified (grepped
+    # backend/app for open()/write_*/tempfile — nothing, the served API
+    # never writes to disk), so `read_only` is safe for normal operation.
+    # The one exception is `scripts/measurement_campaign.py` (an operator
+    # tool, not part of the served API): it writes result files under
+    # `scripts/measurement_campaign_results/`, which is read-only here —
+    # running it again requires a temporary `read_only: false` override
+    # (or a dedicated writable mount), not something this default
+    # configuration accommodates.
+    read_only: true
+    tmpfs:
+      - /tmp
     cap_drop:
       - ALL
     security_opt:
