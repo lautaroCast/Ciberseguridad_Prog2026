@@ -74,3 +74,21 @@ export interface ReportRead {
   generated_at: string;
   generated_by: string | null;
 }
+
+export type ScanTaskStatus = "pending" | "running" | "completed" | "failed" | "skipped";
+
+/** Tools the pipeline runs, in the order n8n runs them. */
+export const TOOL_ORDER = ["nmap", "whatweb", "nikto", "nuclei", "zap"] as const;
+export type ToolName = (typeof TOOL_ORDER)[number];
+
+export interface ScanTaskRead {
+  id: string;
+  scan_id: string;
+  tool_name: string;
+  status: ScanTaskStatus;
+  command: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+  created_at: string;
+}

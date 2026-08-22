@@ -3,24 +3,20 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { FindingRead, ScanRead } from "../types";
+import type { FindingRead, ScanRead, ScanTaskRead } from "../types";
 
-// COD-12: description/evidence were fetched by the API but never rendered
-// anywhere in the UI. This mocks the whole "../api" module (the same way
-// ScanDetailPage imports it) so the component can be mounted without a
-// real backend, and asserts the finding's detail row surfaces both fields
-// once expanded. vitest hoists `vi.mock` above the imports below at
-// transform time, so declaration order here doesn't matter.
 vi.mock("../api", () => ({
   getScan: vi.fn(),
   listFindings: vi.fn(),
+  listScanTasks: vi.fn(),
   listReports: vi.fn(),
   createReport: vi.fn(),
   downloadReport: vi.fn(),
-  isTerminalStatus: (status: string) => status === "completed",
+  isTerminalStatus: (status: string) =>
+    status === "completed" || status === "failed" || status === "cancelled",
 }));
 
-import { getScan, listFindings, listReports } from "../api";
+import { getScan, listFindings, listReports, listScanTasks } from "../api";
 import { ScanDetailPage } from "./ScanDetailPage";
 
 const SCAN: ScanRead = {
@@ -29,27 +25,53 @@ const SCAN: ScanRead = {
   status: "completed",
   pipeline_run_id: null,
   triggered_by: null,
-  started_at: null,
-  finished_at: null,
+  started_at: "2026-08-21T00:00:00Z",
+  finished_at: "2026-08-21T00:04:19Z",
   error_message: null,
-  created_at: "2026-08-15T00:00:00Z",
+  created_at: "2026-08-21T00:00:00Z",
 };
 
-const FINDING: FindingRead = {
+function task(id: string, toolName: string, status: ScanTaskRead["status"] = "completed"): ScanTaskRead {
+  return {
+    id,
+    scan_id: "scan-1",
+    tool_name: toolName,
+    status,
+    command: null,
+    started_at: "2026-08-21T00:00:00Z",
+    finished_at: "2026-08-21T00:01:00Z",
+    error_message: status === "failed" ? "tool exited with code 1" : null,
+    created_at: "2026-08-21T00:00:00Z",
+  };
+}
+
+const CRITICAL: FindingRead = {
   id: "finding-1",
   scan_id: "scan-1",
-  scan_task_id: "task-1",
+  scan_task_id: "t-nuclei",
   service_id: null,
-  title: "Cross-Domain Misconfiguration",
-  description: "CORS misconfiguration allows arbitrary origins.",
-  finding_type: "web_vulnerability",
-  evidence: "Access-Control-Allow-Origin: *",
-  confidence: null,
-  cvss_score: 5.4,
-  cvss_vector: null,
-  severity: "medium",
-  created_at: "2026-08-15T00:00:00Z",
+  title: "Apache Struts RCE",
+  description: "OGNL injection through the Content-Type header.",
+  finding_type: "template-match",
+  evidence: "Content-Type: %{(#cmd=.id.)}",
+  confidence: "firme",
+  cvss_score: 10,
+  cvss_vector: "CVSS:3.1/AV:N",
+  severity: "critical",
+  created_at: "2026-08-21T00:02:00Z",
   cve_references: [],
+};
+
+const INFO: FindingRead = {
+  ...CRITICAL,
+  id: "finding-2",
+  scan_task_id: "t-zap",
+  title: "Comentarios HTML sospechosos",
+  description: null,
+  evidence: null,
+  cvss_score: null,
+  cvss_vector: null,
+  severity: "info",
 };
 
 function renderPage() {
@@ -65,25 +87,118 @@ function renderPage() {
   );
 }
 
-describe("ScanDetailPage findings table", () => {
+describe("ScanDetailPage", () => {
   beforeEach(() => {
     vi.mocked(getScan).mockResolvedValue(SCAN);
-    vi.mocked(listFindings).mockResolvedValue([FINDING]);
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei"), task("t-zap", "zap")]);
+    vi.mocked(listFindings).mockResolvedValue([CRITICAL, INFO]);
     vi.mocked(listReports).mockResolvedValue([]);
   });
 
   it("does not show description/evidence until the row is expanded", async () => {
     renderPage();
-    await screen.findByText("Cross-Domain Misconfiguration");
-    expect(screen.queryByText(/CORS misconfiguration/)).not.toBeInTheDocument();
+    await screen.findByText("Apache Struts RCE");
+    expect(screen.queryByText(/OGNL injection/)).not.toBeInTheDocument();
   });
 
   it("shows description and evidence after clicking the row", async () => {
     renderPage();
-    const titleCell = await screen.findByText("Cross-Domain Misconfiguration");
-    fireEvent.click(titleCell);
+    fireEvent.click(await screen.findByText("Apache Struts RCE"));
+    expect(await screen.findByText(/OGNL injection/)).toBeInTheDocument();
+    expect(screen.getByText(/#cmd=/)).toBeInTheDocument();
+  });
 
-    expect(await screen.findByText(/CORS misconfiguration allows arbitrary origins/)).toBeInTheDocument();
-    expect(screen.getByText(/Access-Control-Allow-Origin: \*/)).toBeInTheDocument();
+  // Info findings dominate a real run (~21 of 32); showing them by default
+  // buries the ones that need action.
+  it("hides info findings by default and says how many are hidden", async () => {
+    renderPage();
+    await screen.findByText("Apache Struts RCE");
+    expect(screen.queryByText("Comentarios HTML sospechosos")).not.toBeInTheDocument();
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
+  });
+
+  it("reveals info findings when the severity chip is toggled on", async () => {
+    renderPage();
+    await screen.findByText("Apache Struts RCE");
+    fireEvent.click(screen.getByRole("button", { name: /Informativa/ }));
+    expect(await screen.findByText("Comentarios HTML sospechosos")).toBeInTheDocument();
+  });
+
+  // Tool attribution is only derivable by joining findings to scan_tasks.
+  it("attributes each finding to its tool", async () => {
+    renderPage();
+    await screen.findByText("Apache Struts RCE");
+    expect(screen.getAllByText("Nuclei").length).toBeGreaterThan(0);
+  });
+
+  it("filters findings out when their tool chip is toggled off", async () => {
+    renderPage();
+    await screen.findByText("Apache Struts RCE");
+    fireEvent.click(screen.getByRole("button", { name: /^nuclei/ }));
+    expect(screen.queryByText("Apache Struts RCE")).not.toBeInTheDocument();
+  });
+
+  // The severity distribution is partly an artifact of the platform's own
+  // classification policy; the UI must say so rather than present it raw.
+  it("states the severity-scale bias next to the per-tool breakdown", async () => {
+    renderPage();
+    expect(
+      await screen.findByText(/condicionada por la política de clasificación/),
+    ).toBeInTheDocument();
+  });
+
+  it("surfaces a failed tool without hiding the ones that succeeded", async () => {
+    vi.mocked(listScanTasks).mockResolvedValue([
+      task("t-nuclei", "nuclei"),
+      task("t-nikto", "nikto", "failed"),
+    ]);
+    renderPage();
+    expect(
+      await screen.findByText(/el pipeline continuó con las herramientas restantes/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/tool exited with code 1/)).toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage while the pipeline runs", () => {
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue({ ...SCAN, status: "running", finished_at: null });
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listFindings).mockResolvedValue([CRITICAL]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  // A partial result must never read as a final one.
+  it("marks the findings list as incomplete", async () => {
+    renderPage();
+    expect(await screen.findByText(/lista incompleta/)).toBeInTheDocument();
+    expect(screen.getByText("Escaneo en curso")).toBeInTheDocument();
+  });
+
+  it("does not offer report generation before the scan finishes", async () => {
+    renderPage();
+    await screen.findByText(/lista incompleta/);
+    expect(screen.queryByRole("button", { name: /Generar PDF/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage when a tool failed but the scan completed", () => {
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockResolvedValue([
+      task("t-zap", "zap"),
+      task("t-nuclei", "nuclei", "failed"),
+    ]);
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  // A scan reaches `completed` even when individual tools failed. Claiming
+  // the list is complete there is the exact failure this UI exists to avoid.
+  it("does not claim the list is complete", async () => {
+    renderPage();
+    expect(await screen.findByText(/pero Nuclei falló/)).toBeInTheDocument();
+    expect(screen.queryByText(/Esta lista está completa/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Esta lista está incompleta/)).toBeInTheDocument();
   });
 });
