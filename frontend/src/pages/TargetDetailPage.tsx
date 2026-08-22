@@ -2,7 +2,14 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { deleteTarget, getTarget, isTerminalStatus, listScansForTarget, triggerPipeline } from "../api";
+import {
+  deleteTarget,
+  getTarget,
+  isTerminalStatus,
+  listScansForTarget,
+  triggerPipeline,
+  updateTarget,
+} from "../api";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -51,6 +58,14 @@ export function TargetDetailPage() {
     },
   });
 
+  const updateActiveMutation = useMutation({
+    mutationFn: (isActive: boolean) => updateTarget(targetId, { is_active: isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["target", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["targets"] });
+    },
+  });
+
   if (targetQuery.isLoading) return <TableSkeleton rows={3} />;
   if (targetQuery.error) return <ErrorBanner error={targetQuery.error} />;
   const target = targetQuery.data;
@@ -87,6 +102,21 @@ export function TargetDetailPage() {
               />
               {target.is_active ? "activo" : "inactivo"}
             </span>
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: 11, padding: "2px 8px" }}
+              onClick={() => updateActiveMutation.mutate(!target.is_active)}
+              disabled={updateActiveMutation.isPending}
+            >
+              {updateActiveMutation.isPending ? (
+                <SpinnerIcon size={11} />
+              ) : target.is_active ? (
+                "Desactivar"
+              ) : (
+                "Reactivar"
+              )}
+            </button>
           </div>
           {target.description && (
             <p style={{ margin: 0, fontSize: 13, color: "var(--ink-2)" }}>{target.description}</p>
@@ -96,6 +126,8 @@ export function TargetDetailPage() {
           type="button"
           className="btn btn--danger-quiet"
           onClick={() => setConfirmingDelete(true)}
+          disabled={!scansQuery.isSuccess}
+          title={!scansQuery.isSuccess ? "Cargando historial de escaneos…" : undefined}
         >
           Eliminar
         </button>
@@ -103,6 +135,7 @@ export function TargetDetailPage() {
 
       <ErrorBanner error={pipelineMutation.error} />
       <ErrorBanner error={deleteMutation.error} />
+      <ErrorBanner error={updateActiveMutation.error} />
 
       <div
         style={{
@@ -197,14 +230,15 @@ export function TargetDetailPage() {
                 type="button"
                 className="btn btn--primary"
                 onClick={() => pipelineMutation.mutate()}
-                disabled={pipelineMutation.isPending}
+                disabled={pipelineMutation.isPending || !target.is_active}
               >
                 Correr pipeline
               </button>
             }
           >
-            El objetivo está registrado y activo, pero no tiene historial. Corré el pipeline para
-            generar el primero.
+            {target.is_active
+              ? "El objetivo está registrado y activo, pero no tiene historial. Corré el pipeline para generar el primero."
+              : "El objetivo está registrado pero inactivo, y no tiene historial. Reactivalo arriba para poder correr el pipeline."}
           </EmptyState>
         </div>
       )}
