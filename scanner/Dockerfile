@@ -84,7 +84,33 @@ RUN useradd --create-home --uid 1000 appuser \
     && chown -R appuser:appuser /opt/nikto /opt/zap /app
 ENV HOME=/home/appuser
 USER appuser
-RUN nuclei -update-templates
+
+# `nuclei -update-templates` exits 0 even when it installs nothing.
+# Observed on a real build of this image: the step "succeeded", left
+# $HOME/nuclei-templates empty, and every scan afterwards failed at
+# runtime with "no templates provided for scan" while the image looked
+# perfectly healthy and the pipeline reported the scan as completed
+# (the n8n nodes run with continueOnFail).
+#
+# So retry on the OBSERVABLE OUTCOME rather than the exit code — the
+# usual cause is a transient network failure or an anonymous GitHub rate
+# limit, both of which this Dockerfile is already exposed to twice above
+# — and then assert the directory really is populated, so a broken
+# template set fails the build instead of shipping a scanner that cannot
+# find anything. Nuclei is the only tool in the platform that can emit
+# `critical` severity, so silently losing it changes the results.
+RUN set -eu; \
+    for attempt in 1 2 3; do \
+        nuclei -update-templates || true; \
+        if [ -n "$(ls -A "$HOME/nuclei-templates" 2>/dev/null)" ]; then break; fi; \
+        echo "nuclei templates still empty after attempt $attempt; retrying" >&2; \
+        sleep 5; \
+    done; \
+    if [ -z "$(ls -A "$HOME/nuclei-templates" 2>/dev/null)" ]; then \
+        echo "ERROR: nuclei -update-templates installed no templates" >&2; \
+        exit 1; \
+    fi; \
+    nuclei -tv 2>&1 | tail -1 | tee "$HOME/.nuclei-templates-version"
 
 EXPOSE 8100
 
