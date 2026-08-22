@@ -11,7 +11,7 @@ formats and they're unlikely to grow into a real plugin list).
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.paths import PathEscapesOutputDirError, resolve_within
+from app.paths import PathEscapesOutputDirError, atomic_write, resolve_within
 from app.renderers.html_renderer import render_html
 from app.renderers.json_renderer import render_json
 from app.renderers.markdown_renderer import render_markdown
@@ -42,12 +42,14 @@ def generate(data: ReportRequest, output_dir: Path) -> ReportResult:
         raise InvalidReportRequestError(data.scan.id) from exc
 
     if data.format == "pdf":
-        path.write_bytes(render_pdf(data))
+        content = render_pdf(data)
     elif data.format == "html":
-        path.write_text(render_html(data), encoding="utf-8")
+        content = render_html(data).encode("utf-8")
     elif data.format == "markdown":
-        path.write_text(render_markdown(data), encoding="utf-8")
+        content = render_markdown(data).encode("utf-8")
     else:
-        path.write_text(render_json(data), encoding="utf-8")
+        content = render_json(data).encode("utf-8")
+
+    atomic_write(path, content)
 
     return ReportResult(format=data.format, filename=filename, generated_at=datetime.now(UTC))

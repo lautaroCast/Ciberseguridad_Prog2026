@@ -47,9 +47,16 @@ def get_scan_or_raise(db: Session, scan_id: uuid.UUID) -> Scan:
 
 
 def complete_scan(
-    db: Session, scan_id: uuid.UUID, *, status: ScanStatus, error_message: str | None
+    db: Session,
+    scan_id: uuid.UUID,
+    *,
+    status: ScanStatus,
+    error_message: str | None,
+    pipeline_run_id: str | None = None,
 ) -> Scan:
     scan = get_scan_or_raise(db, scan_id)
     if scan.status in _TERMINAL_STATUSES:
         raise ScanAlreadyTerminalError(str(scan_id))
-    return scan_repository.complete_scan(db, scan, status=status, error_message=error_message)
+    return scan_repository.complete_scan(
+        db, scan, status=status, error_message=error_message, pipeline_run_id=pipeline_run_id
+    )

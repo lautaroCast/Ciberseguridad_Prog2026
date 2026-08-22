@@ -47,6 +47,50 @@ def test_ingest_happy_path_creates_services_from_normalizer(db_session):
     assert result.scan_task.tool_name == "nmap"
 
 
+def test_ingest_twice_refines_existing_service_row_instead_of_duplicating(db_session):
+    """service_repository.get_or_create_service upserts on (scan_id, host,
+    port, protocol) via insert-first + catch-IntegrityError (not a
+    select-first check-then-act) — this exercises that path for the
+    ordinary sequential case: a second Nmap-style ingest for the same
+    scan/host/port/protocol must update the same row, not create a
+    second one, and must carry over the newer field values."""
+    scan = _make_scan(db_session)
+    _ingest(
+        db_session,
+        scan.id,
+        tool="nmap",
+        parsed=[{"host": "juice-shop", "port": 80, "service_name": "http"}],
+    )
+    result = _ingest(
+        db_session,
+        scan.id,
+        tool="nmap",
+        parsed=[
+            {
+                "host": "juice-shop",
+                "port": 80,
+                "service_name": "http",
+                "product": "nginx",
+                "version": "1.25.0",
+            }
+        ],
+    )
+    assert result.services_upserted == 1
+
+    from sqlalchemy import select as sa_select
+
+    from models import Service
+
+    services = (
+        db_session.execute(sa_select(Service).where(Service.scan_id == scan.id))
+        .scalars()
+        .all()
+    )
+    assert len(services) == 1
+    assert services[0].product == "nginx"
+    assert services[0].version == "1.25.0"
+
+
 def test_ingest_happy_path_creates_findings_from_normalizer(db_session):
     scan = _make_scan(db_session)
     result = _ingest(

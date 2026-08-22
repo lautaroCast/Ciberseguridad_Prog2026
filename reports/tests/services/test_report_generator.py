@@ -63,6 +63,16 @@ def test_generate_html(sample_report_request, tmp_path: Path):
     assert "<!DOCTYPE html>" in output_file.read_text(encoding="utf-8")
 
 
+def test_generate_leaves_no_temp_file_behind(sample_report_request, tmp_path: Path):
+    # atomic_write (app/paths.py) writes to a sibling ".{name}.{uuid}.tmp"
+    # file and os.replace()s it onto the final path — confirm the
+    # directory ends up with exactly the final file, not both.
+    request = sample_report_request.model_copy(update={"format": "json"})
+    result = report_generator.generate(request, tmp_path)
+
+    assert [p.name for p in tmp_path.iterdir()] == [result.filename]
+
+
 def test_creates_output_dir_if_missing(sample_report_request, tmp_path: Path):
     output_dir = tmp_path / "nested" / "dir"
     assert not output_dir.exists()

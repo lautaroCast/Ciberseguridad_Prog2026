@@ -14,6 +14,11 @@ class ScanCreate(BaseModel):
 class ScanComplete(BaseModel):
     status: Literal["completed", "failed"]
     error_message: str | None = None
+    # Sent by n8n as `$execution.id` (Complete Scan / Mark Scan Failed
+    # nodes) — the only point in the pipeline that actually knows its own
+    # n8n execution id. Optional so older callers (or a manual complete
+    # during local testing) don't need to supply it.
+    pipeline_run_id: str | None = Field(default=None, max_length=100)
 
 
 class ScanRead(BaseModel):
