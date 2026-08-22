@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 
@@ -28,7 +29,10 @@ import { ToolErrors, ToolTimeline } from "../components/ToolTimeline";
 import { elapsedSeconds, formatDateTime, formatDuration } from "../lib/format";
 import { SEVERITY_META, SEVERITY_ORDER, severityColor } from "../lib/severity";
 import { buildToolBreakdown, toolLabel } from "../lib/tools";
-import type { FindingRead, ReportFormat, Severity } from "../types";
+import type { FindingRead, ReportFormat, ScanStatus, Severity } from "../types";
+
+type SortKey = "severity" | "title" | "type" | "origin" | "cvss";
+type SortDirection = "asc" | "desc";
 
 const POLL_INTERVAL_MS = 2000;
 const REPORT_FORMATS: ReportFormat[] = ["pdf", "html", "markdown", "json"];
@@ -92,6 +96,8 @@ export function ScanDetailPage() {
   );
   const [excludedTools, setExcludedTools] = useState<Set<string>>(() => new Set());
   const [openFindingId, setOpenFindingId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("severity");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   // Live clock while the pipeline runs; `finished_at` is null until it ends.
   const [, forceTick] = useState(0);
@@ -127,6 +133,38 @@ export function ScanDetailPage() {
     [breakdown],
   );
 
+  const compareFindings = useMemo(() => {
+    // Nulls (missing CVSS, or a finding whose tool isn't loaded yet) always
+    // sort last, regardless of direction — an unknown value isn't "low".
+    function keyValue(finding: FindingRead, key: SortKey): string | number {
+      switch (key) {
+        case "severity":
+          return SEVERITY_ORDER.indexOf(finding.severity);
+        case "title":
+          return finding.title.toLowerCase();
+        case "type":
+          return finding.finding_type.toLowerCase();
+        case "origin": {
+          const tool = toolByTaskId.get(finding.scan_task_id);
+          return tool ? toolLabel(tool).toLowerCase() : "";
+        }
+        case "cvss":
+          return finding.cvss_score ?? Number.NEGATIVE_INFINITY;
+      }
+    }
+
+    return (a: FindingRead, b: FindingRead) => {
+      const aMissing = sortKey === "cvss" ? a.cvss_score === null : false;
+      const bMissing = sortKey === "cvss" ? b.cvss_score === null : false;
+      if (aMissing !== bMissing) return aMissing ? 1 : -1;
+
+      const va = keyValue(a, sortKey);
+      const vb = keyValue(b, sortKey);
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      return sortDirection === "asc" ? cmp : -cmp;
+    };
+  }, [sortKey, sortDirection, toolByTaskId]);
+
   const visibleFindings = useMemo(() => {
     return findings
       .filter((finding) => selectedSeverities.has(finding.severity))
@@ -134,10 +172,17 @@ export function ScanDetailPage() {
         const tool = toolByTaskId.get(finding.scan_task_id);
         return !tool || !excludedTools.has(tool);
       })
-      .sort(
-        (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
-      );
-  }, [findings, selectedSeverities, excludedTools, toolByTaskId]);
+      .sort(compareFindings);
+  }, [findings, selectedSeverities, excludedTools, toolByTaskId, compareFindings]);
+
+  function toggleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  }
 
   function toggleSeverity(severity: Severity) {
     setSelectedSeverities((prev) => {
@@ -164,6 +209,7 @@ export function ScanDetailPage() {
   if (!scan) return null;
 
   const elapsed = elapsedSeconds(scan.started_at ?? scan.created_at, scan.finished_at);
+  const toolCount = breakdown.length;
   const completedTools = breakdown.filter((row) => row.task?.status === "completed").length;
   const failedTools = breakdown.filter((row) => row.task?.status === "failed");
   const hiddenCount = findings.length - visibleFindings.length;
@@ -205,6 +251,7 @@ export function ScanDetailPage() {
         status={scan.status}
         errorMessage={scan.error_message}
         completedTools={completedTools}
+        toolCount={toolCount}
         failedTools={failedTools.map((row) => row.label)}
       />
 
@@ -290,7 +337,7 @@ export function ScanDetailPage() {
             }}
           >
             {running
-              ? `lista incompleta — faltan ${5 - completedTools} de 5 herramientas`
+              ? `lista incompleta — faltan ${toolCount - completedTools} de ${toolCount} herramientas`
               : hiddenCount > 0
                 ? `${hiddenCount} ocultos por los filtros`
                 : "lista completa"}
@@ -305,12 +352,16 @@ export function ScanDetailPage() {
           <FindingsTable
             findings={visibleFindings}
             total={findings.length}
+            toolCount={toolCount}
             running={running}
             openId={openFindingId}
             onToggle={(findingId) =>
               setOpenFindingId((current) => (current === findingId ? null : findingId))
             }
             toolFor={(finding) => toolByTaskId.get(finding.scan_task_id) ?? null}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={toggleSort}
           />
         )}
       </div>
@@ -412,13 +463,15 @@ function ScanBanner({
   status,
   errorMessage,
   completedTools,
+  toolCount,
   failedTools,
 }: {
   running: boolean;
   stalled: boolean;
-  status: string;
+  status: ScanStatus;
   errorMessage: string | null;
   completedTools: number;
+  toolCount: number;
   failedTools: string[];
 }) {
   if (stalled) {
@@ -455,7 +508,7 @@ function ScanBanner({
           </div>
         </div>
         <span className="th" style={{ flexShrink: 0 }}>
-          Etapa {Math.min(4 + completedTools, 12)} de 12
+          {completedTools} de {toolCount} herramientas completadas
         </span>
       </div>
     );
@@ -469,6 +522,24 @@ function ScanBanner({
           <span className="callout__title" style={{ color: "var(--bad)" }}>
             Escaneo fallido
           </span>
+        </div>
+        {errorMessage && <pre className="pre">{errorMessage}</pre>}
+      </div>
+    );
+  }
+
+  if (status === "cancelled") {
+    return (
+      <div className="callout callout--bad stack" style={{ marginBottom: 26, gap: 8 }}>
+        <div className="row" style={{ gap: 9, color: "var(--bad)" }}>
+          <AlertIcon />
+          <span className="callout__title" style={{ color: "var(--bad)" }}>
+            Escaneo cancelado
+          </span>
+        </div>
+        <div>
+          Corrieron {completedTools} de {toolCount} herramientas antes de la cancelación. Esta
+          lista está incompleta.
         </div>
         {errorMessage && <pre className="pre">{errorMessage}</pre>}
       </div>
@@ -491,8 +562,8 @@ function ScanBanner({
             El pipeline terminó, pero {names} {verb}
           </div>
           <div style={{ marginTop: 2 }}>
-            Corrieron {completedTools} de 5 herramientas. Esta lista está incompleta: lo que{" "}
-            {names} habría aportado no está acá, y el detalle del error figura más arriba.
+            Corrieron {completedTools} de {toolCount} herramientas. Esta lista está incompleta: lo
+            que {names} habría aportado no está acá, y el detalle del error figura más arriba.
           </div>
         </div>
       </div>
@@ -505,7 +576,7 @@ function ScanBanner({
         <CheckIcon size={16} />
       </span>
       <div>
-        <div className="callout__title">Las cinco herramientas terminaron</div>
+        <div className="callout__title">Terminaron las {toolCount} herramientas</div>
         <div style={{ marginTop: 2 }}>
           Todos los resultados fueron ingeridos y normalizados. Esta lista está completa.
         </div>
@@ -514,39 +585,110 @@ function ScanBanner({
   );
 }
 
+function SortableHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+  style,
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  direction: SortDirection;
+  onSort: (key: SortKey) => void;
+  style?: CSSProperties;
+}) {
+  const active = sortKey === activeKey;
+  return (
+    <button
+      type="button"
+      className="th th--sortable"
+      style={{
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        padding: 0,
+        fontFamily: "inherit",
+        textAlign: "left",
+        ...style,
+      }}
+      onClick={() => onSort(sortKey)}
+      aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
+    >
+      {label}
+      {active && <span aria-hidden="true">{direction === "asc" ? " ▲" : " ▼"}</span>}
+    </button>
+  );
+}
+
 function FindingsTable({
   findings,
   total,
+  toolCount,
   running,
   openId,
   onToggle,
   toolFor,
+  sortKey,
+  sortDirection,
+  onSort,
 }: {
   findings: FindingRead[];
   total: number;
+  toolCount: number;
   running: boolean;
   openId: string | null;
   onToggle: (id: string) => void;
   toolFor: (finding: FindingRead) => string | null;
+  sortKey: SortKey;
+  sortDirection: SortDirection;
+  onSort: (key: SortKey) => void;
 }) {
   return (
     <div className="tbl">
       <div className="tbl__head">
-        <span className="th" style={{ width: 100, flexShrink: 0 }}>
-          Severidad
-        </span>
-        <span className="th" style={{ flexGrow: 1 }}>
-          Título
-        </span>
-        <span className="th" style={{ width: 128, flexShrink: 0 }}>
-          Tipo
-        </span>
-        <span className="th" style={{ width: 74, flexShrink: 0 }}>
-          Origen
-        </span>
-        <span className="th" style={{ width: 44, flexShrink: 0, textAlign: "right" }}>
-          CVSS
-        </span>
+        <SortableHeader
+          label="Severidad"
+          sortKey="severity"
+          activeKey={sortKey}
+          direction={sortDirection}
+          onSort={onSort}
+          style={{ width: 100, flexShrink: 0 }}
+        />
+        <SortableHeader
+          label="Título"
+          sortKey="title"
+          activeKey={sortKey}
+          direction={sortDirection}
+          onSort={onSort}
+          style={{ flexGrow: 1, textAlign: "left" }}
+        />
+        <SortableHeader
+          label="Tipo"
+          sortKey="type"
+          activeKey={sortKey}
+          direction={sortDirection}
+          onSort={onSort}
+          style={{ width: 128, flexShrink: 0 }}
+        />
+        <SortableHeader
+          label="Origen"
+          sortKey="origin"
+          activeKey={sortKey}
+          direction={sortDirection}
+          onSort={onSort}
+          style={{ width: 74, flexShrink: 0 }}
+        />
+        <SortableHeader
+          label="CVSS"
+          sortKey="cvss"
+          activeKey={sortKey}
+          direction={sortDirection}
+          onSort={onSort}
+          style={{ width: 44, flexShrink: 0, textAlign: "right" }}
+        />
       </div>
 
       {findings.map((finding) => {
@@ -616,8 +758,8 @@ function FindingsTable({
               </>
             ) : (
               <>
-                Las cinco herramientas corrieron y ninguna reportó nada. Esto es un resultado, no
-                un error.
+                Las {toolCount} herramientas corrieron y ninguna reportó nada. Esto es un
+                resultado, no un error.
               </>
             )
           ) : (

@@ -202,3 +202,84 @@ describe("ScanDetailPage when a tool failed but the scan completed", () => {
     expect(screen.getByText(/Esta lista está incompleta/)).toBeInTheDocument();
   });
 });
+
+describe("ScanDetailPage when the scan was cancelled", () => {
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue({
+      ...SCAN,
+      status: "cancelled",
+      error_message: "cancelado por el operador",
+    });
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei"), task("t-zap", "zap")]);
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  // Before this fix, a cancelled scan with no individually-failed tool fell
+  // through to the default "success" banner.
+  it("shows a cancelled banner instead of claiming success", async () => {
+    renderPage();
+    expect(await screen.findByText("Escaneo cancelado")).toBeInTheDocument();
+    expect(screen.getByText(/cancelado por el operador/)).toBeInTheDocument();
+    expect(screen.queryByText(/Esta lista está completa/)).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage with more than five tools reported", () => {
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue({ ...SCAN, status: "running", finished_at: null });
+    vi.mocked(listScanTasks).mockResolvedValue([
+      task("t-nmap", "nmap"),
+      task("t-whatweb", "whatweb"),
+      task("t-nikto", "nikto"),
+      task("t-nuclei", "nuclei"),
+      task("t-zap", "zap"),
+      task("t-sqlmap", "sqlmap"),
+    ]);
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  // buildToolBreakdown appends any backend-reported tool outside TOOL_ORDER
+  // (lib/tools.ts) as an extra row — before this fix, the "faltan X de 5"
+  // count went negative once a 6th tool's task showed up completed.
+  it("derives the tool count instead of hardcoding 5", async () => {
+    renderPage();
+    expect(await screen.findByText(/faltan 0 de 6 herramientas/)).toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage findings table sorting", () => {
+  const ALPHA: FindingRead = { ...CRITICAL, id: "f-a", title: "Alpha", severity: "high", cvss_score: 5 };
+  const BETA: FindingRead = { ...CRITICAL, id: "f-b", title: "Beta", severity: "high", cvss_score: 9 };
+  const GAMMA: FindingRead = { ...CRITICAL, id: "f-c", title: "Gamma", severity: "high", cvss_score: 2 };
+
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listFindings).mockResolvedValue([ALPHA, BETA, GAMMA]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("sorts by CVSS ascending when the CVSS header is clicked", async () => {
+    renderPage();
+    await screen.findByText("Alpha");
+    fireEvent.click(screen.getByRole("button", { name: /CVSS/ }));
+    const order = screen
+      .getAllByText(/^(Alpha|Beta|Gamma)$/)
+      .map((el) => el.textContent);
+    expect(order).toEqual(["Gamma", "Alpha", "Beta"]);
+  });
+
+  it("reverses direction on a second click of the same header", async () => {
+    renderPage();
+    await screen.findByText("Alpha");
+    const cvssHeader = screen.getByRole("button", { name: /CVSS/ });
+    fireEvent.click(cvssHeader);
+    fireEvent.click(cvssHeader);
+    const order = screen
+      .getAllByText(/^(Alpha|Beta|Gamma)$/)
+      .map((el) => el.textContent);
+    expect(order).toEqual(["Beta", "Alpha", "Gamma"]);
+  });
+});
