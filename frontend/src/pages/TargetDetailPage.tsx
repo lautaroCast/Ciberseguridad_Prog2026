@@ -126,8 +126,8 @@ export function TargetDetailPage() {
           type="button"
           className="btn btn--danger-quiet"
           onClick={() => setConfirmingDelete(true)}
-          disabled={!scansQuery.isSuccess}
-          title={!scansQuery.isSuccess ? "Cargando historial de escaneos…" : undefined}
+          disabled={scansQuery.isLoading}
+          title={scansQuery.isLoading ? "Cargando historial de escaneos…" : undefined}
         >
           Eliminar
         </button>
@@ -306,12 +306,25 @@ export function TargetDetailPage() {
           onConfirm={() => deleteMutation.mutate()}
         >
           <p style={{ margin: "0 0 8px" }}>
-            Se borran también{" "}
-            <strong style={{ color: "var(--ink)" }}>
-              sus {scans.length} {scans.length === 1 ? "escaneo" : "escaneos"}, todos sus hallazgos
-              y todos sus reportes generados
-            </strong>
-            . La operación no se puede deshacer.
+            {scansQuery.isError ? (
+              <>
+                No se pudo confirmar el historial real de este objetivo (falló la carga). Se
+                borran también{" "}
+                <strong style={{ color: "var(--ink)" }}>
+                  todos sus escaneos, hallazgos y reportes generados, sean los que sean
+                </strong>
+                . La operación no se puede deshacer.
+              </>
+            ) : (
+              <>
+                Se borran también{" "}
+                <strong style={{ color: "var(--ink)" }}>
+                  sus {scans.length} {scans.length === 1 ? "escaneo" : "escaneos"}, todos sus
+                  hallazgos y todos sus reportes generados
+                </strong>
+                . La operación no se puede deshacer.
+              </>
+            )}
           </p>
           <span style={{ fontSize: 11, color: "var(--ink-3)" }}>
             El borrado en cascada lo hace la base de datos; el dashboard no conserva copia.
