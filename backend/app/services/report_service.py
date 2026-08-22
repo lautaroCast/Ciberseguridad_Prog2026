@@ -76,14 +76,26 @@ def generate_report(db: Session, scan_id: uuid.UUID, format: str) -> Report:
     except httpx.HTTPError as exc:
         raise ReportGenerationError(str(exc)) from exc
 
-    result = response.json()
-    file_path = result["filename"]
+    # A 200 response doesn't guarantee a well-formed body: the Reports
+    # Service being briefly unreachable behind a proxy, or a future schema
+    # drift between the two services, could still hand back something that
+    # isn't valid JSON or is missing the keys this function expects — none
+    # of that is an httpx.HTTPError, so it would otherwise fall straight
+    # through as an unhandled 500 instead of the same ReportGenerationError
+    # -> 502 path already used for upstream failures above.
+    try:
+        result = response.json()
+        file_path = result["filename"]
+        report_format = ReportFormat(result["format"])
+    except (ValueError, KeyError) as exc:
+        raise ReportGenerationError(f"Reports Service returned an unexpected response: {exc}") from exc
+
     if not is_safe_filename(file_path):
         raise InvalidReportFilePathError(file_path)
     return report_repository.create_report(
         db,
         scan_id=scan_id,
-        format=ReportFormat(result["format"]),
+        format=report_format,
         file_path=file_path,
         generated_by="backend",
     )
