@@ -48,6 +48,13 @@ scanner/output/
 # IDE / OS
 .vscode/
 .idea/
+
+# Local-only, personal documents — never publish these (thesis working
+# copies and the manual-arm test guide are deliberately kept out of git).
+# *.docx alone already covers Guia_Brazo_Manual_VulnScan.docx and every
+# *_corregido.docx — no need to list those separately.
+*.docx
+Auditoria_Tesis_VulnScan_Racconto_Castillo.pdf
 *.swp
 .DS_Store
 Thumbs.db
