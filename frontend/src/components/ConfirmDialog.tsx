@@ -26,11 +26,24 @@ export function ConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  // onCancel is an inline arrow function at the one real call site
+  // (TargetDetailPage.tsx), a fresh identity on every render — and that
+  // component re-renders every 4s while any scan is non-terminal (its own
+  // refetchInterval). A ref sidesteps that entirely: the effect below runs
+  // once (mount only), so the initial focus() call fires exactly once
+  // instead of stealing focus back on every unrelated parent re-render,
+  // while onKeyDown still always calls the latest onCancel via the ref
+  // (no stale-closure risk from never re-running the effect).
+  const onCancelRef = useRef(onCancel);
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  });
+
   useEffect(() => {
     cancelRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onCancel();
+        onCancelRef.current();
         return;
       }
       // Focus trap: without this, Tab/Shift+Tab can move focus out of the
@@ -55,7 +68,7 @@ export function ConfirmDialog({
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onCancel]);
+  }, []); // mount-only, deliberately — see onCancelRef above for why
 
   return (
     <div
