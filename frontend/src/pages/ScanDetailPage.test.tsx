@@ -16,8 +16,9 @@ vi.mock("../api", () => ({
     status === "completed" || status === "failed" || status === "cancelled",
 }));
 
-import { getScan, listFindings, listReports, listScanTasks } from "../api";
+import { downloadReport, getScan, listFindings, listReports, listScanTasks } from "../api";
 import { ScanDetailPage } from "./ScanDetailPage";
+import type { ReportRead } from "../types";
 
 const SCAN: ScanRead = {
   id: "scan-1",
@@ -281,5 +282,83 @@ describe("ScanDetailPage findings table sorting", () => {
       .getAllByText(/^(Alpha|Beta|Gamma)$/)
       .map((el) => el.textContent);
     expect(order).toEqual(["Beta", "Alpha", "Gamma"]);
+  });
+});
+
+describe("ScanDetailPage when the findings request itself fails", () => {
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei"), task("t-zap", "zap")]);
+    vi.mocked(listFindings).mockRejectedValue(new Error("network down"));
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  // Before this fix, a failed findingsQuery left `findings=[]`/`total=0`,
+  // which for a non-running scan rendered the confident (and false) claim
+  // "esto es un resultado, no un error" right next to the real ErrorBanner
+  // that contradicted it.
+  it("does not claim the empty list is a real result", async () => {
+    renderPage();
+    await screen.findByText("No se pudieron cargar los hallazgos");
+    expect(
+      screen.queryByText(/ninguna reportó nada\. Esto es un resultado, no un error/),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage report downloads", () => {
+  const REPORT_A: ReportRead = {
+    id: "report-a",
+    scan_id: "scan-1",
+    format: "pdf",
+    file_path: "scan-1.pdf",
+    generated_at: "2026-08-21T00:05:00Z",
+    generated_by: null,
+  };
+  const REPORT_B: ReportRead = {
+    id: "report-b",
+    scan_id: "scan-1",
+    format: "html",
+    file_path: "scan-1.html",
+    generated_at: "2026-08-21T00:05:00Z",
+    generated_by: null,
+  };
+
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([REPORT_A, REPORT_B]);
+  });
+
+  // Before this fix, a single useMutation shared across every report row
+  // identified "which row is this" by comparing `.variables` to the row's
+  // report id — starting B's download while A's was still in flight
+  // reassigned `.variables` to B, so A's spinner disappeared and A's
+  // eventual error would have been attributed to B's row instead.
+  it("keeps concurrent downloads independent per row", async () => {
+    let resolveA: () => void = () => {};
+    const pendingA = new Promise<void>((resolve) => {
+      resolveA = resolve;
+    });
+    vi.mocked(downloadReport).mockImplementation((reportId: string) =>
+      reportId === "report-a" ? pendingA : Promise.reject(new Error("descarga falló")),
+    );
+
+    renderPage();
+    const downloadButtons = await screen.findAllByRole("button", { name: /Descargar/ });
+    expect(downloadButtons).toHaveLength(2);
+
+    fireEvent.click(downloadButtons[0]); // start downloading A (stays pending)
+    await screen.findAllByText("Descargando");
+
+    fireEvent.click(downloadButtons[1]); // B fails while A is still in flight
+    await screen.findByText("No se pudo contactar al backend");
+
+    // A's row must still read as downloading — B's outcome must not have
+    // touched it.
+    expect(screen.getAllByText("Descargando")).toHaveLength(1);
+
+    resolveA();
   });
 });

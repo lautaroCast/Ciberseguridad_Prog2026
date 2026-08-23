@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { createTarget, listScansForTarget, listTargets } from "../api";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
-import { SpinnerIcon } from "../components/Icon";
+import { AlertIcon, SpinnerIcon } from "../components/Icon";
 import { TableSkeleton } from "../components/Skeleton";
 import { StatusIcon } from "../components/StatusIcon";
 import { statusColor, statusLabel } from "../lib/status";
@@ -187,9 +187,11 @@ export function TargetsPage() {
           </div>
 
           {targets.map((target: TargetRead, index: number) => {
-            const scans = scanQueries[index]?.data;
+            const scanQuery = scanQueries[index];
+            const scans = scanQuery?.data;
             const latest = lastScanOf(scans);
             const running = latest ? !isTerminalStatus(latest.status) : false;
+            const scanHistoryFailed = Boolean(scanQuery?.error);
 
             return (
               <div key={target.id} className="tbl__row">
@@ -227,8 +229,16 @@ export function TargetsPage() {
                 </span>
 
                 <span style={{ width: 190, flexShrink: 0, fontSize: 12, color: "var(--ink-2)" }}>
-                  {!latest && <span style={{ color: "var(--ink-3)" }}>nunca escaneado</span>}
-                  {latest && (
+                  {scanHistoryFailed && (
+                    <span className="row" style={{ gap: 5, color: "var(--bad)" }}>
+                      <AlertIcon size={12} />
+                      no se pudo cargar
+                    </span>
+                  )}
+                  {!scanHistoryFailed && !latest && (
+                    <span style={{ color: "var(--ink-3)" }}>nunca escaneado</span>
+                  )}
+                  {!scanHistoryFailed && latest && (
                     <Link
                       to={`/scans/${latest.id}`}
                       className="row"
