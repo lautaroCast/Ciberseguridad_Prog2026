@@ -15,6 +15,7 @@ _FINDING_TYPE_MAX = 100
 _CONFIDENCE_MAX = 20
 _CVSS_VECTOR_MAX = 100
 _CVE_ID_MAX = 20
+_SOURCE_URL_MAX = 500
 
 
 def _truncate(value: str | None, max_length: int) -> str | None:
@@ -70,7 +71,7 @@ def create_cve_reference(
         cvss_score=cvss_score,
         cvss_vector=_truncate(cvss_vector, _CVSS_VECTOR_MAX),
         description=description,
-        source_url=source_url,
+        source_url=_truncate(source_url, _SOURCE_URL_MAX),
     )
     db.add(reference)
     db.flush()
