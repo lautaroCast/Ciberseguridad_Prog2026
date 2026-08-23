@@ -257,3 +257,228 @@ independiente del `useEffect` con `onCancel`); (2) `Complete Scan` +
 `continueOnFail` respectivamente; (3) el `".."` sin cubrir en
 `is_safe_filename`; (4) D3 sigue siendo, de las tres rondas, el hallazgo
 sustantivo más citado y menos tocado.
+
+## 10. Cuarta evaluación independiente (2026-08-23)
+
+**Nota de conflicto de interés, otra vez explícita** (aplica igual que en
+las Secciones 0, 8 y 9): esta evaluación la generó el mismo asistente que
+implementó los 6 fixes de la Sección 9. Mismo método de mitigación:
+tres revisores de código lanzados en paralelo, **sin acceso a este
+archivo, a `docs/self-audit-report.md`, a `docs/audit-corrections/`, ni a
+mensajes de commit**, instruidos a tratar comentarios/sticky-notes/
+docstrings como no confiables y verificar todo contra el código real de
+`main` (commit `410a522`, después de mergear la Sección 9) como si lo
+vieran por primera vez.
+
+### 10.1 Documento — releído directamente contra D1/D4/D5
+
+Se releyó §4.2 (objetivo 6) y §5 (pregunta 2) —los síntomas concretos de
+D1— directamente en el `.docx` actual, párrafo por párrafo, en vez de
+asumir que sigue como en la ronda anterior:
+
+- **D1 sigue confirmado resuelto.** El objetivo 6 (§4.2) y la pregunta 2
+  (§5) todavía declaran explícitamente, en el mismo párrafo, que la
+  comparación cronometrada contra el proceso manual no se ejecutó en
+  esta ronda y remiten a §14.2/§14.3 — no hay regresión ni desincronía
+  nueva.
+- **D4 y D5 sin cambios** desde que la Sección 9 los confirmó cerrados
+  (D5) o la Sección 8 los cerró (D4) — no se tocó nada del documento en
+  la ronda de fixes de la Sección 9, así que no había razón para
+  esperar una regresión aquí, y no se encontró ninguna.
+- **D2 y D3 siguen sin abordarse**, misma decisión de alcance de siempre
+  (ver §7).
+
+**Evaluación del documento: 8/10** (sin cambio). Nada se editó en el
+documento desde la ronda anterior, así que un puntaje distinto habría
+sido una señal de revisión descuidada, no de progreso real.
+
+### 10.2 Código — tres revisores frescos, cada uno con hallazgos nuevos y genuinos
+
+**Backend + DB + Scanner: 7,5/10** (baja de 8/10). Hallazgo más
+relevante: `nuclei_normalizer.py` solo llama `severity.from_label(...)`
+y nunca cae al `severity.from_cvss_score(...)` que ya existe, está
+unit-testeado y nunca se invoca desde ningún camino de producción — un
+template de Nuclei con `cvss-score` alto pero sin `severity` de texto
+propio queda archivado como INFO pese a un CVSS real y alto, tocando
+directamente el objetivo central de triage de severidad del sistema.
+También nuevo: `delete_target` no tiene guarda alguna contra borrar un
+target con scans todavía `PENDING`/`RUNNING` — el cascade `ondelete`
+borra en silencio Scan/ScanTask/Finding en pleno vuelo, y las siguientes
+llamadas de n8n a `/scans/{id}/tasks`/`/complete` devuelven 404 sin
+ningún aviso; `Service.host`/`Service.protocol` son las únicas columnas
+de esa tabla que no se truncan, pese a que el propio patrón de truncado
+sistemático (Recomendación #3/#4) sí se aplicó a sus columnas vecinas
+(`service_name`/`product`/`version`); el truncado de `Finding.title`
+sigue duplicado en cada uno de los 5 normalizadores en vez de vivir en
+el repositorio como el resto de los campos truncados —el propio
+comentario del módulo lo admite—, así que un sexto adaptador futuro que
+olvide repetir el `[:255]` reproduciría la misma clase de bug que las
+Recomendaciones #3/#4 existieron para cerrar.
+
+**Reports + n8n + Infraestructura: 7,5/10** (baja de 8/10). El nuevo
+`retryOnFail` de `Complete Scan` (agregado en la Sección 9) resuelve el
+blip transitorio, pero **si las 3 reintentos se agotan igual —Backend
+genuinamente caído, no un blip— el workflow sigue adelante hacia
+`Generate Report` → `Send Report Email` → `Pipeline Complete` como si el
+scan se hubiera completado**, mientras la fila queda en `running` para
+siempre: el propio sticky note lo llama "riesgo residual reconocido",
+pero es una inconsistencia de comportamiento sin resolver, no un
+no-problema documentado. Además, ningún nodo `Scan: *`/`Ingest: *` tiene
+`retryOnFail` pese a que sí tienen `continueOnFail` — el mismo patrón de
+reintento que se aplicó a `Complete Scan` no se generalizó a los nodos
+que llaman a los mismos servicios externos (Scanner/Backend) y pueden
+fallar de forma igual de transitoria, así que un blip ahí descarta en
+silencio todos los hallazgos de esa herramienta sin señal alguna. Otros
+hallazgos nuevos: el encabezado de `docker-compose.yml` promete "cero
+pasos manuales" tras `docker compose up -d`, pero nada en el compose
+importa/activa el workflow de n8n — solo `.github/workflows/e2e.yml`
+lo hace, vía tres comandos `docker compose exec` que no existen en
+ningún lugar del compose; `BACKEND_API_KEY` se hornea en el bundle JS
+público del frontend (`VITE_API_KEY`), visible para cualquiera que abra
+las devtools, deshaciendo el propósito del secreto compartido para ese
+cliente; el puerto de Postgres se publica al host por defecto sin que
+nada dentro del stack lo necesite (inconsistente con el resto del
+diseño, que no publica puertos salvo que algo externo los use); CI no
+corre lint/type-check ni ningún escaneo de dependencias/seguridad para
+los tres servicios Python.
+
+**Frontend: 6/10 — el puntaje más bajo de las cuatro rondas de
+evaluación de este proyecto.** El hallazgo más serio: en **tres lugares
+distintos** (`TargetsPage.tsx`, y dos veces en `ScanDetailPage.tsx`), un
+fallo real de fetch en segundo plano es indistinguible de —o se
+presenta activamente como— un resultado legítimo vacío o completo. En
+`TargetsPage.tsx`, el error de `scanQueries[index]` nunca se lee; si esa
+consulta falla, la fila muestra "nunca escaneado" exactamente igual que
+un target genuinamente nunca escaneado. En `ScanDetailPage.tsx`, un
+fallo en `findingsQuery` deja `findings = []`, y para un scan no-corriendo
+esto dispara el texto **"Las N herramientas corrieron y ninguna reportó
+nada. Esto es un resultado, no un error."** — una afirmación
+directamente falsa cuando la causa real es un error de red, mostrada al
+lado de un `ErrorBanner` real que contradice el propio texto en la misma
+pantalla. Un fallo de `tasksQuery` renderiza los 5 tools como
+"pendiente", visualmente idéntico a un scan que todavía no arrancó. Para
+un dashboard de hallazgos de seguridad, esta clase de error —"no sé" se
+ve igual que "no hay nada"— es un riesgo real de que un operador
+descarte una falla de infraestructura como ausencia de vulnerabilidades.
+Además: `reportsQuery.error` no tiene ningún banner ni manejo, a
+diferencia de las otras dos mutaciones de esa misma página; una única
+instancia de `downloadMutation` compartida entre todas las filas de
+reportes produce indicadores de "descargando"/error incorrectos si dos
+descargas se solapan; todas las "tablas" de la aplicación son grids de
+`div` sin ningún elemento `&lt;table&gt;` semántico, perdiendo toda
+estructura de fila/columna para lectores de pantalla; los módulos de
+lógica pura (`lib/format.ts`, `lib/severity.ts`, `lib/status.ts`,
+`lib/tools.ts`) y el cliente de API no tienen ningún test dedicado.
+
+### 10.3 Puntaje final: **7,4/10**
+
+| Dimensión | Puntaje | Peso |
+|---|---|---|
+| Documento | 8/10 | ~35% |
+| Backend + DB + Scanner | 7,5/10 | ~25% |
+| Reports + n8n + Infraestructura | 7,5/10 | ~20% |
+| Frontend | 6/10 | ~20% |
+
+**Baja respecto a la ronda anterior (7,8/10), y de forma más marcada que
+la caída entre la segunda y la tercera ronda (7,9→7,8).** El patrón que
+las cuatro rondas de evaluación de este proyecto vienen mostrando de
+forma consistente se sostiene y se profundiza: los 6 fixes de la
+Sección 9 se verificaron correctamente para lo que arreglaban, pero
+ninguno de los tres alcances quedó sin hallazgos nuevos y genuinos —y
+el Frontend, en particular, muestra por primera vez un problema
+*sistémico* (repetido en tres lugares distintos, no un bug aislado) en
+vez de un hallazgo puntual como en rondas anteriores. Esto no es
+evidencia de que el proyecto esté empeorando en términos absolutos —el
+código sigue mostrando disciplina real (guardas de path traversal,
+comparación en tiempo constante, savepoints, truncado sistemático,
+tests con aserciones reales)— sino de que **escrutinio fresco e
+independiente sigue encontrando algo genuino en cada ronda**, que es
+exactamente la premisa metodológica que sostiene este documento desde
+la Sección 0.
+
+Para una próxima ronda, en orden de impacto esperado: (1) el patrón de
+error-como-resultado-legítimo en el Frontend (3 instancias, mismo
+arreglo conceptual: leer y renderizar `.error` de cada query en vez de
+solo `.data`) — es el hallazgo más serio de esta ronda por tocar la
+confiabilidad de lo que un operador de seguridad ve en pantalla; (2) el
+fallback de severidad de Nuclei nunca conectado (`from_cvss_score`
+existe, está testeado, no se usa) — barato de arreglar, alto impacto en
+la función central de triage; (3) generalizar `retryOnFail` a los nodos
+`Scan:*`/`Ingest:*` de n8n, y decidir qué debe pasar si `Complete Scan`
+agota sus 3 reintentos (¿debería `Generate Report` verificar el status
+antes de correr?); (4) sacar `BACKEND_API_KEY` del bundle del frontend
+—ya no cumple su función como secreto compartido estando ahí—; (5) D3
+sigue siendo, de las cuatro rondas, el hallazgo sustantivo más citado y
+menos tocado.
+
+## 11. Remediación aplicada (2026-08-23)
+
+Antes de corregir nada, se verificó cada hallazgo de la Sección 10
+contra el código y la documentación real (no solo contra el reporte del
+revisor) — la instrucción permanente del usuario de planificar antes de
+corregir. Esa verificación encontró que **dos de los "hallazgos"
+nuevos ya eran decisiones documentadas de rondas anteriores**, mismo
+patrón que el falso positivo COD-8 de una ronda anterior:
+
+- **`BACKEND_API_KEY` en el bundle del Frontend**: `docs/security.md`
+  ya documenta esta limitación exacta (incluida la recomendación #4 de
+  esta misma sección, escrita antes de verificar — corrección: no se
+  aplica, ya es una decisión tomada y explicada, no un gap fresco).
+- **Puerto de Postgres publicado por defecto**: ya tiene un comentario
+  explícito de una ronda anterior (COD-15, "deliberate developer-
+  convenience trade-off, not an oversight") en `docker-compose.yml`.
+
+De los hallazgos restantes, se corrigieron 4 backend (Medio) + 2 n8n
+(Alto/Medio) + 1 inconsistencia de documentación + 5 frontend
+(Alto/Medio), y se difirieron explícitamente el resto (Bajos, o de
+alcance mayor al de esta ronda — CI con lint/type-check/scan de
+dependencias para los 3 servicios Python, y el refactor de las tablas
+div-grid a `<table>` semántico). Razonamiento completo de cada fix (qué
+arreglo obvio se descartó y por qué) en
+`C:\Users\lauti\.claude\plans\synthetic-tinkering-puzzle.md`; resumen:
+
+- **Backend**: fallback de `severity.from_cvss_score` conectado en
+  `nuclei_normalizer` solo cuando falta la etiqueta propia de la
+  herramienta (no siempre, para no pisar la etiqueta explícita ya
+  documentada como confiable); `delete_target` ahora rechaza borrar un
+  target con scans no terminales (`TargetHasActiveScansError`, 409) —
+  requirió mover `TERMINAL_STATUSES` a `database/models/enums.py` como
+  `TERMINAL_SCAN_STATUSES` para que `target_service.py` pudiera
+  importarlo sin ciclo con `scan_service.py`; `Service.host`/`protocol`
+  truncados igual que sus columnas vecinas; `Finding.title` centralizado
+  en `finding_repository.create_finding` en vez de duplicado en 3
+  normalizadores.
+- **n8n**: nuevo `IF: Complete Scan Failed` entre `Complete Scan` y
+  `Generate Report` — si los 3 reintentos de `Complete Scan` se agotan,
+  el pipeline ya no sigue adelante como si el scan hubiera cerrado
+  (mismo patrón de IF-gate ya usado 4 veces en el workflow); `retryOnFail`
+  agregado **solo** a los 5 nodos `Ingest: *` (llamadas cortas al
+  Backend) y deliberadamente **no** a los 5 `Scan: *` (llamadas de
+  minutos de duración, donde tripliciar el costo de un fallo real iría
+  contra el objetivo de pipeline de 4-6 minutos).
+- **Documentación**: el encabezado de `docker-compose.yml` afirmaba "sin
+  pasos manuales" cuando `n8n/README.md` ya documenta honestamente que
+  el workflow requiere un import/activate manual por volumen nuevo —
+  corregido para que ambos documentos digan lo mismo.
+- **Frontend**: el mismo patrón de bug en 4 lugares distintos (el error
+  de una query nunca se distinguía de un resultado vacío/completo
+  legítimo) corregido en un solo pase — `TargetsPage`'s historial de
+  scans por target, y `ScanDetailPage`'s `reportsQuery`/`findingsQuery`/
+  `tasksQuery`, esta última la más grave (el texto "esto es un
+  resultado, no un error" se mostraba literalmente al lado de un error
+  real). `downloadMutation` compartido entre todas las filas de reportes
+  (causaba estado de descarga/error incorrecto entre filas concurrentes)
+  reemplazado por una instancia de `useMutation` por fila
+  (`ReportRow`).
+
+**Verificado en vivo, no solo "debería andar"**: `backend` 135→143
+tests, `frontend` 43→45 tests, ambos pasando contra las imágenes
+reconstruidas; `tsc --noEmit`/`oxlint`/`vite build` limpios; workflow de
+n8n reimportado/reactivado, un scan real de punta a punta contra `dvwa`
+completó con `pipeline_run_id` poblado (88) y generó un reporte PDF real
+—confirma que el nuevo `IF: Complete Scan Failed` no rompió el camino
+feliz—, 32 findings ingeridos con la distribución de severidad esperada.
+Igual que en rondas anteriores, no se pudo disparar en vivo el camino de
+fallo de `Complete Scan` (requeriría tumbar el Backend a mitad de
+pipeline); se verificó por inspección de la conexión JSON en vez de
+fingir una prueba que no se hizo.
