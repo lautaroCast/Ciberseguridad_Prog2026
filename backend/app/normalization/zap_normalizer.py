@@ -47,7 +47,7 @@ def normalize(parsed: dict[str, Any] | None) -> NormalizedData:
         for alert in site.get("alerts") or []:
             findings.append(
                 FindingData(
-                    title=str(alert.get("name") or "ZAP finding")[:255],
+                    title=str(alert.get("name") or "ZAP finding"),
                     finding_type="web_vulnerability",
                     severity=severity.from_zap_riskcode(alert.get("riskcode")),
                     description=alert.get("desc"),

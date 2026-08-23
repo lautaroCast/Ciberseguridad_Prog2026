@@ -39,3 +39,36 @@ def test_falls_back_to_template_id_when_no_name():
 def test_empty_input():
     assert nuclei_normalizer.normalize([]).findings == []
     assert nuclei_normalizer.normalize(None).findings == []
+
+
+def test_falls_back_to_cvss_score_when_tool_severity_label_is_missing():
+    # Some community templates omit info.severity entirely. Without a
+    # fallback this used to be silently filed as INFO regardless of how
+    # high the CVSS score actually is.
+    parsed = [
+        {
+            "template-id": "some-template",
+            "info": {
+                "name": "High-severity finding with no tool label",
+                "classification": {"cvss-score": 9.8},
+            },
+        }
+    ]
+    result = nuclei_normalizer.normalize(parsed)
+    assert result.findings[0].severity == SeverityLevel.CRITICAL
+
+
+def test_does_not_override_an_explicit_info_label_with_cvss_score():
+    # The tool's own label is trusted when present, even if it's "info" and
+    # a CVSS score is also attached — only a *missing* label falls back.
+    parsed = [
+        {
+            "template-id": "some-template",
+            "info": {
+                "severity": "info",
+                "classification": {"cvss-score": 9.8},
+            },
+        }
+    ]
+    result = nuclei_normalizer.normalize(parsed)
+    assert result.findings[0].severity == SeverityLevel.INFO

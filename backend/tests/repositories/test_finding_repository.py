@@ -46,6 +46,32 @@ def _make_finding(db_session, scan_task):
     )
 
 
+def test_create_finding_truncates_title(db_session):
+    # title used to be truncated at the normalizer level (in 3 separate
+    # places) instead of centrally here, same gap create_cve_reference's
+    # source_url had. A caller that bypasses a normalizer (like this test)
+    # must not be able to overflow the column.
+    scan_task = _make_scan_task(db_session)
+    long_title = "A" * 500
+
+    finding = finding_repository.create_finding(
+        db_session,
+        scan_id=scan_task.scan_id,
+        scan_task_id=scan_task.id,
+        service_id=None,
+        title=long_title,
+        description=None,
+        finding_type="template-match",
+        evidence=None,
+        confidence=None,
+        cvss_score=None,
+        cvss_vector=None,
+        severity=SeverityLevel.HIGH,
+    )
+
+    assert len(finding.title) == 255
+
+
 def test_create_cve_reference_truncates_source_url(db_session):
     scan_task = _make_scan_task(db_session)
     finding = _make_finding(db_session, scan_task)

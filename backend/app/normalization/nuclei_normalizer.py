@@ -23,11 +23,21 @@ def normalize(parsed: list[dict[str, Any]] | None) -> NormalizedData:
         cve_references = [
             CveReferenceData(cve_id=str(cve_id), cvss_score=cvss_score) for cve_id in cve_ids
         ]
+        # Trust the tool's own label when present (see module docstring) —
+        # only fall back to the shared CVSS-score mapping when Nuclei
+        # didn't provide one at all, so a template that omits `severity`
+        # doesn't silently land in INFO despite a real, high CVSS score.
+        raw_severity = info.get("severity")
+        severity_value = (
+            severity.from_label(raw_severity)
+            if raw_severity
+            else severity.from_cvss_score(cvss_score)
+        )
         findings.append(
             FindingData(
-                title=str(info.get("name") or item.get("template-id") or "Nuclei finding")[:255],
+                title=str(info.get("name") or item.get("template-id") or "Nuclei finding"),
                 finding_type=str(item.get("type") or "template_match"),
-                severity=severity.from_label(info.get("severity")),
+                severity=severity_value,
                 description=info.get("description"),
                 evidence=item.get("matched-at") or item.get("host"),
                 cvss_score=cvss_score,

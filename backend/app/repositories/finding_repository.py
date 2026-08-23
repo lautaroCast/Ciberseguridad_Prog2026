@@ -9,8 +9,11 @@ from models import CveReference, Finding, SeverityLevel
 
 # Tool-derived strings have no length guarantee; these columns are bounded
 # (database/models/finding.py, cve_reference.py) — truncate here, once,
-# rather than trusting every one of the 5 normalizers to do it themselves
-# (only `title` currently gets that treatment, at the normalizer level).
+# rather than trusting every one of the 5 normalizers to do it themselves.
+# `title` used to be the one exception (truncated at the normalizer level,
+# in 3 separate places) until this comment's own gap got closed — see
+# create_finding below.
+_TITLE_MAX = 255
 _FINDING_TYPE_MAX = 100
 _CONFIDENCE_MAX = 20
 _CVSS_VECTOR_MAX = 100
@@ -41,7 +44,7 @@ def create_finding(
         scan_id=scan_id,
         scan_task_id=scan_task_id,
         service_id=service_id,
-        title=title,
+        title=title[:_TITLE_MAX],
         description=description,
         finding_type=finding_type[:_FINDING_TYPE_MAX],
         evidence=evidence,

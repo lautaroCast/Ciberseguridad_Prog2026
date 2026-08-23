@@ -14,6 +14,7 @@ from app.services.pipeline_service import PipelineTriggerError
 from app.services.report_service import ReportGenerationError, ReportNotFoundError
 from app.services.scan_service import ScanAlreadyTerminalError, ScanNotFoundError
 from app.services.target_service import (
+    TargetHasActiveScansError,
     TargetInactiveError,
     TargetNameConflictError,
     TargetNotAllowedError,
@@ -73,6 +74,21 @@ async def target_inactive_handler(request: Request, exc: TargetInactiveError) ->
     return JSONResponse(
         status_code=409,
         content={"detail": f"Target '{exc}' is inactive; reactivate it before scanning."},
+    )
+
+
+@app.exception_handler(TargetHasActiveScansError)
+async def target_has_active_scans_handler(
+    request: Request, exc: TargetHasActiveScansError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": (
+                f"Target '{exc}' has a scan that hasn't finished yet; "
+                "wait for it to reach a terminal status before deleting."
+            )
+        },
     )
 
 

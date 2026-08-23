@@ -347,7 +347,10 @@
         5328,
         1376
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -420,7 +423,10 @@
         5840,
         1376
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -480,7 +486,10 @@
         5328,
         1584
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -540,7 +549,10 @@
         5664,
         1584
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -600,7 +612,10 @@
         5168,
         1792
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -1000,6 +1015,54 @@
         5328,
         1930
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000008",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000009",
+      "name": "IF: Complete Scan Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5408,
+        1860
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Complete Scan: retries exhausted still stops here, not at Generate Report\n\n`IF: Complete Scan Failed` checks whether all 3 retries on `Complete Scan` were exhausted (`$json.error !== undefined`). If so, the pipeline stops here instead of proceeding to `Generate Report` -> `Send Report Email` as if the scan had closed normally — the previous behavior sent a \"report ready\" email for a scan whose DB row was still stuck in `running`.\n\n**Still not fully solved, by design**: if the Backend is genuinely down (not a transient blip), the scan does stay in `running` forever — there's no monitoring/alerting anywhere in this stack to page on that, and building one is out of scope. This fix only stops the pipeline from compounding that residual gap by also sending a misleading success email.",
+        "height": 280,
+        "width": 480
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-10000000000a",
+      "name": "Sticky Note - Complete Scan Failed Gate",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5328,
+        1980
+      ]
     }
   ],
   "pinData": {},
@@ -1224,7 +1287,7 @@
       "main": [
         [
           {
-            "node": "Generate Report",
+            "node": "IF: Complete Scan Failed",
             "type": "main",
             "index": 0
           }
@@ -1340,6 +1403,18 @@
         [
           {
             "node": "Check Webhook Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Complete Scan Failed": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Generate Report",
             "type": "main",
             "index": 0
           }

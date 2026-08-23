@@ -2,7 +2,11 @@
 # VulnScan Platform — Docker Compose orchestration
 #
 # Single entry point for the whole system: `docker compose up -d` must leave
-# every service healthy with no manual follow-up steps.
+# every service healthy. One manual, one-time step remains outside this
+# file by necessity, not oversight: n8n has no supported "watch this
+# folder" import mechanism, so the pipeline workflow must be imported and
+# activated once per fresh n8n-data volume — see n8n/README.md ("Running
+# it") for the exact commands.
 #
 # Two networks by design:
 #   - app-network: platform services talk to each other (frontend, backend,

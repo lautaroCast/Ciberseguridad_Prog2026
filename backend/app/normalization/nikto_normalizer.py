@@ -19,7 +19,7 @@ from models import SeverityLevel
 def normalize(parsed: list[dict[str, Any]] | None) -> NormalizedData:
     findings = [
         FindingData(
-            title=str(item.get("msg") or "Nikto finding")[:255],
+            title=str(item.get("msg") or "Nikto finding"),
             finding_type="web_misconfiguration",
             severity=SeverityLevel.LOW,
             evidence=f"{item.get('method', 'GET')} {item.get('url', '')}".strip(),

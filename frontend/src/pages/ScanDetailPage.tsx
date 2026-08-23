@@ -29,7 +29,7 @@ import { ToolErrors, ToolTimeline } from "../components/ToolTimeline";
 import { elapsedSeconds, formatDateTime, formatDuration } from "../lib/format";
 import { SEVERITY_META, SEVERITY_ORDER, severityColor } from "../lib/severity";
 import { buildToolBreakdown, toolLabel } from "../lib/tools";
-import type { FindingRead, ReportFormat, ScanStatus, Severity } from "../types";
+import type { FindingRead, ReportFormat, ReportRead, ScanStatus, Severity } from "../types";
 
 type SortKey = "severity" | "title" | "type" | "origin" | "cvss";
 type SortDirection = "asc" | "desc";
@@ -85,10 +85,6 @@ export function ScanDetailPage() {
   const createReportMutation = useMutation({
     mutationFn: (format: ReportFormat) => createReport(scanId, format),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["reports", scanId] }),
-  });
-
-  const downloadMutation = useMutation({
-    mutationFn: (reportId: string) => downloadReport(reportId),
   });
 
   const [selectedSeverities, setSelectedSeverities] = useState<Set<Severity>>(
@@ -258,9 +254,14 @@ export function ScanDetailPage() {
       <div className="th" style={{ marginBottom: 12 }}>
         Herramientas · ejecución secuencial
       </div>
-      {tasksQuery.isLoading ? <TableSkeleton rows={5} /> : <ToolTimeline rows={breakdown} />}
+      {tasksQuery.isLoading ? (
+        <TableSkeleton rows={5} />
+      ) : tasksQuery.error ? (
+        <ErrorBanner error={tasksQuery.error} />
+      ) : (
+        <ToolTimeline rows={breakdown} />
+      )}
       <ToolErrors rows={breakdown} />
-      <ErrorBanner error={tasksQuery.error} />
 
       {!running && findings.length > 0 && (
         <>
@@ -354,6 +355,7 @@ export function ScanDetailPage() {
             total={findings.length}
             toolCount={toolCount}
             running={running}
+            failedToLoad={Boolean(findingsQuery.error)}
             openId={openFindingId}
             onToggle={(findingId) =>
               setOpenFindingId((current) => (current === findingId ? null : findingId))
@@ -393,7 +395,7 @@ export function ScanDetailPage() {
             </div>
 
             <ErrorBanner error={createReportMutation.error} />
-            <ErrorBanner error={downloadMutation.error} />
+            <ErrorBanner error={reportsQuery.error} />
 
             {reportsQuery.data && reportsQuery.data.length === 0 && (
               <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
@@ -403,46 +405,9 @@ export function ScanDetailPage() {
 
             {reportsQuery.data && reportsQuery.data.length > 0 && (
               <div style={{ borderTop: "1px solid var(--line)" }}>
-                {reportsQuery.data.map((report) => {
-                  const pending =
-                    downloadMutation.isPending && downloadMutation.variables === report.id;
-                  return (
-                    <div
-                      key={report.id}
-                      className="row"
-                      style={{ gap: 13, padding: "9px 0", borderBottom: "1px solid var(--line)" }}
-                    >
-                      <span
-                        className="mono"
-                        style={{
-                          width: 76,
-                          flexShrink: 0,
-                          fontSize: 11,
-                          fontWeight: 500,
-                          textTransform: "uppercase",
-                          color: "var(--ink-2)",
-                        }}
-                      >
-                        {report.format}
-                      </span>
-                      <span
-                        style={{ flexGrow: 1, fontSize: 11, color: "var(--ink-3)" }}
-                      >
-                        {formatDateTime(report.generated_at)}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{ width: 128 }}
-                        onClick={() => downloadMutation.mutate(report.id)}
-                        disabled={pending}
-                      >
-                        {pending ? <SpinnerIcon size={11} /> : <DownloadIcon />}
-                        {pending ? "Descargando" : "Descargar"}
-                      </button>
-                    </div>
-                  );
-                })}
+                {reportsQuery.data.map((report) => (
+                  <ReportRow key={report.id} report={report} />
+                ))}
               </div>
             )}
 
@@ -452,6 +417,58 @@ export function ScanDetailPage() {
             </p>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function ReportRow({ report }: { report: ReportRead }) {
+  // One useMutation instance per row, not one shared across all reports —
+  // a single shared mutation identified "is this row downloading/errored"
+  // by comparing `.variables` to `report.id`, which broke as soon as two
+  // downloads overlapped (starting B while A was still in flight
+  // reassigned `.variables` to B, silently clearing A's spinner and
+  // misattributing A's eventual error to B's row). Per-row state by
+  // construction removes the shared-identity race instead of patching the
+  // comparison.
+  const downloadMutation = useMutation({
+    mutationFn: () => downloadReport(report.id),
+  });
+
+  return (
+    <div style={{ padding: "9px 0", borderBottom: "1px solid var(--line)" }}>
+      <div className="row" style={{ gap: 13 }}>
+        <span
+          className="mono"
+          style={{
+            width: 76,
+            flexShrink: 0,
+            fontSize: 11,
+            fontWeight: 500,
+            textTransform: "uppercase",
+            color: "var(--ink-2)",
+          }}
+        >
+          {report.format}
+        </span>
+        <span style={{ flexGrow: 1, fontSize: 11, color: "var(--ink-3)" }}>
+          {formatDateTime(report.generated_at)}
+        </span>
+        <button
+          type="button"
+          className="btn"
+          style={{ width: 128 }}
+          onClick={() => downloadMutation.mutate()}
+          disabled={downloadMutation.isPending}
+        >
+          {downloadMutation.isPending ? <SpinnerIcon size={11} /> : <DownloadIcon />}
+          {downloadMutation.isPending ? "Descargando" : "Descargar"}
+        </button>
+      </div>
+      {downloadMutation.error && (
+        <div style={{ marginTop: 8 }}>
+          <ErrorBanner error={downloadMutation.error} />
+        </div>
       )}
     </div>
   );
@@ -628,6 +645,7 @@ function FindingsTable({
   total,
   toolCount,
   running,
+  failedToLoad,
   openId,
   onToggle,
   toolFor,
@@ -639,6 +657,7 @@ function FindingsTable({
   total: number;
   toolCount: number;
   running: boolean;
+  failedToLoad: boolean;
   openId: string | null;
   onToggle: (id: string) => void;
   toolFor: (finding: FindingRead) => string | null;
@@ -743,14 +762,21 @@ function FindingsTable({
       {findings.length === 0 && (
         <EmptyState
           title={
-            total === 0
-              ? running
-                ? "Todavía no hay hallazgos"
-                : "El escaneo terminó sin hallazgos"
-              : "Ningún hallazgo coincide con los filtros"
+            failedToLoad
+              ? "No se pudieron cargar los hallazgos"
+              : total === 0
+                ? running
+                  ? "Todavía no hay hallazgos"
+                  : "El escaneo terminó sin hallazgos"
+                : "Ningún hallazgo coincide con los filtros"
           }
         >
-          {total === 0 ? (
+          {failedToLoad ? (
+            <>
+              Hubo un error de red o del servidor al pedir los hallazgos — no significa que el
+              escaneo no haya producido ninguno. Reintentá recargando la página.
+            </>
+          ) : total === 0 ? (
             running ? (
               <>
                 Nmap y WhatWeb aportan servicios y tecnologías, no hallazgos. Los primeros

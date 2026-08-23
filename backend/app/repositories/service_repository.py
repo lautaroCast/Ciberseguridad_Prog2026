@@ -34,6 +34,13 @@ from models import Service
 # every caller (currently only nmap_normalizer.py) to do it themselves.
 _MAX_LENGTH = 100
 
+# host/protocol come from the same untrusted Nmap output but have their own,
+# narrower column widths (database/models/service.py) — truncated
+# separately from _MAX_LENGTH rather than sharing it, since 100 would
+# still overflow protocol's 10-char column.
+_HOST_MAX_LENGTH = 255
+_PROTOCOL_MAX_LENGTH = 10
+
 
 def _truncate(value: str | None) -> str | None:
     return value[:_MAX_LENGTH] if value is not None else None
@@ -64,6 +71,12 @@ def get_or_create_service(
     product: str | None,
     version: str | None,
 ) -> Service:
+    # Truncated before the SELECT (not just the INSERT) so the lookup and
+    # the insert agree on the same value — truncating only at insert time
+    # would mean a second run's SELECT (still comparing the untruncated
+    # host) could never match the already-truncated row from the first.
+    host = host[:_HOST_MAX_LENGTH]
+    protocol = protocol[:_PROTOCOL_MAX_LENGTH]
     service_name = _truncate(service_name)
     product = _truncate(product)
     version = _truncate(version)

@@ -1,7 +1,10 @@
+import uuid
+
 import pytest
 
 from app.repositories import target_repository
-from app.services import target_service
+from app.services import scan_service, target_service
+from models import ScanStatus
 
 
 def test_register_target_with_allowed_host(db_session):
@@ -43,7 +46,40 @@ def test_register_target_duplicate_name_via_integrity_error(db_session, monkeypa
 
 
 def test_get_target_or_raise_not_found(db_session):
-    import uuid
-
     with pytest.raises(target_service.TargetNotFoundError):
         target_service.get_target_or_raise(db_session, uuid.uuid4())
+
+
+def test_delete_target_rejects_when_a_scan_is_still_running(db_session):
+    target = target_service.register_target(
+        db_session, name="active-scan-target", host="juice-shop", description=None
+    )
+    scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+    with pytest.raises(target_service.TargetHasActiveScansError):
+        target_service.delete_target(db_session, target.id)
+
+    # The target must survive the rejected deletion attempt.
+    assert target_repository.get_target(db_session, target.id) is not None
+
+
+def test_delete_target_succeeds_when_all_scans_are_terminal(db_session):
+    target = target_service.register_target(
+        db_session, name="finished-scan-target", host="juice-shop", description=None
+    )
+    scan = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+    scan_service.complete_scan(db_session, scan.id, status=ScanStatus.COMPLETED, error_message=None)
+
+    target_service.delete_target(db_session, target.id)
+
+    assert target_repository.get_target(db_session, target.id) is None
+
+
+def test_delete_target_succeeds_with_no_scans_at_all(db_session):
+    target = target_service.register_target(
+        db_session, name="never-scanned-target", host="juice-shop", description=None
+    )
+
+    target_service.delete_target(db_session, target.id)
+
+    assert target_repository.get_target(db_session, target.id) is None
