@@ -64,6 +64,23 @@ def test_create_report_rejects_unsafe_filename_from_upstream(client, monkeypatch
     assert response.status_code == 500
 
 
+def test_create_report_rejects_bare_dotdot_filename_from_upstream(client, monkeypatch):
+    # Regression: every character in ".." is individually allowed by
+    # _SAFE_FILENAME, and no "/" is needed to reach a parent directory —
+    # fullmatch let a bare ".."/"." through even though it's exactly what
+    # this check exists to reject.
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+
+    def _fake_post(url, json, headers, timeout):
+        return _FakeResponse(200, json_body={"format": "pdf", "filename": ".."})
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+
+    response = client.post(f"/scans/{scan['id']}/reports", params={"format": "pdf"})
+    assert response.status_code == 500
+
+
 def test_download_report_rejects_trailing_newline_in_file_path(client, db_session):
     # Regression: the old `^...$` regex (via `.match`) lets a value ending
     # in "\n" through, since `$` matches just before one trailing newline.
