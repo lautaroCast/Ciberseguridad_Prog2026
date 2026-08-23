@@ -12,8 +12,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.repositories import target_repository
-from models import Target
+from app.repositories import scan_repository, target_repository
+from models import TERMINAL_SCAN_STATUSES, Target
 
 
 class TargetNotAllowedError(Exception):
@@ -33,6 +33,13 @@ class TargetInactiveError(Exception):
     been marked inactive via PATCH /targets/{id}. Read access (GET, list)
     to inactive targets is intentionally still allowed — this only gates
     the two places that would launch new work against one."""
+
+
+class TargetHasActiveScansError(Exception):
+    """Raised when deletion is attempted while the target has a scan that
+    hasn't reached a terminal status yet. `Target.scans` cascades
+    (`all, delete-orphan`) down to ScanTask/Finding, so letting this
+    through would silently destroy in-flight pipeline data."""
 
 
 def list_targets(db: Session, *, is_active: bool | None = None) -> list[Target]:
@@ -88,4 +95,11 @@ def update_target(db: Session, target_id: uuid.UUID, updates: dict) -> Target:
 
 def delete_target(db: Session, target_id: uuid.UUID) -> None:
     target = get_target_or_raise(db, target_id)
+    active_scans = [
+        scan
+        for scan in scan_repository.list_scans_for_target(db, target_id)
+        if scan.status not in TERMINAL_SCAN_STATUSES
+    ]
+    if active_scans:
+        raise TargetHasActiveScansError(str(target_id))
     target_repository.delete_target(db, target)

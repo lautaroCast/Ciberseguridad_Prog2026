@@ -9,7 +9,14 @@ service needs the full mapped schema, e.g.:
 
 from .base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from .cve_reference import CveReference
-from .enums import ReportFormat, ScanStatus, ScanTaskStatus, SeverityLevel, UserRole
+from .enums import (
+    TERMINAL_SCAN_STATUSES,
+    ReportFormat,
+    ScanStatus,
+    ScanTaskStatus,
+    SeverityLevel,
+    UserRole,
+)
 from .finding import Finding
 from .report import Report
 from .scan import Scan
@@ -37,4 +44,5 @@ __all__ = [
     "SeverityLevel",
     "ReportFormat",
     "UserRole",
+    "TERMINAL_SCAN_STATUSES",
 ]

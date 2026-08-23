@@ -17,6 +17,15 @@ class ScanStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
+# Single source of truth for "does this status mean the scan is done".
+# Lives next to the enum it classifies so every caller that needs it
+# (scan_service, pipeline_service, target_service) imports the same
+# object instead of each defining its own copy that could silently drift.
+TERMINAL_SCAN_STATUSES: frozenset[ScanStatus] = frozenset(
+    {ScanStatus.COMPLETED, ScanStatus.FAILED, ScanStatus.CANCELLED}
+)
+
+
 class ScanTaskStatus(str, enum.Enum):
     PENDING = "pending"
     RUNNING = "running"

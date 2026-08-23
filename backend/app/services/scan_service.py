@@ -11,15 +11,17 @@ from sqlalchemy.orm import Session
 
 from app.repositories import scan_repository
 from app.services import target_service
-from models import Scan, ScanStatus
+from models import TERMINAL_SCAN_STATUSES, Scan, ScanStatus
 
-
-# Public (no leading underscore): pipeline_service.py's own complete_scan
-# call needs the same definition of "terminal" this module's complete_scan
-# uses as the conditional UPDATE's WHERE clause — importing this one
-# constant instead of each caller defining its own copy is what keeps the
-# two from silently drifting apart.
-TERMINAL_STATUSES = frozenset({ScanStatus.COMPLETED, ScanStatus.FAILED, ScanStatus.CANCELLED})
+# Re-exported under this module's established public name: pipeline_service.py
+# (and target_service.py's delete_target guard) import the same object
+# instead of each defining their own copy, which is what keeps them from
+# silently drifting apart. The canonical definition lives in
+# database/models/enums.py, next to the ScanStatus enum it classifies —
+# moved there once a third module (target_service) needed it too, since
+# scan_service already imports target_service and importing it back the
+# other way would cycle.
+TERMINAL_STATUSES = TERMINAL_SCAN_STATUSES
 
 
 class ScanNotFoundError(Exception):
