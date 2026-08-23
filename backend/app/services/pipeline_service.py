@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.repositories import scan_repository
 from app.services import target_service
+from app.services.scan_service import TERMINAL_STATUSES
 from models import Scan, ScanStatus
 
 
@@ -47,7 +48,11 @@ def trigger_pipeline(db: Session, target_id: uuid.UUID) -> Scan:
         # mark it failed immediately rather than leaving a "running" scan
         # that silently never progresses.
         scan_repository.complete_scan(
-            db, scan, status=ScanStatus.FAILED, error_message=f"Failed to trigger n8n pipeline: {exc}"
+            db,
+            scan.id,
+            status=ScanStatus.FAILED,
+            error_message=f"Failed to trigger n8n pipeline: {exc}",
+            forbidden_statuses=TERMINAL_STATUSES,
         )
         raise PipelineTriggerError(str(exc)) from exc
 

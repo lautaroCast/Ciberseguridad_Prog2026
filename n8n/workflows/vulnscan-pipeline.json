@@ -630,7 +630,10 @@
         5328,
         1792
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -972,7 +975,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Constant-time comparison, mirroring secrets.compare_digest used\n// elsewhere in this platform (backend/scanner/reports) for the\n// equivalent shared-secret checks — n8n's IF node only offers a plain\n// string-equals operator, which short-circuits on the first differing\n// character.\nconst received = String(($json.headers && $json.headers['x-webhook-secret']) || '');\nconst expected = String($env.N8N_WEBHOOK_SECRET || '');\n\nlet diff = received.length === expected.length ? 0 : 1;\nconst maxLen = Math.max(received.length, expected.length);\nfor (let i = 0; i < maxLen; i++) {\n  const a = i < received.length ? received.charCodeAt(i) : 0;\n  const b = i < expected.length ? expected.charCodeAt(i) : 0;\n  diff |= a ^ b;\n}\n\nreturn [{ json: { ...$json, secret_matches: diff === 0 } }];"
+        "jsCode": "// Constant-time comparison, mirroring secrets.compare_digest used\n// elsewhere in this platform (backend/scanner/reports) for the\n// equivalent shared-secret checks — n8n's IF node only offers a plain\n// string-equals operator, which short-circuits on the first differing\n// character.\n//\n// Wrapped in try/catch and fail-closed (secret_matches: false) on any\n// unexpected error: this is the first node in the production (Webhook\n// Trigger) path, before any node-level safety net exists downstream —\n// an uncaught throw here would abort the whole execution with the scan\n// the Backend already created (before ever calling this webhook) stuck\n// in running forever. Failing closed reuses the IF node's existing\n// false branch (-> Respond Unauthorized) instead of needing a new one,\n// and \"reject on doubt\" is the correct default for an auth check\n// anyway.\ntry {\n  const received = String(($json.headers && $json.headers['x-webhook-secret']) || '');\n  const expected = String($env.N8N_WEBHOOK_SECRET || '');\n\n  let diff = received.length === expected.length ? 0 : 1;\n  const maxLen = Math.max(received.length, expected.length);\n  for (let i = 0; i < maxLen; i++) {\n    const a = i < received.length ? received.charCodeAt(i) : 0;\n    const b = i < expected.length ? expected.charCodeAt(i) : 0;\n    diff |= a ^ b;\n  }\n\n  return [{ json: { ...$json, secret_matches: diff === 0 } }];\n} catch (err) {\n  return [{ json: { ...$json, secret_matches: false } }];\n}"
       },
       "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000006",
       "name": "Compare Webhook Secret (Constant-Time)",
@@ -981,6 +984,21 @@
       "position": [
         4592,
         1290
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Complete Scan: retried, not bulletproof\n\nThis is the one node whose entire job is flipping the Scan out of `running` on the success path — but the workflow used to proceed to **Generate Report** unconditionally regardless of whether this call actually succeeded, since `continueOnFail: true` alone only stops the *execution* from aborting, not a silent no-op failure.\n\nNow configured with n8n's own retry (3 tries, 2s apart) so a transient blip self-heals automatically. **Residual, acknowledged risk**: if the Backend is genuinely down (not transient), all 3 retries fail too and the scan is still left in `running` forever — there's no monitoring/alerting anywhere in this stack to surface that, and building one is out of scope here. Documented as a known limitation rather than silently assumed away.",
+        "height": 260,
+        "width": 460
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000007",
+      "name": "Sticky Note - Complete Scan Retry",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5328,
+        1930
       ]
     }
   ],

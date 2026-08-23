@@ -162,3 +162,98 @@ Se releyeron con ojo crítico las secciones que D1/D4/D5 (Sección 1.2) señalar
 Sube respecto a la primera ronda (7,5/10), pero de forma incremental, no transformadora — coherente con lo que efectivamente pasó entre una evaluación y otra: correcciones puntuales sobre debilidades ya señaladas, no un rediseño de fondo. El documento mejora genuinamente en los dos puntos de menor esfuerzo y mayor impacto que la propia evaluación anterior había priorizado (D1, D4); el código sigue mostrando el mismo patrón ya observado en la primera ronda y en la segunda pasada de `/code-review` sobre la propia remediación: rigor real pero desparejo, con la ronda de escrutinio más reciente encontrando siempre algo nuevo y genuino (el hallazgo del hang de n8n en `Resolve Pipeline Context`/`Get Target (Manual)` es, de los dos ejercicios de evaluación independiente hechos sobre este proyecto, el más serio encontrado hasta ahora — toca directamente la garantía central de "ningún escaneo queda colgado" que el propio proyecto reivindica).
 
 Para una nota más alta, en orden de impacto esperado: (1) corregir el hang de n8n en los dos nodos señalados — es el hallazgo más serio de esta ronda y el más barato de arreglar (agregar `continueOnFail` + una llamada de fallback a `/complete`, mismo patrón ya usado en el resto del workflow); (2) endurecer el contenedor de n8n al mismo nivel que los otros cuatro; (3) cerrar la brecha de detección (D3) — sigue siendo, de las dos evaluaciones independientes, el hallazgo sustantivo más citado y menos tocado; (4) terminar D5 en §13/§15.
+
+## 9. Tercera evaluación independiente (2026-08-22)
+
+Mismo método, misma advertencia de conflicto de interés que las dos veces
+anteriores (Sección 0 y Sección 8) — sigue aplicando. Tres revisores de
+código frescos en paralelo, sin acceso a ningún reporte previo ni a
+mensajes de commit, contra `main` (commit `3ed0daf`, después de que la
+Sección 8 se aplicó y mergeó). Además, releí yo mismo §13 con ojo crítico
+para confirmar si D5 (densidad de prosa) quedó cerrado del todo.
+
+### 9.1 Documento
+
+**D5 confirmado cerrado.** §13, releído fresco, tiene oraciones de
+longitud razonable (2-3 cláusulas, sin incisos entre rayas encadenados)
+— no necesitaba la misma intervención que §9.1/§15 ya recibieron. D1 y
+D4 se mantienen resueltos (sin cambios desde la Sección 8). D2 y D3
+siguen sin tocarse, por la misma decisión de alcance de siempre.
+
+**Evaluación del documento: 8/10** (sin cambio respecto a la ronda
+anterior — D5 era la única pieza que faltaba de las de bajo costo, y
+cerrarla no mueve la aguja tanto como D1/D4 la movieron la vez pasada).
+
+### 9.2 Código — tres revisores frescos, cada uno con hallazgos nuevos y genuinos
+
+**Backend + DB + Scanner: 8/10.** `report_service.is_safe_filename`
+(`_SAFE_FILENAME = re.compile(r"[A-Za-z0-9._-]+")`) rechaza correctamente
+`../../etc/passwd` (hay slash) pero **no rechaza un `file_path` de
+exactamente `".."`** — ambos caracteres están individualmente permitidos
+y no hace falta ningún slash para que un solo componente traversal pase
+`fullmatch`. Es el mismo chequeo que ya cerró un agujero de traversal
+(COD-1) y todavía deja uno más angosto abierto. También: `CveReference.
+source_url` es el único campo de `create_cve_reference` que no se trunca
+(código muerto hoy, nadie lo puebla, pero el mismo patrón de
+truncado que sí se aplicó a `cve_id`/`cvss_vector` en la misma función se
+saltó este); y `complete_scan` sigue con un check-then-act no atómico
+(dos llamadas concurrentes a `/complete` podrían pisarse el
+`error_message`/`finished_at` una a la otra).
+
+**Reports + n8n + Infraestructura: 8/10.** El hallazgo más interesante de
+toda esta ronda: **`Complete Scan` tiene `continueOnFail: true`, pero
+nada corriente abajo verifica si la llamada realmente tuvo éxito.** Si
+falla, la ejecución sigue igual hacia `Generate Report` → `Send Report
+Email` → `Pipeline Complete`, como si el scan se hubiera completado —
+mientras la fila en la base de datos queda colgada en `running` para
+siempre. Es una variante distinta del mismo problema que motivó toda la
+Sección 8: `continueOnFail` evita que la ejecución aborte, pero no evita
+que un fallo silencioso dispare el resto del pipeline como si nada
+hubiera pasado. Además, el nuevo nodo `Compare Webhook Secret
+(Constant-Time)` (agregado en esta misma ronda) es el primer nodo del
+camino de producción y **no tiene `continueOnFail`** — exactamente la
+posición "antes de que exista cualquier red de contención" que motivó
+arreglar `Resolve Pipeline Context`, replicada sin querer en el propio
+nodo que se agregó para otra cosa.
+
+**Frontend: 7/10 — el único puntaje que bajó.** El focus trap de
+`ConfirmDialog.tsx` agregado en la Sección 8 tiene una regresión real y
+reproducible: su `useEffect` de foco inicial depende de `[onCancel]`, y
+`TargetDetailPage.tsx` (su único llamador real) pasa una función flecha
+inline que cambia de identidad en cada render — y ese componente
+re-renderiza cada 4 s mientras hay un scan no terminal (su propio
+`refetchInterval`). Cada uno de esos re-renders vuelve a disparar
+`cancelRef.current?.focus()`, arrancándole el foco a "Eliminar todo" en
+medio de una interacción real, no hipotética. Es exactamente la función
+que se endureció esta ronda, con un bug de raíz en el único lugar real
+donde se usa.
+
+### 9.3 Puntaje final: **7,8/10**
+
+| Dimensión | Puntaje | Peso |
+|---|---|---|
+| Documento | 8/10 | ~35% |
+| Backend + DB + Scanner | 8/10 | ~25% |
+| Reports + n8n + Infraestructura | 8/10 | ~20% |
+| Frontend | 7/10 | ~20% |
+
+**Baja levemente respecto a la ronda anterior (7,9/10), y eso es
+información real, no ruido.** Cerrar el hang de n8n (el hallazgo más
+serio de la Sección 8) funcionó y se verificó en vivo — pero el propio
+proceso de arreglarlo introdujo un nodo nuevo con el mismo tipo de gap
+(`Compare Webhook Secret` sin `continueOnFail`), y el endurecimiento del
+focus trap del frontend introdujo una regresión real en su único uso
+real. El patrón que las tres rondas de evaluación de este proyecto
+vienen mostrando de forma consistente se sostiene: **arreglar hallazgos
+reales no sube la nota de manera monótona** cuando cada arreglo tiene
+superficie para introducir un problema nuevo — es la razón por la que
+este proyecto sigue corriendo revisores frescos en cada ronda en vez de
+confiar en que "ya se corrigió" acumula puntaje sin más.
+
+Para una próxima ronda, en orden de impacto: (1) el bug del focus trap
+(barato: separar el foco inicial en un efecto de solo-montaje,
+independiente del `useEffect` con `onCancel`); (2) `Complete Scan` +
+`Compare Webhook Secret (Constant-Time)` sin verificación de éxito ni
+`continueOnFail` respectivamente; (3) el `".."` sin cubrir en
+`is_safe_filename`; (4) D3 sigue siendo, de las tres rondas, el hallazgo
+sustantivo más citado y menos tocado.

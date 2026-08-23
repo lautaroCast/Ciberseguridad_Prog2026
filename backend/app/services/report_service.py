@@ -31,6 +31,13 @@ _SAFE_FILENAME = re.compile(r"[A-Za-z0-9._-]+")
 
 
 def is_safe_filename(value: str) -> bool:
+    # "." and ".." pass the character class below (every character in each
+    # is individually allowed, and neither needs a "/" to reach a parent
+    # directory) but are exactly what this check exists to reject — a real
+    # file_path from the Reports Service is always "{scan_id}.{ext}", so
+    # rejecting these two literal strings can never reject a legitimate one.
+    if value in (".", ".."):
+        return False
     # `fullmatch` (not `match` + `^...$`) so a trailing "\n" can't sneak
     # through — `$` alone matches immediately before one trailing newline,
     # `fullmatch` requires consuming the entire string.
