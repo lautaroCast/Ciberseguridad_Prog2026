@@ -141,7 +141,7 @@ describe("ConfirmDialog while a confirm action is pending", () => {
 
   it("ignores a backdrop click while pending", () => {
     const onCancel = vi.fn();
-    const { container } = render(
+    render(
       <ConfirmDialog
         title="¿Confirmar?"
         confirmLabel="Eliminar todo"
@@ -152,7 +152,9 @@ describe("ConfirmDialog while a confirm action is pending", () => {
         contenido
       </ConfirmDialog>,
     );
-    fireEvent.click(container.querySelector(".backdrop")!);
+    // Portaled to document.body (see ConfirmDialog.tsx), so the backdrop
+    // is no longer inside render()'s own container - query the document.
+    fireEvent.click(document.querySelector(".backdrop")!);
     expect(onCancel).not.toHaveBeenCalled();
   });
 
@@ -171,5 +173,59 @@ describe("ConfirmDialog while a confirm action is pending", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ConfirmDialog accessibility", () => {
+  // 6th independent evaluation: the consequence text (the entire reason
+  // this confirmation exists) had no id and was never wired via
+  // aria-describedby, so a screen-reader user tabbing to Cancelar on open
+  // heard only the title, not the irreversibility warning.
+  it("associates its body content via aria-describedby", () => {
+    render(
+      <ConfirmDialog
+        title="¿Confirmar?"
+        confirmLabel="Eliminar todo"
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      >
+        contenido de advertencia
+      </ConfirmDialog>,
+    );
+    const dialog = screen.getByRole("alertdialog");
+    const describedById = dialog.getAttribute("aria-describedby");
+    expect(describedById).toBeTruthy();
+    expect(document.getElementById(describedById!)).toHaveTextContent(
+      "contenido de advertencia",
+    );
+  });
+
+  // 6th independent evaluation: the rest of the app (behind the backdrop)
+  // was never marked inert/aria-hidden, so a screen reader's browse mode
+  // could still read/interact with it while this modal was supposedly the
+  // only thing open.
+  it("marks #root inert while mounted and restores it on unmount", () => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.appendChild(root);
+
+    try {
+      const { unmount } = render(
+        <ConfirmDialog
+          title="¿Confirmar?"
+          confirmLabel="Eliminar todo"
+          onCancel={vi.fn()}
+          onConfirm={vi.fn()}
+        >
+          contenido
+        </ConfirmDialog>,
+      );
+      expect(root.hasAttribute("inert")).toBe(true);
+
+      unmount();
+      expect(root.hasAttribute("inert")).toBe(false);
+    } finally {
+      root.remove();
+    }
   });
 });

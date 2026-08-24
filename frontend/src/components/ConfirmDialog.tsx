@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 
 /**
@@ -25,6 +26,7 @@ export function ConfirmDialog({
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const descriptionId = useId();
 
   // onCancel is an inline arrow function at the one real call site
   // (TargetDetailPage.tsx), a fresh identity on every render — and that
@@ -76,18 +78,42 @@ export function ConfirmDialog({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []); // mount-only, deliberately — see onCancelRef above for why
 
-  return (
+  // The dialog is portaled to document.body (below) specifically so this
+  // can mark the real app content `inert` without also making the dialog
+  // itself inert — both would otherwise live under #root, and `inert`
+  // applies to the whole subtree it's set on. The Tab-key focus trap above
+  // only constrains linear keyboard navigation; `inert` additionally
+  // removes background content from the accessibility tree entirely, so a
+  // screen reader's browse/virtual-cursor mode can't read or interact with
+  // it while this destructive confirmation is open.
+  useEffect(() => {
+    const root = document.getElementById("root");
+    root?.setAttribute("inert", "");
+    return () => root?.removeAttribute("inert");
+  }, []);
+
+  return createPortal(
     <div
       className="backdrop"
       onClick={(event) => {
         if (event.target === event.currentTarget && !pending) onCancel();
       }}
     >
-      <div ref={dialogRef} className="dialog" role="alertdialog" aria-modal="true" aria-label={title}>
+      <div
+        ref={dialogRef}
+        className="dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        aria-describedby={descriptionId}
+      >
         <div className="empty__title" style={{ marginBottom: 7 }}>
           {title}
         </div>
-        <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--ink-2)", marginBottom: 16 }}>
+        <div
+          id={descriptionId}
+          style={{ fontSize: 12, lineHeight: 1.6, color: "var(--ink-2)", marginBottom: 16 }}
+        >
           {children}
         </div>
         <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
@@ -111,6 +137,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
