@@ -12,6 +12,7 @@ reviewing", not as pre-triaged by risk the way Nuclei/ZAP findings are
 
 from typing import Any
 
+from app.normalization import category
 from app.normalization.types import FindingData, NormalizedData
 from models import SeverityLevel
 
@@ -20,7 +21,7 @@ def normalize(parsed: list[dict[str, Any]] | None) -> NormalizedData:
     findings = [
         FindingData(
             title=str(item.get("msg") or "Nikto finding"),
-            finding_type="web_misconfiguration",
+            finding_type=category.from_nikto_message(str(item.get("msg") or "")),
             severity=SeverityLevel.LOW,
             evidence=f"{item.get('method', 'GET')} {item.get('url', '')}".strip(),
             confidence="low",

@@ -9,7 +9,7 @@ here.
 
 from typing import Any
 
-from app.normalization import severity
+from app.normalization import category, severity
 from app.normalization.types import FindingData, NormalizedData
 
 # `Finding.evidence` is an uncapped `Text` column DB-side, and a single ZAP
@@ -28,11 +28,24 @@ def _evidence_from_instances(alert: dict[str, Any]) -> str | None:
     # advice, a different concept — it must not be used as evidence.
     # `FindingData` has one `evidence` field per alert (not per instance),
     # so every instance's evidence is joined into one string.
-    parts = [
-        instance["evidence"]
-        for instance in (alert.get("instances") or [])
-        if instance.get("evidence")
-    ]
+    #
+    # The URI is prefixed onto its own instance's evidence (not just the
+    # evidence text alone, and kept even when an instance has no evidence
+    # text) so that ground-truth location matching
+    # (scripts/ground_truth/match_findings.py's tier 2) has real URL data
+    # to compare against — it used to be discarded entirely, so a ZAP
+    # finding could never match a catalog entry by location no matter how
+    # correct the finding was.
+    parts = []
+    for instance in alert.get("instances") or []:
+        uri = instance.get("uri")
+        evidence = instance.get("evidence")
+        if uri and evidence:
+            parts.append(f"{uri}: {evidence}")
+        elif uri:
+            parts.append(uri)
+        elif evidence:
+            parts.append(evidence)
     if not parts:
         return None
     joined = "; ".join(parts)
@@ -48,7 +61,7 @@ def normalize(parsed: dict[str, Any] | None) -> NormalizedData:
             findings.append(
                 FindingData(
                     title=str(alert.get("name") or "ZAP finding"),
-                    finding_type="web_vulnerability",
+                    finding_type=category.from_zap_cweid(alert.get("cweid")),
                     severity=severity.from_zap_riskcode(alert.get("riskcode")),
                     description=alert.get("desc"),
                     evidence=_evidence_from_instances(alert),

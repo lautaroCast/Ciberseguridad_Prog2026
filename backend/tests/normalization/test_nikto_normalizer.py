@@ -27,6 +27,14 @@ def test_always_low_severity_regardless_of_content():
     assert result.findings[0].severity == SeverityLevel.LOW
 
 
+def test_finding_type_classified_from_message_text():
+    # 5th independent evaluation: finding_type used to be
+    # "web_misconfiguration" for every single finding, unconditionally.
+    parsed = [{"vulnerabilities": [{"msg": "SQL Injection possible via id parameter"}]}]
+    result = nikto_normalizer.normalize(parsed)
+    assert result.findings[0].finding_type == "injection"
+
+
 def test_missing_vulnerabilities_key():
     parsed = [{}]
     result = nikto_normalizer.normalize(parsed)

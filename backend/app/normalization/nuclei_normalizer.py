@@ -9,7 +9,7 @@ trusts the tool's own severity label instead of deriving one.
 
 from typing import Any
 
-from app.normalization import severity
+from app.normalization import category, severity
 from app.normalization.types import CveReferenceData, FindingData, NormalizedData
 
 
@@ -36,7 +36,10 @@ def normalize(parsed: list[dict[str, Any]] | None) -> NormalizedData:
         findings.append(
             FindingData(
                 title=str(info.get("name") or item.get("template-id") or "Nuclei finding"),
-                finding_type=str(item.get("type") or "template_match"),
+                # `item["type"]` is the protocol Nuclei used (http/dns/...),
+                # not a vulnerability category — `info.tags` (5th
+                # independent evaluation) is the real thematic signal.
+                finding_type=category.from_nuclei_tags(info.get("tags")),
                 severity=severity_value,
                 description=info.get("description"),
                 evidence=item.get("matched-at") or item.get("host"),
