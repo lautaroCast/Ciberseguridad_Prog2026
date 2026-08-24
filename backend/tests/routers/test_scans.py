@@ -1,6 +1,7 @@
 import os
 import uuid
 
+import httpx
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -177,3 +178,32 @@ def test_targets_reject_the_n8n_callback_key_alone(client):
         "/targets", json={"name": "should-not-be-created", "host": "juice-shop"}
     )
     assert response.status_code == 401
+
+
+def test_trigger_pipeline_router_wiring_happy_path(client, monkeypatch):
+    # 6th independent evaluation: POST /targets/{id}/pipeline was only ever
+    # exercised at the service layer (test_pipeline_service.py calls
+    # pipeline_service.trigger_pipeline directly) - the route's own wiring
+    # (202 status, response_model serialization, verify_api_key dependency)
+    # was never driven through a real HTTP request, unlike every other
+    # route in this router.
+    class _FakeResponse:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _FakeResponse())
+
+    target = _create_target(client)
+    response = client.post(f"/targets/{target['id']}/pipeline")
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["target_id"] == target["id"]
+    assert body["status"] == "running"
+
+
+def test_trigger_pipeline_unknown_target_404s(client):
+    response = client.post(f"/targets/{uuid.uuid4()}/pipeline")
+    assert response.status_code == 404
