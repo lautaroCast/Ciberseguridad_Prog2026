@@ -1,35 +1,35 @@
 [
   {
-    "id": "87e9a08f-d00f-44da-8f23-071d6c2896f6",
-    "scan_id": "0a605f82-c622-4987-a00a-f693baa02fc9",
+    "id": "674f200e-35bd-472f-b0f3-bd4c68fe5f57",
+    "scan_id": "8e321f67-f4b1-466c-8cc1-92a222f23a8e",
     "tool_name": "nikto",
     "status": "completed",
-    "command": "perl /opt/nikto/program/nikto.pl -h http://dvwa:80 -Format json -output /tmp/tmphkpehsjy.json -nointeractive -maxtime 120s -Add-header Cookie: PHPSESSID=f82lg8pjqpnongiuu41f9agio5; security=low",
-    "started_at": "2026-08-20T04:46:00.720928Z",
-    "finished_at": "2026-08-20T04:48:24.734690Z",
+    "command": "perl /opt/nikto/program/nikto.pl -h http://dvwa:80 -Format json -output /tmp/tmpemof7ko3.json -nointeractive -maxtime 120s -Add-header Cookie: [redacted]",
+    "started_at": "2026-08-24T05:34:45.412381Z",
+    "finished_at": "2026-08-24T16:25:43.616178Z",
     "error_message": null,
-    "created_at": "2026-08-20T04:48:24.839462Z"
+    "created_at": "2026-08-24T16:25:43.630717Z"
   },
   {
-    "id": "06687151-77c4-4463-8629-bf69af10e043",
-    "scan_id": "0a605f82-c622-4987-a00a-f693baa02fc9",
+    "id": "1eb63356-3816-4d46-8479-7bfe7159d047",
+    "scan_id": "8e321f67-f4b1-466c-8cc1-92a222f23a8e",
     "tool_name": "nuclei",
     "status": "completed",
-    "command": "nuclei -u http://dvwa:80 -jsonl -silent -duc -H Cookie: PHPSESSID=s7vcnki2dgktpt9l6bjkrnbe32; security=low",
-    "started_at": "2026-08-20T04:48:24.996185Z",
-    "finished_at": "2026-08-20T04:51:07.010773Z",
+    "command": "nuclei -u http://dvwa:80 -jsonl -silent -duc -H Cookie: [redacted]",
+    "started_at": "2026-08-24T16:25:43.682433Z",
+    "finished_at": "2026-08-24T16:28:17.709175Z",
     "error_message": null,
-    "created_at": "2026-08-20T04:51:07.130131Z"
+    "created_at": "2026-08-24T16:28:17.800153Z"
   },
   {
-    "id": "d40c6d08-ea2f-4fb9-b1cd-540e364b7ebd",
-    "scan_id": "0a605f82-c622-4987-a00a-f693baa02fc9",
+    "id": "bc3ac671-035c-417e-a248-7ed2c7b34eec",
+    "scan_id": "8e321f67-f4b1-466c-8cc1-92a222f23a8e",
     "tool_name": "zap",
     "status": "completed",
-    "command": "zap.sh -cmd -quickurl http://dvwa:80 -quickout /tmp/tmpu1dtn74h.json -config replacer.full_list(0).description=auth-cookie -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Cookie -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=PHPSESSID=s4nss30lgkggir3j38a11qbq00; security=low",
-    "started_at": "2026-08-20T04:51:07.283270Z",
-    "finished_at": "2026-08-20T04:52:41.222562Z",
+    "command": "zap.sh -cmd -quickurl http://dvwa:80 -quickout /tmp/tmpkqeclhef.json -config replacer.full_list(0).description=auth-cookie -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Cookie -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=[redacted]",
+    "started_at": "2026-08-24T16:28:17.957403Z",
+    "finished_at": "2026-08-24T16:29:26.266821Z",
     "error_message": null,
-    "created_at": "2026-08-20T04:52:41.275144Z"
+    "created_at": "2026-08-24T16:29:26.309607Z"
   }
 ]

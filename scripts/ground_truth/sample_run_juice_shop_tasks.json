@@ -1,57 +1,57 @@
 [
   {
-    "id": "2f9a24f6-7b90-41be-b3d5-30c6cba5f156",
-    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "id": "61f3e40f-6b03-4a06-a6c0-8216d05c9887",
+    "scan_id": "6384ff5e-18ff-4048-b388-2f76a5a63370",
     "tool_name": "nmap",
     "status": "completed",
     "command": "nmap -sV -T4 -oX - juice-shop",
-    "started_at": "2026-08-11T00:42:33.384293Z",
-    "finished_at": "2026-08-11T00:42:45.619855Z",
+    "started_at": "2026-08-24T16:44:47.928999Z",
+    "finished_at": "2026-08-24T16:44:59.763890Z",
     "error_message": null,
-    "created_at": "2026-08-11T00:42:45.649339Z"
+    "created_at": "2026-08-24T16:44:59.788731Z"
   },
   {
-    "id": "593f8698-9ac1-4e57-b0fc-e4f463bd0f23",
-    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "id": "4adb774c-679e-41fa-a175-e73cb4f5c943",
+    "scan_id": "6384ff5e-18ff-4048-b388-2f76a5a63370",
     "tool_name": "whatweb",
     "status": "completed",
     "command": "whatweb --log-json=- -q --color=never -a 3 http://juice-shop:3000",
-    "started_at": "2026-08-11T00:42:45.743824Z",
-    "finished_at": "2026-08-11T00:42:51.988794Z",
+    "started_at": "2026-08-24T16:44:59.887462Z",
+    "finished_at": "2026-08-24T16:45:05.318186Z",
     "error_message": null,
-    "created_at": "2026-08-11T00:42:52.006444Z"
+    "created_at": "2026-08-24T16:45:05.333660Z"
   },
   {
-    "id": "ae118a0e-e4a9-4aed-89d9-5f66654f4a01",
-    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "id": "c4c43827-910f-4481-82c8-f0fd0597ee54",
+    "scan_id": "6384ff5e-18ff-4048-b388-2f76a5a63370",
     "tool_name": "nikto",
     "status": "completed",
-    "command": "perl /opt/nikto/program/nikto.pl -h http://juice-shop:3000 -Format json -output /tmp/tmphsy6xxzs.json -nointeractive -maxtime 90s",
-    "started_at": "2026-08-11T00:42:52.070902Z",
-    "finished_at": "2026-08-11T00:44:24.150957Z",
+    "command": "perl /opt/nikto/program/nikto.pl -h http://juice-shop:3000 -Format json -output /tmp/tmpw6y2shpo.json -nointeractive -maxtime 90s",
+    "started_at": "2026-08-24T16:45:05.383262Z",
+    "finished_at": "2026-08-24T16:46:37.775845Z",
     "error_message": null,
-    "created_at": "2026-08-11T00:44:24.172854Z"
+    "created_at": "2026-08-24T16:46:37.799225Z"
   },
   {
-    "id": "a5b3f80d-1851-42e9-92bb-db9a3a8ef8b4",
-    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "id": "375c988a-b42d-4abe-a837-e38eab25ed31",
+    "scan_id": "6384ff5e-18ff-4048-b388-2f76a5a63370",
     "tool_name": "nuclei",
     "status": "completed",
     "command": "nuclei -u http://juice-shop:3000 -jsonl -silent -duc -tags exposure,misconfig,tech,default-login",
-    "started_at": "2026-08-11T00:44:24.252583Z",
-    "finished_at": "2026-08-11T00:46:42.360433Z",
+    "started_at": "2026-08-24T16:46:37.867642Z",
+    "finished_at": "2026-08-24T16:47:54.633710Z",
     "error_message": null,
-    "created_at": "2026-08-11T00:46:42.428128Z"
+    "created_at": "2026-08-24T16:47:54.650750Z"
   },
   {
-    "id": "5e5d0359-25b1-4281-8b86-947493864f8d",
-    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "id": "9798892f-3429-4bc1-94b4-ca18d3ea491a",
+    "scan_id": "6384ff5e-18ff-4048-b388-2f76a5a63370",
     "tool_name": "zap",
     "status": "completed",
-    "command": "zap.sh -cmd -quickurl http://juice-shop:3000 -quickout /tmp/tmpuq1w8_ur.json",
-    "started_at": "2026-08-11T00:46:42.534636Z",
-    "finished_at": "2026-08-11T00:50:26.333896Z",
+    "command": "zap.sh -cmd -quickurl http://juice-shop:3000 -quickout /tmp/tmp6vvl7buj.json",
+    "started_at": "2026-08-24T16:47:54.687905Z",
+    "finished_at": "2026-08-24T16:48:36.367737Z",
     "error_message": null,
-    "created_at": "2026-08-11T00:50:26.363193Z"
+    "created_at": "2026-08-24T16:48:36.385030Z"
   }
 ]

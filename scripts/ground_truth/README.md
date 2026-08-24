@@ -25,53 +25,116 @@ que el propio auditor señala que no es lo mismo que cobertura.
   recall/precisión/F1/FPR por herramienta más solapamiento entre
   herramientas.
 
-## Hallazgo importante ya confirmado (léer antes de citar cualquier número de DVWA)
+## Estado actual (5ª evaluación independiente, 2026-08-24): el 0% de recall de alta confianza era un artefacto del matching, no de detección
+
+**Corrección importante sobre las dos secciones que siguen** (dejadas
+más abajo, sin editar, como registro histórico de lo que se creía antes
+de esta corrección): el "recall real 0%" que se citaba en la tesis y en
+esta misma página resultó ser, tras una revisión independiente
+(`docs/independent-evaluation-report.md` §10-12), un artefacto de tres
+problemas reales en el propio script de matching y los normalizadores
+— no una limitación genuina de las herramientas de escaneo:
+
+1. **`finding_type` era una cadena plana por herramienta**
+   (`"web_vulnerability"` para todo ZAP, `"web_misconfiguration"` para
+   todo Nikto, el tipo de protocolo crudo para Nuclei) — nunca podía
+   coincidir con el vocabulario real de los catálogos
+   (`injection`/`xss`/`security_misconfiguration`/...), así que el
+   nivel 2 (tipo+ubicación) de `match_findings.py` no podía disparar
+   *nunca*, sin importar cuán correcto fuera el hallazgo. Corregido:
+   `backend/app/normalization/category.py`, clasificación real por
+   CWE (ZAP), texto del mensaje (Nikto) y tags de template (Nuclei).
+2. **ZAP descartaba la URI de cada instancia**, dejando solo el texto
+   de evidencia — el nivel 2 tampoco tenía con qué comparar la
+   ubicación aunque `finding_type` ahora sí coincidiera. Corregido:
+   `zap_normalizer.py` conserva la URI de cada instancia.
+3. **El nivel 3 (keyword) asignaba por orden de archivo, no por
+   especificidad** — dos entradas de catálogo que comparten una palabra
+   demasiado genérica (ej. "injection" en más de una entrada de DVWA)
+   dejaban que la que aparece primero en el JSON se quedara con el
+   finding, aunque la otra fuera la coincidencia correcta. Corregido:
+   los candidatos se recolectan globalmente y se asignan por
+   especificidad (más keywords coincidentes gana).
+
+**Resultado real, medido de nuevo tras estas 3 correcciones** (corrida
+autenticada Nikto+Nuclei+ZAP contra DVWA, scan real, ver
+`sample_run_dvwa_authenticated_match_report.json`):
+
+| Herramienta | Recall | Precisión | Desglose por nivel |
+|---|---|---|---|
+| ZAP | 90,9% (10/11 entradas) | 54,5% | 4 tipo+ubicación (nivel 2, alta confianza), resto keyword |
+| Nuclei | 9,1% | 5,6% | 1 keyword |
+| Nikto | 0% | 0% | — |
+
+**Las 11 entradas del catálogo de DVWA quedaron cubiertas** (0 sin
+cubrir) contra el escaneo autenticado — un cambio real frente al 0% de
+recall de alta confianza reportado en las secciones históricas de abajo.
+4 de esos matches son ahora de nivel 2 (tipo+ubicación, confianza media-
+alta, antes estructuralmente imposible), no solo nivel 3. Nikto en 0%
+sigue siendo un hallazgo honesto y real: sus 15 hallazgos son
+misconfiguraciones/banners genéricos, ninguno coincide con las 11
+categorías del catálogo (SQLi/XSS/CSRF/etc.) — Nikto no está diseñado
+para probar esas clases de vulnerabilidad activamente.
+
+**Juice Shop, tras la misma corrección**: el efecto fue distinto. La
+primera versión de esta corrección generó 10 "matches" nuevos, pero al
+revisarlos a mano resultaron ser en su mayoría falsos positivos —
+palabras genéricas de las descripciones completas de los challenges
+(`"with"`, `"your"`, `"which"`, ...) colándose como keywords y matcheando
+hallazgos genéricos de Nikto (ej. "Suggested security header missing")
+contra desafíos de XSS/inyección sin relación real. Corregido con una
+lista de stopwords y una regla más estricta (el texto de la descripción
+solo se usa cuando el nombre + las palabras semilla de categoría no
+alcanzan). Resultado final, honesto: **1 match real** (nivel 3) contra
+la corrida estándar sin autenticar — el recall de Juice Shop sigue
+siendo bajo porque el pipeline estándar (no autenticado, ZAP en modo
+pasivo) genuinamente no genera muchos hallazgos de las categorías
+cubiertas por el catálogo, no por un problema de matching.
+
+**Lección para la próxima vez que se toque este matcher**: una
+corrección de "vocabulario demasiado pobre" puede fácilmente
+sobrecorregir hacia "vocabulario demasiado amplio" (cualquier palabra
+de 4+ letras de una oración completa). Verificar cada match nuevo a
+mano contra el finding real antes de confiar en que un número más alto
+es una mejora genuina — exactamente lo que este mismo proyecto ya
+aprendió con el sesgo de escala de severidad.
+
+## Secciones históricas (antes de la corrección — contexto, no vigente)
+
+### Hallazgo importante, ya superado (léer antes de citar cualquier número de DVWA)
 
 **Todas las páginas de módulos vulnerables de DVWA exigen sesión
 autenticada.** Confirmado empíricamente en esta sesión: una request sin
 autenticar a `/vulnerabilities/sqli/` devuelve `302 Found` →
-`Location: ../../login.php`. El pipeline actual escanea **sin
-autenticar** (ver `docs/security.md` y §14.2 de la tesis). Esto significa
-que, tal como está desplegado el sistema hoy, **ninguna de las 11
-entradas del catálogo de DVWA es alcanzable en la práctica** —
-`reachable_unauthenticated: false` en las 11. Ver el docstring de
-`build_dvwa_catalog.py` para el detalle completo.
+`Location: ../../login.php`. El pipeline **estándar** (no autenticado)
+escanea sin sesión (ver `docs/security.md` y §14.2 de la tesis) — pero
+la Recomendación #5 ya agregó un modo de escaneo autenticado opcional
+(`options.authenticated: true`), usado en la corrida que sí demuestra
+recall real arriba. Este párrafo describe el estado *sin* ese modo.
 
-La corrida de muestra incluida (`sample_run_dvwa_*.json`, contra el scan
-real `f9760239-...` de una sesión anterior) lo confirma: **el 100% de los
-25 matches obtenidos son de nivel 3 (keyword débil)** — cero matches por
-CVE o por tipo+ubicación (`match_tier_breakdown` en
-`sample_run_dvwa_match_report.json`). Es decir, el recall no-nulo que
-muestra el reporte de muestra (~27% por herramienta) es ruido de matching
-por palabra clave, no evidencia real de que las herramientas alcanzaron
-una página vulnerable — coherente con el hallazgo del párrafo anterior.
-El recall real contra páginas efectivamente alcanzables es 0%, y esa es
-la cifra que debe citarse en la tesis, con esta explicación.
+La corrida de muestra sin autenticar (`sample_run_dvwa_*.json`, contra el
+scan real `f9760239-...` de una sesión anterior) mostraba **el 100% de
+los 25 matches de nivel 3 (keyword débil)** — cero por CVE o
+tipo+ubicación. Con el matcher de esa época (antes de las 3 correcciones
+de arriba), ese número no distinguía "el matching es ruido" de "el
+matching está estructuralmente roto" — ambos producían el mismo
+síntoma. La sección de arriba resuelve esa ambigüedad: con el matcher
+corregido, el escaneo autenticado sí produce matches de nivel 2 reales.
 
-Esto es en sí mismo un hallazgo legítimo para el capítulo de resultados y
-limitaciones: el pipeline, tal como está, no puede evaluar su cobertura
-real de detección contra DVWA porque nunca llega a ver una página
-vulnerable. Una línea de trabajo futuro distinta de "escaneos
-autenticados" ya declarada: un paso de login previo en el pipeline antes
-de invocar las herramientas web.
-
-## Juice Shop: mismo síntoma, causa distinta
+### Juice Shop: mismo síntoma histórico, causa distinta
 
 Se corrió también contra Juice Shop (`sample_run_juice_shop_*.json`,
-scan real `c2421b99-...`, producido con
-`_run_juice_shop_scan.py` — a diferencia de DVWA, este sí tiene un script
-dedicado para reproducirlo). Juice Shop no tiene el problema de
+scan real `c2421b99-...` de una sesión anterior, producido con
+`_run_juice_shop_scan.py`). Juice Shop no tiene el problema de
 autenticación de DVWA — sus páginas son alcanzables sin sesión por
-diseño — pero el resultado es el mismo: **el 100% de los 6 matches
-obtenidos también son de nivel 3 (keyword débil)**, cero por CVE o
-tipo+ubicación. El recall aparente más alto fue 7,7% (ZAP). Como no hay
-un impedimento de acceso que lo explique, la causa más probable es un
-desalineamiento de vocabulario entre los catálogos oficiales (nombres de
-desafíos OWASP) y las descripciones que las propias herramientas generan
-para sus hallazgos — el matching por texto libre (nivel 3) no tiende ese
-puente de forma confiable. Ver
-`docs/audit-corrections/C-09.md` para el tratamiento completo con ambos
-targets y la redacción final para la tesis.
+diseño — pero el resultado histórico también era 100% nivel 3. Ver la
+sección de arriba para el resultado re-medido con el matcher corregido:
+la causa allí sí era mayormente un desalineamiento de vocabulario en el
+propio catálogo (`description_keywords` derivados del nombre narrativo
+del challenge, no de su categoría técnica), ya corregido en
+`build_juice_shop_catalog.py`. Ver
+`docs/audit-corrections/C-09.md` para el tratamiento original completo
+con ambos targets.
 
 ## Cómo correr esto contra un scan real
 
