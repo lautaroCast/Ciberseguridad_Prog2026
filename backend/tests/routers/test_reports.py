@@ -208,6 +208,27 @@ def test_download_report_unavailable_returns_502(client, monkeypatch):
     assert response.status_code == 502
 
 
+def test_download_report_upstream_server_error_returns_502(client, monkeypatch):
+    # 6th independent evaluation: raise_for_status() used to be called as a
+    # bare statement after the try/except wrapping httpx.get, so a non-404
+    # upstream error (500/503) escaped as an unhandled httpx.HTTPStatusError
+    # instead of the same 502 the 404 case already produced.
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda url, json, headers, timeout: _FakeResponse(
+            200, json_body={"format": "json", "filename": f"{scan['id']}.json"}
+        ),
+    )
+    created = client.post(f"/scans/{scan['id']}/reports", params={"format": "json"}).json()
+
+    monkeypatch.setattr(httpx, "get", lambda url, headers, timeout: _FakeResponse(500))
+    response = client.get(f"/reports/{created['id']}/download")
+    assert response.status_code == 502
+
+
 def test_download_report_unknown_id_404s(client):
     response = client.get(f"/reports/{uuid.uuid4()}/download")
     assert response.status_code == 404

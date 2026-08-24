@@ -62,11 +62,11 @@ def download_report(report_id: uuid.UUID, db: Session = Depends(get_db)) -> Resp
         upstream = httpx.get(
             url, headers={"X-Internal-Token": settings.internal_api_key}, timeout=30.0
         )
+        if upstream.status_code == 404:
+            raise ReportFileUnavailableError(report.file_path)
+        upstream.raise_for_status()
     except httpx.HTTPError as exc:
         raise ReportFileUnavailableError(str(exc)) from exc
-    if upstream.status_code == 404:
-        raise ReportFileUnavailableError(report.file_path)
-    upstream.raise_for_status()
 
     media_type = _MEDIA_TYPES.get(report.format.value, "application/octet-stream")
     return Response(
