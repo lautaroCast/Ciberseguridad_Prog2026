@@ -94,6 +94,15 @@ def execute(
         auth_cookie=auth_cookie,
     )
     command_str = " ".join(command)
+    # The literal cookie value is known here (it's the same `auth_cookie`
+    # passed into build_command above) - an exact substring replace catches
+    # it regardless of which of the 3 adapters' argv shape embeds it
+    # (Nikto's -Add-header, Nuclei's -H, ZAP's -config replacer value),
+    # unlike a regex guessing at "Cookie: ..." that could miss a format
+    # variant. `command` (the real argv used by subprocess.run below) is
+    # left untouched - only the *persisted* string is redacted.
+    if auth_cookie is not None:
+        command_str = command_str.replace(auth_cookie, "[redacted]")
 
     try:
         proc = subprocess.run(command, capture_output=True, text=True, timeout=timeout)

@@ -138,6 +138,30 @@ def test_output_file_adapter_cleans_up_partial_file_on_timeout(monkeypatch, tmp_
 def test_authenticated_option_fetches_cookie_and_passes_it_to_build_command(monkeypatch):
     # Recomendación #5 (docs/independent-evaluation-report.md).
     adapter = NiktoAdapter()
+    captured_commands: list[list[str]] = []
+
+    def _fake_run(command, capture_output, text, timeout):
+        captured_commands.append(command)
+        return _completed(stdout="")
+
+    monkeypatch.setattr(
+        dvwa_auth, "get_authenticated_cookie", lambda target, port, scheme: "security=low; PHPSESSID=abc"
+    )
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+    result = scan_runner.execute(
+        adapter, target="dvwa", port=80, scheme="http", options={"authenticated": True}, timeout=30
+    )
+    # The real subprocess call must still carry the real cookie - the tool
+    # itself needs it to actually authenticate.
+    assert "Cookie: security=low; PHPSESSID=abc" in captured_commands[0]
+
+
+def test_authenticated_option_redacts_the_cookie_from_the_persisted_command(monkeypatch):
+    # 5th independent evaluation, backend+DB+scanner: the DVWA session
+    # cookie used to be persisted verbatim in ScanTask.command and returned
+    # unredacted by GET /scans/{id}/tasks.
+    adapter = NiktoAdapter()
     monkeypatch.setattr(
         dvwa_auth, "get_authenticated_cookie", lambda target, port, scheme: "security=low; PHPSESSID=abc"
     )
@@ -146,7 +170,8 @@ def test_authenticated_option_fetches_cookie_and_passes_it_to_build_command(monk
     result = scan_runner.execute(
         adapter, target="dvwa", port=80, scheme="http", options={"authenticated": True}, timeout=30
     )
-    assert "Cookie: security=low; PHPSESSID=abc" in result.command
+    assert "PHPSESSID=abc" not in result.command
+    assert "Cookie: [redacted]" in result.command
 
 
 def test_authenticated_option_ignored_for_tools_without_cookie_support(monkeypatch):
