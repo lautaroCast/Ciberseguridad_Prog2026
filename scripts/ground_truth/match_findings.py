@@ -22,11 +22,14 @@ separately, never blended into one number:
      equals the catalog entry's `vulnerability_type`, AND the finding's
      evidence/URL text overlaps the catalog entry's `location.path`
      (substring match, tolerant of trailing slashes/query strings).
-     Medium confidence — finding_type is coarse (e.g. every ZAP finding is
-     "web_vulnerability" regardless of actual category, see
-     zap_normalizer.py), so this tier mostly helps for Nuclei (whose
-     finding_type varies per template) and does little to disambiguate
-     ZAP/Nikto findings from each other.
+     Medium confidence. `finding_type` is now a real, shared coarse
+     category (injection/xss/security_misconfiguration/
+     sensitive_data_exposure/vulnerable_component/xxe — see
+     backend/app/normalization/category.py) derived per tool (ZAP's CWE
+     id, Nikto's message text, Nuclei's template tags) instead of one
+     flat string per tool — until that existed, this tier could
+     essentially never fire for ZAP/Nikto findings no matter how correct
+     they were.
   3. Keyword fallback: case-insensitive substring match of any of the
      catalog entry's `description_keywords` against the finding's
      title/evidence text. Lowest confidence, explicitly flagged as a
@@ -36,7 +39,14 @@ separately, never blended into one number:
      recall/precision number that leans heavily on tier-3 matches should
      be treated as indicative, not authoritative — this script always
      reports the match-tier breakdown so that's visible, never hidden in
-     a single blended percentage.
+     a single blended percentage. Candidate (entry, finding) pairs are
+     collected across the *whole* remaining catalog first and assigned by
+     specificity (most keyword hits wins, ties broken by the shorter
+     keyword list) rather than "whichever catalog entry is processed
+     first claims the first finding it hits" — two entries sharing an
+     overly generic word (e.g. "injection" appearing in more than one
+     DVWA entry's keyword list) used to let file order decide the wrong
+     winner.
 
 Unmatched findings and uncovered catalog entries are both listed in the
 output for manual review — not just discarded — since the auditor's own
@@ -110,7 +120,7 @@ def _location_overlaps(finding_evidence: str | None, catalog_path: str | None) -
     return padded_cp in padded_ev
 
 
-def _keyword_hit(finding: dict, keywords: list[str]) -> bool:
+def _keyword_hit_count(finding: dict, keywords: list[str]) -> int:
     # `.get(key, "")` only substitutes the default when the key is
     # missing, not when its value is None (e.g. a finding with no
     # evidence still has an "evidence": null key from the API) — `or ""`
@@ -120,7 +130,7 @@ def _keyword_hit(finding: dict, keywords: list[str]) -> bool:
     evidence = finding.get("evidence") or ""
     description = finding.get("description") or ""
     haystack = f"{title} {evidence} {description}".lower()
-    return any(kw in haystack for kw in keywords)
+    return sum(1 for kw in keywords if kw in haystack)
 
 
 def match(
@@ -176,21 +186,44 @@ def match(
                     matched_finding_ids.add(f["id"])
                     matched_catalog_ids.add(entry_id)
 
-        # Tier 3: keyword fallback
-        if entry_id not in matched_catalog_ids:
-            keywords = entry.get("description_keywords") or []
-            for f in findings:
-                if f["id"] in matched_finding_ids:
-                    continue
-                if keywords and _keyword_hit(f, keywords):
-                    report.matches.append(
-                        MatchResult(
-                            entry_id, f["id"], tool_by_scan_task_id.get(f["scan_task_id"], "?"),
-                            "keyword",
-                        )
-                    )
-                    matched_finding_ids.add(f["id"])
-                    matched_catalog_ids.add(entry_id)
+    # Tier 3: keyword fallback. Unlike tiers 1-2 (exact CVE equality,
+    # type+location overlap — both precise enough that processing order
+    # can't create a wrong assignment), a plain "first catalog entry
+    # processed wins any single keyword hit" is order-dependent and
+    # genuinely wrong: two entries sharing a too-generic keyword (e.g.
+    # both DVWA-exec's ["command","injection"] and DVWA-sqli's
+    # ["injection"] contain "injection") let whichever happens to come
+    # first in the catalog file steal a finding from the entry that
+    # actually deserves it. Collect every (entry, finding) candidate pair
+    # first, then assign globally by specificity: most keyword hits wins,
+    # ties broken by the entry with the shorter (more specific) keyword
+    # list — closer to "best match" than "first match".
+    candidates: list[tuple[int, int, str, str]] = []
+    for entry in catalog:
+        entry_id = entry["id"]
+        if entry_id in matched_catalog_ids:
+            continue
+        keywords = entry.get("description_keywords") or []
+        if not keywords:
+            continue
+        for f in findings:
+            if f["id"] in matched_finding_ids:
+                continue
+            hits = _keyword_hit_count(f, keywords)
+            if hits > 0:
+                candidates.append((hits, len(keywords), entry_id, f["id"]))
+
+    candidates.sort(key=lambda c: (-c[0], c[1]))
+    findings_by_id = {f["id"]: f for f in findings}
+    for _hits, _keyword_count, entry_id, finding_id in candidates:
+        if entry_id in matched_catalog_ids or finding_id in matched_finding_ids:
+            continue
+        f = findings_by_id[finding_id]
+        report.matches.append(
+            MatchResult(entry_id, finding_id, tool_by_scan_task_id.get(f["scan_task_id"], "?"), "keyword")
+        )
+        matched_finding_ids.add(finding_id)
+        matched_catalog_ids.add(entry_id)
 
     report.unmatched_finding_ids = [f["id"] for f in findings if f["id"] not in matched_finding_ids]
     report.uncovered_catalog_entry_ids = [
