@@ -95,7 +95,8 @@
       "port": 80
     },
     "description_keywords": [
-      "injection"
+      "injection",
+      "sql"
     ],
     "expected_severity": "critical",
     "detectable_by_tool_class": [
@@ -115,7 +116,8 @@
     },
     "description_keywords": [
       "blind",
-      "injection"
+      "injection",
+      "sql"
     ],
     "expected_severity": "critical",
     "detectable_by_tool_class": [
@@ -154,6 +156,7 @@
       "port": 80
     },
     "description_keywords": [
+      "ids",
       "session",
       "weak"
     ],

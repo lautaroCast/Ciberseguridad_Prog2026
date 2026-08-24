@@ -68,6 +68,7 @@ the upstream challenge list does change between releases.
 """
 
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -138,10 +139,83 @@ def build() -> list[dict]:
     return entries
 
 
+# 5th independent evaluation: keywords used to come only from the
+# challenge's display `name` — Juice Shop's own flavor/narrative text
+# (e.g. "User Credentials" for a SQL injection challenge, "NFT Takeover"
+# for a wallet-exposure one), often disconnected from the actual
+# vulnerability class. "User Credentials" -> ["credentials", "user"]
+# caused a real false match against an unrelated ZAP finding titled "User
+# Agent Fuzzer", purely because both strings contain "user".
+#
+# Every entry is now seeded with terms tied to its own vulnerability_type
+# (a fact this script already knows, not a guess) so it always has at
+# least one keyword consistent with what it actually is, even when
+# Juice Shop's own text gives no technical hint at all (e.g.
+# xxeDosChallenge's description is literally "Give the server something
+# to chew on for quite a while" — no XXE-related word anywhere).
+_CATEGORY_SEED_KEYWORDS: dict[str, list[str]] = {
+    "XSS": ["xss", "scripting"],
+    "Injection": ["injection", "sql", "nosql"],
+    "Vulnerable Components": ["vulnerable", "outdated", "component"],
+    "Security Misconfiguration": ["misconfiguration", "exposed", "default"],
+    "XXE": ["xxe", "entity", "xml"],
+    "Sensitive Data Exposure": ["exposure", "disclosure", "leak", "sensitive"],
+}
+
+# First attempt at this fix also folded in every >3-char word from the
+# challenge's full-sentence `description` unconditionally — descriptions
+# are prose, not short labels like `name`, so that pulled in ordinary
+# function words ("with", "your", "which", "another", "could", "final",
+# "luckily", ...) as "keywords", causing exactly the kind of coincidental
+# false match (Nikto's generic "Suggested security header missing"
+# matching unrelated XSS/injection challenges) this whole fix exists to
+# prevent. Filtered here instead of trusting `len() > 3` alone to mean
+# "technical term".
+_STOPWORDS = {
+    "about", "after", "again", "against", "along", "also", "always", "another",
+    "arent", "around", "before", "being", "belong", "between", "both", "cant",
+    "come", "could", "dangit", "danger", "despite", "didnt", "doesnt", "dont",
+    "down", "during", "each", "either", "even", "every", "final", "first",
+    "from", "have", "here", "however", "important", "inform", "into",
+    "isnt", "itself", "just", "know", "least", "less", "like", "luckily",
+    "made", "make", "many", "might", "more", "most", "much", "must", "never",
+    "note", "nothing", "once", "one", "onto", "original", "other", "otherwise",
+    "over", "quite", "read", "really", "saying", "shall", "should", "since",
+    "some", "something", "still", "such", "sure", "take", "than", "that",
+    "their", "them", "then", "there", "these", "they", "this", "those",
+    "through", "trick", "under", "until", "very", "wasnt", "well", "were",
+    "what", "when", "where", "which", "while", "will", "with", "within",
+    "without", "wont", "would", "your", "yours", "yourself",
+}
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_ENTITY_OR_TAG_FRAGMENT_RE = re.compile(r"[<>&]|&[a-z]+;")
+
+
+def _description_terms(description: str) -> set[str]:
+    text = _HTML_TAG_RE.sub(" ", description or "")
+    words = {w.strip(".,()`\"'").lower() for w in text.split() if len(w) > 3}
+    return {
+        w
+        for w in words
+        if w not in _STOPWORDS and not _ENTITY_OR_TAG_FRAGMENT_RE.search(w)
+    }
+
+
 def _keywords(challenge: dict) -> list[str]:
-    name = challenge.get("name", "")
-    words = [w.strip(".,()").lower() for w in name.split() if len(w) > 3]
-    return sorted(set(words))
+    seed = set(_CATEGORY_SEED_KEYWORDS.get(challenge.get("category", ""), []))
+    name_words = {
+        w.strip(".,()").lower() for w in challenge.get("name", "").split() if len(w) > 3
+    }
+    keywords = seed | name_words
+    # Description text only contributes when name+seed alone would leave
+    # this entry with fewer than 2 keywords (e.g. xxeDosChallenge, whose
+    # name "XXE DoS" already gives "xxe"/"dos" but "dos" is 3 chars and
+    # gets filtered) — the common case (a name like "Reflected XSS")
+    # already has enough real signal without pulling in prose noise too.
+    if len(keywords) < 2:
+        keywords |= _description_terms(challenge.get("description") or "")
+    return sorted(keywords)
 
 
 def _expected_severity(difficulty: int) -> str:
