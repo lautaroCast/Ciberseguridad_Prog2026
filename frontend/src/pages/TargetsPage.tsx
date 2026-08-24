@@ -169,21 +169,21 @@ export function TargetsPage() {
       )}
 
       {targets.length > 0 && (
-        <div className="tbl">
-          <div className="tbl__head">
-            <span className="th" style={{ flexGrow: 1 }}>
+        <div className="tbl" role="table" aria-label="Objetivos registrados">
+          <div className="tbl__head" role="row">
+            <span className="th" role="columnheader" style={{ flexGrow: 1 }}>
               Nombre
             </span>
-            <span className="th" style={{ width: 120, flexShrink: 0 }}>
+            <span className="th" role="columnheader" style={{ width: 120, flexShrink: 0 }}>
               Host
             </span>
-            <span className="th" style={{ width: 96, flexShrink: 0 }}>
+            <span className="th" role="columnheader" style={{ width: 96, flexShrink: 0 }}>
               Estado
             </span>
-            <span className="th" style={{ width: 190, flexShrink: 0 }}>
+            <span className="th" role="columnheader" style={{ width: 190, flexShrink: 0 }}>
               Último escaneo
             </span>
-            <span className="th" style={{ width: 92, flexShrink: 0 }} />
+            <span className="th" role="columnheader" style={{ width: 92, flexShrink: 0 }} />
           </div>
 
           {targets.map((target: TargetRead, index: number) => {
@@ -194,8 +194,8 @@ export function TargetsPage() {
             const scanHistoryFailed = Boolean(scanQuery?.error);
 
             return (
-              <div key={target.id} className="tbl__row">
-                <div style={{ flexGrow: 1 }}>
+              <div key={target.id} className="tbl__row" role="row">
+                <div role="cell" style={{ flexGrow: 1 }}>
                   <Link to={`/targets/${target.id}`} style={{ fontWeight: 500 }}>
                     {target.name}
                   </Link>
@@ -207,6 +207,7 @@ export function TargetsPage() {
                 </div>
 
                 <span
+                  role="cell"
                   className="mono"
                   style={{ width: 120, flexShrink: 0, fontSize: 12, color: "var(--ink-2)" }}
                 >
@@ -214,6 +215,7 @@ export function TargetsPage() {
                 </span>
 
                 <span
+                  role="cell"
                   className="row"
                   style={{ width: 96, flexShrink: 0, gap: 5, fontSize: 12, color: "var(--ink-2)" }}
                 >
@@ -228,7 +230,7 @@ export function TargetsPage() {
                   {target.is_active ? "activo" : "inactivo"}
                 </span>
 
-                <span style={{ width: 190, flexShrink: 0, fontSize: 12, color: "var(--ink-2)" }}>
+                <span role="cell" style={{ width: 190, flexShrink: 0, fontSize: 12, color: "var(--ink-2)" }}>
                   {scanHistoryFailed && (
                     <span className="row" style={{ gap: 5, color: "var(--bad)" }}>
                       <AlertIcon size={12} />
@@ -252,7 +254,7 @@ export function TargetsPage() {
                   )}
                 </span>
 
-                <span style={{ width: 92, flexShrink: 0, textAlign: "right" }}>
+                <span role="cell" style={{ width: 92, flexShrink: 0, textAlign: "right" }}>
                   <Link to={`/targets/${target.id}`} className="btn">
                     Ver detalle
                   </Link>
