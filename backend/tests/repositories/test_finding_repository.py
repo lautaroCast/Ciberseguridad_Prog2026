@@ -5,6 +5,8 @@ pattern the rest of it already uses."""
 
 from datetime import UTC, datetime
 
+import pytest
+
 from app.repositories import finding_repository, scan_task_repository
 from app.services import scan_service, target_service
 from models import ScanTaskStatus, SeverityLevel
@@ -56,6 +58,33 @@ def test_create_finding_truncates_title(db_session):
 
     finding = finding_repository.create_finding(
         db_session,
+        scan_id=scan_task.scan_id,
+        scan_task_id=scan_task.id,
+        service_id=None,
+        title=long_title,
+        description=None,
+        finding_type="template-match",
+        evidence=None,
+        confidence=None,
+        cvss_score=None,
+        cvss_vector=None,
+        severity=SeverityLevel.HIGH,
+    )
+
+    assert len(finding.title) == 255
+
+
+@pytest.mark.postgres
+def test_create_finding_truncates_title_against_real_postgres(postgres_session):
+    # 6th independent evaluation: the SQLite-backed version above can't
+    # actually prove the fix works, since SQLite never enforced
+    # VARCHAR(255) in the first place - same reasoning as the existing
+    # postgres-marked test for service_repository/scan_task_service.
+    scan_task = _make_scan_task(postgres_session)
+    long_title = "A" * 500
+
+    finding = finding_repository.create_finding(
+        postgres_session,
         scan_id=scan_task.scan_id,
         scan_task_id=scan_task.id,
         service_id=None,

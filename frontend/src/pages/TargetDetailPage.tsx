@@ -134,7 +134,6 @@ export function TargetDetailPage() {
       </div>
 
       <ErrorBanner error={pipelineMutation.error} />
-      <ErrorBanner error={deleteMutation.error} />
       <ErrorBanner error={updateActiveMutation.error} />
 
       <div
@@ -309,6 +308,7 @@ export function TargetDetailPage() {
           onCancel={() => setConfirmingDelete(false)}
           onConfirm={() => deleteMutation.mutate()}
         >
+          <ErrorBanner error={deleteMutation.error} />
           <p style={{ margin: "0 0 8px" }}>
             {scansQuery.isError ? (
               <>

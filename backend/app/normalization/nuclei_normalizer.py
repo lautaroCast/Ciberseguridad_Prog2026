@@ -19,6 +19,13 @@ def normalize(parsed: list[dict[str, Any]] | None) -> NormalizedData:
         info = item.get("info") or {}
         classification = info.get("classification") or {}
         cve_ids = classification.get("cve-id") or []
+        # A bare string here (instead of the list real Nuclei output always
+        # uses) would otherwise iterate per character below, producing one
+        # bogus single-character CveReferenceData per character instead of
+        # one real reference — same defensive shape category.from_nuclei_tags
+        # already uses for its own possibly-bare-string field.
+        if isinstance(cve_ids, str):
+            cve_ids = [cve_ids]
         cvss_score = classification.get("cvss-score")
         cve_references = [
             CveReferenceData(cve_id=str(cve_id), cvss_score=cvss_score) for cve_id in cve_ids
