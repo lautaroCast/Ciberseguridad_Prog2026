@@ -24,6 +24,25 @@ def test_cve_references_extracted():
     assert finding.cve_references[0].cvss_score == 9.1
 
 
+def test_cve_id_as_bare_string_is_treated_as_one_reference_not_iterated_per_character():
+    # 6th independent evaluation: cve-id was assumed to always be a list -
+    # a bare string would otherwise iterate per character, producing one
+    # bogus single-character CveReferenceData per character.
+    parsed = [
+        {
+            "template-id": "some-template",
+            "info": {
+                "name": "Bare-string CVE",
+                "severity": "high",
+                "classification": {"cve-id": "CVE-2021-1234", "cvss-score": 7.5},
+            },
+        }
+    ]
+    result = nuclei_normalizer.normalize(parsed)
+    assert len(result.findings[0].cve_references) == 1
+    assert result.findings[0].cve_references[0].cve_id == "CVE-2021-1234"
+
+
 def test_missing_classification_yields_no_cve_references():
     parsed = [{"info": {"name": "Some finding", "severity": "info"}}]
     result = nuclei_normalizer.normalize(parsed)
