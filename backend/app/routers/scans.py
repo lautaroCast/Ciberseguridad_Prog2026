@@ -7,6 +7,12 @@ Módulo 5's actual entry point: it's the boundary where a Scanner Service
 app/services/scan_task_service.py). No per-route try/except here — domain
 exceptions (ScanNotFoundError, TargetNotFoundError, ...) are translated to
 HTTP responses by the handlers registered once in app/main.py.
+
+Split into two routers, gated by two different keys in app/main.py:
+`router` (everything the Frontend calls, BACKEND_API_KEY) and
+`callback_router` (only the two routes n8n itself calls back into,
+N8N_CALLBACK_API_KEY) — see app/security.py for why these are kept
+separate instead of sharing one key.
 """
 
 import uuid
@@ -22,6 +28,7 @@ from app.services import finding_service, pipeline_service, scan_service, scan_t
 from models import ScanStatus
 
 router = APIRouter(tags=["scans"])
+callback_router = APIRouter(tags=["scans"])
 
 _COMPLETE_STATUS_MAP: dict[str, ScanStatus] = {
     "completed": ScanStatus.COMPLETED,
@@ -62,7 +69,7 @@ def get_scan(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> ScanRead:
     return scan_service.get_scan_or_raise(db, scan_id)
 
 
-@router.post("/scans/{scan_id}/complete", response_model=ScanRead)
+@callback_router.post("/scans/{scan_id}/complete", response_model=ScanRead)
 def complete_scan(
     scan_id: uuid.UUID, payload: ScanComplete, db: Session = Depends(get_db)
 ) -> ScanRead:
@@ -75,7 +82,7 @@ def complete_scan(
     )
 
 
-@router.post(
+@callback_router.post(
     "/scans/{scan_id}/tasks",
     response_model=ScanTaskIngestResult,
     status_code=status.HTTP_201_CREATED,

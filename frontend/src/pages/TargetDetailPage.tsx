@@ -244,18 +244,18 @@ export function TargetDetailPage() {
       )}
 
       {scans.length > 0 && (
-        <div className="tbl">
-          <div className="tbl__head">
-            <span className="th" style={{ width: 118, flexShrink: 0 }}>
+        <div className="tbl" role="table" aria-label="Historial de escaneos">
+          <div className="tbl__head" role="row">
+            <span className="th" role="columnheader" style={{ width: 118, flexShrink: 0 }}>
               Estado
             </span>
-            <span className="th" style={{ width: 152, flexShrink: 0 }}>
+            <span className="th" role="columnheader" style={{ width: 152, flexShrink: 0 }}>
               Inicio
             </span>
-            <span className="th" style={{ width: 74, flexShrink: 0 }}>
+            <span className="th" role="columnheader" style={{ width: 74, flexShrink: 0 }}>
               Duración
             </span>
-            <span className="th" style={{ flexGrow: 1 }}>
+            <span className="th" role="columnheader" style={{ flexGrow: 1 }}>
               Detalle
             </span>
           </div>
@@ -267,9 +267,11 @@ export function TargetDetailPage() {
                 key={scan.id}
                 to={`/scans/${scan.id}`}
                 className="tbl__row"
+                role="row"
                 style={{ color: "inherit", textDecoration: "none" }}
               >
                 <span
+                  role="cell"
                   className="row"
                   style={{ width: 118, flexShrink: 0, gap: 7, color: statusColor(scan.status) }}
                 >
@@ -277,18 +279,20 @@ export function TargetDetailPage() {
                   <span style={{ fontSize: 12, fontWeight: 500 }}>{statusLabel(scan.status)}</span>
                 </span>
                 <span
+                  role="cell"
                   className="mono"
                   style={{ width: 152, flexShrink: 0, fontSize: 12, color: "var(--ink-2)" }}
                 >
                   {formatDateTime(scan.created_at)}
                 </span>
                 <span
+                  role="cell"
                   className="mono"
                   style={{ width: 74, flexShrink: 0, fontSize: 12, color: "var(--ink-2)" }}
                 >
                   {seconds === null ? "—" : formatDuration(seconds)}
                 </span>
-                <span style={{ flexGrow: 1, fontSize: 12, color: "var(--ink-3)" }}>
+                <span role="cell" style={{ flexGrow: 1, fontSize: 12, color: "var(--ink-3)" }}>
                   {scan.error_message ?? "—"}
                 </span>
               </Link>

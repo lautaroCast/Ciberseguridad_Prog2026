@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.routers import health, reports, scans, targets
 from app.routers.reports import InvalidReportFilePathError, ReportFileUnavailableError
-from app.security import verify_api_key
+from app.security import verify_api_key, verify_n8n_callback_key
 from app.services.pipeline_service import PipelineTriggerError
 from app.services.report_service import ReportGenerationError, ReportNotFoundError
 from app.services.scan_service import ScanAlreadyTerminalError, ScanNotFoundError
@@ -153,4 +153,5 @@ async def invalid_report_file_path_handler(
 app.include_router(health.router)
 app.include_router(targets.router, dependencies=[Depends(verify_api_key)])
 app.include_router(scans.router, dependencies=[Depends(verify_api_key)])
+app.include_router(scans.callback_router, dependencies=[Depends(verify_n8n_callback_key)])
 app.include_router(reports.router, dependencies=[Depends(verify_api_key)])

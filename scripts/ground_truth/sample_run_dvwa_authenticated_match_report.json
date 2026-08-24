@@ -1,323 +1,171 @@
 {
   "target": "dvwa-authenticated",
-  "total_findings": 56,
+  "total_findings": 55,
   "total_catalog_entries": 11,
   "matches": [
     {
       "catalog_entry_id": "DVWA-csp",
-      "finding_id": "59707cff-b88f-4736-90cb-282a2fb774c1",
+      "finding_id": "af6cc094-a6eb-4b7a-9a98-5487dd5f46bc",
       "tool": "zap",
-      "tier": "keyword"
+      "tier": "type_location"
     },
     {
       "catalog_entry_id": "DVWA-csp",
-      "finding_id": "c319d396-8583-47a4-a8db-2404eddcccd6",
+      "finding_id": "418bf42f-8a21-4b53-85a1-827036857c32",
       "tool": "zap",
-      "tier": "keyword"
+      "tier": "type_location"
     },
     {
       "catalog_entry_id": "DVWA-csp",
-      "finding_id": "73e451b4-63bb-48ce-a862-b5b6b6200055",
+      "finding_id": "9ebcf707-31ca-4193-90d6-79c28c3186c4",
       "tool": "zap",
-      "tier": "keyword"
+      "tier": "type_location"
     },
     {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "142ca77e-259e-475c-8b8a-7194755a3738",
+      "catalog_entry_id": "DVWA-weak_id",
+      "finding_id": "702b79f7-f9f8-4cbe-b2ce-d5f0ca1607fc",
       "tool": "zap",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "4d9489b0-29d8-47e2-b39a-c1c688b2e6cc",
-      "tool": "zap",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "6ceb3bc7-784c-41b2-b715-d920d7f339e9",
-      "tool": "zap",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "0d3dbb21-0c56-440f-a199-2fe7ecd259c8",
-      "tool": "zap",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "90dd56a9-c926-46ca-9cd2-691eecbb579f",
-      "tool": "zap",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "0c8457ed-12af-41cb-83e6-bbb818c02c16",
-      "tool": "zap",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "6e3d8625-e990-4f62-9170-486c3888d637",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "cb96d69c-0210-4121-83be-c3f33c37630b",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "62dcc332-d394-4b25-8c8f-560f398cf9e1",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "ec9bc97a-a3f3-4a8d-9447-49e19574c616",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "6690ea49-4c45-48eb-81ad-c70b7584156b",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "bc40c522-4f0c-4613-a4f4-8188e2d11859",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "da11f7cd-40c6-494e-aaf9-e842455a0ce4",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "5c9a4a51-b17a-4533-ad61-eed4a3476044",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "7cf2c056-ecdd-4f70-b04c-dac15ab22620",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "b3147696-03b8-460a-a956-3612811d56fe",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "f053ec6e-b3f6-464d-8294-a1312b6d6193",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "e9e9daaa-ea53-4ef9-ae7b-e36df00bb9d5",
-      "tool": "nikto",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "ef0bd6a6-fded-4c2a-84fb-418eada5dd9e",
-      "tool": "nikto",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "f2654e0f-a9dc-4f99-a685-d6be71ca4322",
-      "tool": "nikto",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "a969c470-6794-42f3-a276-6b435ed614de",
-      "tool": "nikto",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csp",
-      "finding_id": "6736dfb5-f4df-42d8-8bb8-3b736f677a7c",
-      "tool": "nikto",
-      "tier": "keyword"
+      "tier": "type_location"
     },
     {
       "catalog_entry_id": "DVWA-csrf",
-      "finding_id": "f68b10f2-54a8-43f7-8795-16f9ed3f3a74",
+      "finding_id": "cecc55a3-a63d-4d18-8c8d-b84bcef56f74",
       "tool": "zap",
       "tier": "keyword"
     },
     {
-      "catalog_entry_id": "DVWA-csrf",
-      "finding_id": "1f3b4688-074e-4575-a65f-e62b4871322f",
+      "catalog_entry_id": "DVWA-xss_d",
+      "finding_id": "ed90e526-0d1e-4024-96d6-187a9d6523c4",
       "tool": "zap",
       "tier": "keyword"
     },
     {
-      "catalog_entry_id": "DVWA-csrf",
-      "finding_id": "8e6713e7-5821-4449-8a74-bb444e28af0c",
+      "catalog_entry_id": "DVWA-fi",
+      "finding_id": "50aa2836-25c0-4c0d-8fc3-a0fd0880d821",
       "tool": "zap",
       "tier": "keyword"
     },
     {
-      "catalog_entry_id": "DVWA-csrf",
-      "finding_id": "27ce8dd4-ba42-4528-bf00-449272dec897",
-      "tool": "zap",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csrf",
-      "finding_id": "1a7b0f6d-501e-4f24-88fa-8ae2fca4cd73",
-      "tool": "zap",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-csrf",
-      "finding_id": "cc9f5a50-138a-4bfc-b4f9-d02f2dcf671f",
-      "tool": "nikto",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-exec",
-      "finding_id": "9261937d-ebad-4032-abfc-6d6acd651fe0",
+      "catalog_entry_id": "DVWA-sqli",
+      "finding_id": "c5cb5cfb-837e-4bcb-b3a8-4cf923438461",
       "tool": "zap",
       "tier": "keyword"
     },
     {
       "catalog_entry_id": "DVWA-exec",
-      "finding_id": "ee63d252-5362-4327-91df-85334783c4ea",
+      "finding_id": "049a80bf-b02f-486e-a9f4-6ca1fd6464f9",
       "tool": "nuclei",
       "tier": "keyword"
     },
     {
-      "catalog_entry_id": "DVWA-fi",
-      "finding_id": "5437c842-4137-4b34-9f7f-05adc922cf22",
+      "catalog_entry_id": "DVWA-upload",
+      "finding_id": "0d27d349-7164-49df-99b3-fd32492753d8",
       "tool": "zap",
       "tier": "keyword"
     },
     {
-      "catalog_entry_id": "DVWA-fi",
-      "finding_id": "e070c412-513b-4495-a51b-5d8b24791450",
-      "tool": "nuclei",
+      "catalog_entry_id": "DVWA-sqli_blind",
+      "finding_id": "7c1481a0-aa96-49e8-9f33-d4c5bd616d32",
+      "tool": "zap",
       "tier": "keyword"
     },
     {
-      "catalog_entry_id": "DVWA-fi",
-      "finding_id": "c37c602b-9ded-415e-bee5-4f2a5ef56c39",
-      "tool": "nuclei",
+      "catalog_entry_id": "DVWA-xss_r",
+      "finding_id": "43e581f8-041a-4fd9-9bbc-78686ac833dc",
+      "tool": "zap",
       "tier": "keyword"
     },
     {
-      "catalog_entry_id": "DVWA-fi",
-      "finding_id": "1fb6cb3a-f442-44ba-834a-cc89f7478f3c",
-      "tool": "nuclei",
-      "tier": "keyword"
-    },
-    {
-      "catalog_entry_id": "DVWA-fi",
-      "finding_id": "f118006e-00df-4e9c-a7a8-128841a5e865",
-      "tool": "nikto",
+      "catalog_entry_id": "DVWA-xss_s",
+      "finding_id": "9440d6d5-0340-4847-ae98-4ed00cba3f54",
+      "tool": "zap",
       "tier": "keyword"
     }
   ],
   "unmatched_finding_ids": [
-    "d127c770-4d4c-4bb6-b2ce-2467a9642df5",
-    "57b0f516-a5bb-49d4-a12b-0dcdbdcb273c",
-    "3ad80456-657d-4be7-ba9f-622e88e0d33a",
-    "f05ecea3-6626-49d2-a4e2-f837ad579400",
-    "f033e618-1065-47d1-b3cd-0f99e4939359",
-    "dc3296ea-ac57-4f0f-a40c-9deb4c6c2169",
-    "4e262d49-de81-491d-89ed-df7a4753b4eb",
-    "e329a020-a7cb-40b6-aa9a-19236a20c8f2",
-    "7d177972-1c79-4898-b2e8-c11a6ff7d23f",
-    "39ff209e-0a94-4dbf-95a5-5897864e45e8",
-    "f9d03cae-9a3a-4062-adb7-cf45d4c49563",
-    "fbf3ad58-6e7e-46fe-a5eb-6e8195cffaed",
-    "563109a4-d13e-4691-93b3-19d544d5d9be",
-    "5ea17441-536e-4b11-9334-5aac531cd853",
-    "aa8defbe-5ef4-4b37-921c-b5cfe1b017bb",
-    "06d04635-b16b-4d99-a525-44d279778555",
-    "659059a8-99ac-4851-bd0d-2b299b810824",
-    "88ea0c93-e362-4eec-99df-f3466276ea3b"
+    "053d9f98-dde9-4795-8189-89f8b0ae5024",
+    "8ed8711f-d956-49f3-ae06-ce86ee714476",
+    "a709dea4-fdca-4ce1-b5b4-17f0807cc79d",
+    "8c4d7c93-9336-4068-8c96-f7efb27bf8cd",
+    "252c3901-11d0-46ca-9354-256d606fce46",
+    "f1bd2237-c735-43ec-b130-bbb10cad5fa1",
+    "a0757a39-a0a5-40d4-bfda-0055671e709e",
+    "f8d381b1-1f82-4514-9110-b79335a048cc",
+    "6576cd26-2c0f-4330-a9bb-0fe600816d9e",
+    "7a2bbda9-b2ae-481e-b7fd-64c73ec33b19",
+    "81743f36-7fb3-402b-84b6-ef0bd951996c",
+    "5ca754cc-d4ac-488e-b5b7-cb86947f36ae",
+    "3c744640-a232-4cd3-be89-45c9a0dd8df8",
+    "6d4e0c0c-0a41-4c00-a218-d2a08413b50f",
+    "33a72287-8eb9-4a96-a31b-a9f548e07094",
+    "ea90b2cf-7134-47c3-a302-4d032a40ed92",
+    "5a5f7a77-6bf5-4c8c-9b3c-476b26298e21",
+    "cd82cbad-9738-4949-b3de-5cf92c371808",
+    "c490aed9-f46c-4672-ad0e-5fb6153395a1",
+    "c7b02b33-5d61-490e-b541-e32884b487aa",
+    "e995a6fe-9484-471f-af28-e98814ec2b87",
+    "c620c42e-a0bd-4f5d-99a1-095ffc8e5d6e",
+    "20fc9989-dfb4-4206-9927-e04956f3ed6b",
+    "9a78e908-82d5-4ab8-b4fb-d9c5e5dd971b",
+    "3d93ec52-9a06-4749-982d-c8d6a86c5ccc",
+    "22f4948c-2477-414f-b674-cb98f94c2576",
+    "2b692174-04e3-4804-b668-f3ef7a111b69",
+    "c7b2bc83-152e-442e-bf02-c6e92f61c9c0",
+    "cba6a080-0b80-4286-82e3-9481455081f7",
+    "28c985e3-ea5c-46f1-be24-316bed12eace",
+    "a4f31a18-2cb6-42ff-a64a-51369f944da0",
+    "9ad35819-6d87-4519-96cd-743fff949df0",
+    "bbd53a84-73d8-4a55-8c0f-59a6361a6332",
+    "9b84a28b-9191-4d1e-9af5-8d9db88c1968",
+    "c2a73669-ea88-43d5-a656-42d703c4645a",
+    "f4908ebe-9a8f-405f-aabe-b5f553520b02",
+    "6634f511-6314-4789-841e-873956160645",
+    "72d273c8-2a78-4ece-a011-20962119ef44",
+    "fd252cbc-5ef7-4356-ae0c-af218a9f3540",
+    "ed9fc6b7-86c8-440d-bc57-1b387575b672",
+    "84c245e5-acda-4609-8210-69ff230e173a",
+    "7a2f8028-b576-4cad-8c65-1670a6279eec"
   ],
-  "uncovered_catalog_entry_ids": [
-    "DVWA-sqli",
-    "DVWA-sqli_blind",
-    "DVWA-upload",
-    "DVWA-weak_id",
-    "DVWA-xss_d",
-    "DVWA-xss_r",
-    "DVWA-xss_s"
-  ],
+  "uncovered_catalog_entry_ids": [],
   "match_tier_breakdown": {
-    "keyword": 38
+    "type_location": 4,
+    "keyword": 9
   },
   "inter_tool_overlap": {
-    "catalog_entries_matched_by_multiple_tools": {
-      "DVWA-csp": [
-        "nikto",
-        "nuclei",
-        "zap"
-      ],
-      "DVWA-csrf": [
-        "nikto",
-        "zap"
-      ],
-      "DVWA-exec": [
-        "nuclei",
-        "zap"
-      ],
-      "DVWA-fi": [
-        "nikto",
-        "nuclei",
-        "zap"
-      ]
-    },
-    "count": 4,
-    "pct_of_matched_entries": 100.0
+    "catalog_entries_matched_by_multiple_tools": {},
+    "count": 0,
+    "pct_of_matched_entries": 0.0
   },
   "metrics_by_tool": {
     "nikto": {
       "total_findings": 15,
-      "true_positive_findings": 7,
-      "false_positive_findings": 8,
-      "catalog_entries_matched": 3,
-      "precision": 0.467,
-      "recall": 0.273,
-      "f1": 0.345,
-      "false_positive_rate": 0.533
+      "true_positive_findings": 0,
+      "false_positive_findings": 15,
+      "catalog_entries_matched": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 1.0
     },
     "nuclei": {
-      "total_findings": 19,
-      "true_positive_findings": 15,
-      "false_positive_findings": 4,
-      "catalog_entries_matched": 3,
-      "precision": 0.789,
-      "recall": 0.273,
-      "f1": 0.406,
-      "false_positive_rate": 0.211
+      "total_findings": 18,
+      "true_positive_findings": 1,
+      "false_positive_findings": 17,
+      "catalog_entries_matched": 1,
+      "precision": 0.056,
+      "recall": 0.091,
+      "f1": 0.069,
+      "false_positive_rate": 0.944
     },
     "zap": {
       "total_findings": 22,
-      "true_positive_findings": 16,
-      "false_positive_findings": 6,
-      "catalog_entries_matched": 4,
-      "precision": 0.727,
-      "recall": 0.364,
-      "f1": 0.485,
-      "false_positive_rate": 0.273
+      "true_positive_findings": 12,
+      "false_positive_findings": 10,
+      "catalog_entries_matched": 10,
+      "precision": 0.545,
+      "recall": 0.909,
+      "f1": 0.681,
+      "false_positive_rate": 0.455
     }
   }
 }

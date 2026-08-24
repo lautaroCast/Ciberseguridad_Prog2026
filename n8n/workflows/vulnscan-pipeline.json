@@ -225,8 +225,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -333,8 +333,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -409,8 +409,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -472,8 +472,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -535,8 +535,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -598,8 +598,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -623,7 +623,7 @@
         "url": "=http://backend:8000/scans/{{ $('Resolve Pipeline Context').item.json.scan_id }}/complete",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"status\": \"completed\", \"pipeline_run_id\": $execution.id } }}",
+        "jsonBody": "={{ { \"status\": \"completed\", \"pipeline_run_id\": $execution.id, \"error_message\": $json.tool_failure_summary } }}",
         "options": {
           "timeout": 15000
         },
@@ -631,8 +631,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -809,8 +809,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -972,8 +972,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY }}"
+              "name": "X-N8N-Callback-Key",
+              "value": "={{ $env.N8N_CALLBACK_API_KEY }}"
             }
           ]
         }
@@ -1062,6 +1062,19 @@
       "position": [
         5328,
         1980
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Complete Scan already retries the completion call itself; this\n// node's job is different: record which of the 5 scan tools failed\n// to ingest their results, so a scan that reaches \"completed\" with\n// some findings silently missing isn't indistinguishable from one\n// where every tool actually ran (5th independent evaluation,\n// reports+n8n+infra: Scan: WhatWeb/Nikto/Nuclei/ZAP all have\n// continueOnFail with no compensating check afterward).\n//\n// Referencing each Ingest node by name is safe here - unlike the\n// $('NodeName') pattern this workflow's own \"Resolve Pipeline\n// Context\" node warns against (fragile specifically for a node that\n// might not have executed at all, e.g. one of two divergent trigger\n// branches). All 5 Ingest: * nodes always execute in this linear\n// chain by the time this node runs - continueOnFail lets one of them\n// fail without ever skipping it.\nconst toolNodes = ['Ingest: Nmap', 'Ingest: WhatWeb', 'Ingest: Nikto', 'Ingest: Nuclei', 'Ingest: ZAP'];\nconst failed = [];\nfor (const name of toolNodes) {\n  const item = $(name).item;\n  if (item && item.json && item.json.error !== undefined) {\n    failed.push(name.replace('Ingest: ', ''));\n  }\n}\n\nreturn [{\n  json: {\n    ...$json,\n    tool_failure_summary: failed.length\n      ? `Tools that failed to ingest results: ${failed.join(', ')}.`\n      : null,\n  },\n}];"
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-10000000000b",
+      "name": "Summarize Tool Failures",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5248,
+        1792
       ]
     }
   ],
@@ -1276,7 +1289,7 @@
       "main": [
         [
           {
-            "node": "Complete Scan",
+            "node": "Summarize Tool Failures",
             "type": "main",
             "index": 0
           }
@@ -1415,6 +1428,17 @@
         [
           {
             "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Tool Failures": {
+      "main": [
+        [
+          {
+            "node": "Complete Scan",
             "type": "main",
             "index": 0
           }

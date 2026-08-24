@@ -78,8 +78,16 @@ def build() -> list[dict]:
                 "dvwa_module": name,
                 "cve": None,
                 "location": {"path": f"/vulnerabilities/{module_dir}/", "port": 80},
+                # 5th independent evaluation: `len(w) > 3` silently dropped
+                # "SQL" (3 chars) from "SQL Injection"'s own name, leaving
+                # DVWA-sqli with the single, overly generic keyword
+                # ["injection"] - shared with DVWA-exec/DVWA-fi/
+                # DVWA-sqli_blind, making it collision-prone by
+                # construction. `>= 3` keeps genuine short technical
+                # acronyms (SQL, DOM, ...) without pulling in filler words
+                # (all of which are 1-2 chars: "a", "of", "in", ...).
                 "description_keywords": sorted(
-                    {w.strip("()").lower() for w in name.split() if len(w) > 3}
+                    {w.strip("()").lower() for w in name.split() if len(w) >= 3}
                 ),
                 "expected_severity": severity,
                 "detectable_by_tool_class": tool_classes,

@@ -27,6 +27,12 @@ BACKEND_URL = "http://localhost:8000"
 SCANNER_URL = "http://scanner:8100"
 BACKEND_HEADERS = {"X-API-Key": os.environ["BACKEND_API_KEY"]}
 SCANNER_HEADERS = {"X-Internal-Token": os.environ["INTERNAL_API_KEY"]}
+# 5th independent evaluation: POST /scans/{id}/tasks and /complete now
+# require this separate key (see backend/app/security.py) instead of
+# accepting the same BACKEND_API_KEY the Frontend also holds - this
+# script's own docstring already says it sends "the same shape n8n's own
+# Ingest: * nodes send", so it needs the same credential those nodes do.
+CALLBACK_HEADERS = {"X-N8N-Callback-Key": os.environ["N8N_CALLBACK_API_KEY"]}
 
 TARGET_HOST = "dvwa"
 TOOLS = ["nikto", "nuclei", "zap"]
@@ -85,7 +91,7 @@ def main() -> None:
                     "parsed": raw.get("parsed"),
                     "error_message": raw.get("error_message"),
                 },
-                headers=BACKEND_HEADERS,
+                headers=CALLBACK_HEADERS,
                 timeout=30.0,
             )
             ingest.raise_for_status()
@@ -95,7 +101,7 @@ def main() -> None:
         complete = httpx.post(
             f"{BACKEND_URL}/scans/{scan_id}/complete",
             json={"status": "failed" if any_failed else "completed"},
-            headers=BACKEND_HEADERS,
+            headers=CALLBACK_HEADERS,
             timeout=15.0,
         )
         complete.raise_for_status()
@@ -107,7 +113,9 @@ def main() -> None:
             f"{BACKEND_URL}/scans/{scan_id}/tasks", headers=BACKEND_HEADERS, timeout=15.0
         ).json()
 
-        out_dir = Path(__file__).parent
+        import os as _os
+
+        out_dir = Path(_os.environ.get("GROUND_TRUTH_OUT_DIR", Path(__file__).parent))
         (out_dir / "sample_run_dvwa_authenticated_findings.json").write_text(
             json.dumps(findings, indent=2), encoding="utf-8"
         )

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FindingRead, ScanRead, ScanTaskRead } from "../types";
 
@@ -285,6 +285,30 @@ describe("ScanDetailPage findings table sorting", () => {
   });
 });
 
+describe("ScanDetailPage when a tool's ingest call itself failed (no ScanTask row, only Scan.error_message)", () => {
+  beforeEach(() => {
+    // No "failed" ScanTask row here on purpose - this is the case where
+    // n8n's Ingest node call itself never landed, so the tool has no
+    // ScanTask row at all, unlike the "tool ran, ScanTask.status=failed"
+    // case covered by "surfaces a failed tool without hiding the ones
+    // that succeeded" above.
+    vi.mocked(getScan).mockResolvedValue({
+      ...SCAN,
+      error_message: "Tools that failed to ingest results: Nikto.",
+    });
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei"), task("t-zap", "zap")]);
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("shows a warning banner instead of claiming a clean, complete result", async () => {
+    renderPage();
+    expect(await screen.findByText("El pipeline terminó con advertencias")).toBeInTheDocument();
+    expect(screen.getByText(/Tools that failed to ingest results: Nikto\./)).toBeInTheDocument();
+    expect(screen.queryByText(/Todos los resultados fueron ingeridos/)).not.toBeInTheDocument();
+  });
+});
+
 describe("ScanDetailPage when the findings request itself fails", () => {
   beforeEach(() => {
     vi.mocked(getScan).mockResolvedValue(SCAN);
@@ -303,6 +327,58 @@ describe("ScanDetailPage when the findings request itself fails", () => {
     expect(
       screen.queryByText(/ninguna reportó nada\. Esto es un resultado, no un error/),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage forces one more fetch when the scan finishes", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // 5th independent evaluation: refetchInterval flipping to `false` on the
+  // running->terminal transition only stops *future* polling of
+  // tasksQuery/findingsQuery - it never guaranteed one last fetch, unlike
+  // reportsQuery's `enabled: !running`. Up to one poll interval of tail
+  // data (the last finding written right at completion) could be missing
+  // from what the UI already calls "the complete list".
+  it("refetches findings once the scan transitions to completed", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    let scanCalls = 0;
+    vi.mocked(getScan).mockImplementation(async () => {
+      scanCalls += 1;
+      return scanCalls === 1 ? { ...SCAN, status: "running", finished_at: null } : SCAN;
+    });
+    let findingsCalls = 0;
+    vi.mocked(listFindings).mockImplementation(async () => {
+      findingsCalls += 1;
+      // The "final" finding only exists from the second call onward - as
+      // if it were written right at the moment the scan completed.
+      return findingsCalls === 1 ? [] : [CRITICAL];
+    });
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listReports).mockResolvedValue([]);
+
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/scans/scan-1"]}>
+          <Routes>
+            <Route path="/scans/:id" element={<ScanDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await vi.waitFor(() => expect(screen.getByText("Escaneo en curso")).toBeInTheDocument());
+    expect(findingsCalls).toBe(1);
+
+    // Advance past scanQuery's poll interval so it picks up the
+    // now-completed status, which should trigger the extra
+    // tasksQuery/findingsQuery fetch under test.
+    await vi.advanceTimersByTimeAsync(2500);
+
+    await vi.waitFor(() => expect(findingsCalls).toBeGreaterThan(1));
+    await vi.waitFor(() => expect(screen.getByText("Apache Struts RCE")).toBeInTheDocument());
   });
 });
 

@@ -10,6 +10,7 @@ Run via: docker compose exec backend python scripts/ground_truth/_run_juice_shop
 """
 
 import json
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -29,7 +30,7 @@ def main() -> None:
         print(f"FAILED: scan ended in status={status}", file=sys.stderr)
         sys.exit(1)
 
-    out_dir = Path(__file__).parent
+    out_dir = Path(os.environ.get("GROUND_TRUTH_OUT_DIR", Path(__file__).parent))
     (out_dir / "sample_run_juice_shop_findings.json").write_text(
         json.dumps(findings, indent=2), encoding="utf-8"
     )

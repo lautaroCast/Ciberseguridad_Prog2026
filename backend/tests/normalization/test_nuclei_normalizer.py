@@ -41,6 +41,21 @@ def test_empty_input():
     assert nuclei_normalizer.normalize(None).findings == []
 
 
+def test_finding_type_derived_from_tags_not_protocol_type():
+    # 5th independent evaluation: finding_type used to be item["type"]
+    # (the protocol Nuclei used, e.g. "http") - never a real vulnerability
+    # category, so it could never match a ground-truth catalog entry.
+    parsed = [
+        {
+            "type": "http",
+            "template-id": "dvwa-sqli",
+            "info": {"name": "SQLi", "severity": "high", "tags": ["sqli", "dvwa"]},
+        }
+    ]
+    result = nuclei_normalizer.normalize(parsed)
+    assert result.findings[0].finding_type == "injection"
+
+
 def test_falls_back_to_cvss_score_when_tool_severity_label_is_missing():
     # Some community templates omit info.severity entirely. Without a
     # fallback this used to be silently filed as INFO regardless of how

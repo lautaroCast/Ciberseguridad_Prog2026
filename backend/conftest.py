@@ -17,6 +17,7 @@ os.environ.setdefault("REPORTS_BASE_URL", "http://reports:8200")
 os.environ.setdefault("BACKEND_API_KEY", "test-backend-api-key")
 os.environ.setdefault("INTERNAL_API_KEY", "test-internal-api-key")
 os.environ.setdefault("N8N_WEBHOOK_SECRET", "test-n8n-webhook-secret")
+os.environ.setdefault("N8N_CALLBACK_API_KEY", "test-n8n-callback-api-key")
 
 import uuid  # noqa: E402
 
@@ -186,6 +187,20 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = _override_get_db
     try:
-        yield TestClient(app, headers={"X-API-Key": os.environ["BACKEND_API_KEY"]})
+        # Both headers by default: this fixture drives one TestClient
+        # through both the Frontend-shaped calls (create target/scan) and
+        # the n8n-callback-shaped calls (ingest task, complete scan) within
+        # the same test function, unlike production where each real caller
+        # only ever holds one of the two keys. The two-tier separation
+        # itself (X-API-Key alone must not satisfy the callback routes, and
+        # vice versa) has its own dedicated test in test_scans.py rather
+        # than being asserted implicitly by every functional test here.
+        yield TestClient(
+            app,
+            headers={
+                "X-API-Key": os.environ["BACKEND_API_KEY"],
+                "X-N8N-Callback-Key": os.environ["N8N_CALLBACK_API_KEY"],
+            },
+        )
     finally:
         app.dependency_overrides.clear()

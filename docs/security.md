@@ -17,11 +17,23 @@ allá de un laboratorio local de un solo operador.
 > que falta es que el texto de la tesis lo refleje (ver
 > `docs/audit-corrections/`).
 
-Dos niveles de secreto compartido, ninguno de los dos es un sistema de
-usuarios:
+Tres niveles de secreto compartido, ninguno es un sistema de usuarios:
 
-- **`BACKEND_API_KEY`** — protege el Backend (todo excepto `/health`).
-  Lo manda el Frontend (header `X-API-Key`) y n8n al llamar al Backend.
+- **`BACKEND_API_KEY`** — protege las rutas del Backend orientadas al
+  Frontend/operador: `targets`, `scans` (lectura y creación), `reports`.
+  Lo manda el Frontend (header `X-API-Key`) y n8n en sus llamadas
+  equivalentes a las del Frontend (`Create Scan (Manual)`, `Get Target
+  (Manual)`, `Generate Report`, `Download Report`).
+- **`N8N_CALLBACK_API_KEY`** (5ª evaluación independiente,
+  `docs/independent-evaluation-report.md` §12) — protege las dos únicas
+  rutas que solo n8n debería llamar: `POST /scans/{id}/tasks` (ingesta de
+  resultados de una herramienta) y `POST /scans/{id}/complete` (cierre
+  del scan). Antes de esto compartían `BACKEND_API_KEY` con todo lo
+  demás, así que cualquiera con la key que ya tiene el Frontend podía
+  forjar hallazgos o forzar el cierre de un scan directamente,
+  saltándose el pipeline. Header `X-N8N-Callback-Key`, mismo patrón que
+  `INTERNAL_API_KEY` (key propia, nunca expuesta al Frontend). Lo mandan
+  los nodos `Ingest: *`, `Complete Scan` y los `Mark Scan Failed - *`.
 - **`INTERNAL_API_KEY`** — protege Scanner y Reports (todo excepto
   `/health`), que además dejaron de publicar su puerto al host. Lo mandan
   n8n (al llamar a Scanner) y el Backend (al llamar a Reports), header
@@ -43,11 +55,12 @@ usuarios:
   ninguna verificación — el basic auth de n8n protege el editor/API,
   nunca cubrió las URLs de webhook.
 
-Ver `backend/app/security.py`, `scanner/app/security.py` y
-`reports/app/security.py` para la implementación de los dos primeros
-(misma forma en los tres: `secrets.compare_digest` contra el valor
-esperado, 401 si no matchea o falta el header). El tercero se valida
-dentro del propio workflow de n8n, no en un Backend — ver más arriba.
+Ver `backend/app/security.py` (`verify_api_key`/`verify_n8n_callback_key`),
+`scanner/app/security.py` y `reports/app/security.py` para la
+implementación de los tres primeros (misma forma en los tres:
+`secrets.compare_digest` contra el valor esperado, 401 si no matchea o
+falta el header). `N8N_WEBHOOK_SECRET` se valida dentro del propio
+workflow de n8n, no en un Backend — ver más arriba.
 
 ## Defensa en profundidad: whitelist de hosts de laboratorio
 

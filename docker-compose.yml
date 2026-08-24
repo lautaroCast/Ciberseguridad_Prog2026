@@ -123,6 +123,7 @@ services:
       BACKEND_API_KEY: ${BACKEND_API_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET}
+      N8N_CALLBACK_API_KEY: ${N8N_CALLBACK_API_KEY}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     # Runs as non-root `appuser` (see backend/Dockerfile) with no need for
@@ -300,6 +301,14 @@ services:
       # n8n/workflows/vulnscan-pipeline.json.
       BACKEND_API_KEY: ${BACKEND_API_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      # Distinct from BACKEND_API_KEY (5th independent evaluation):
+      # Ingest: */Complete Scan/Mark Scan Failed - * send this as
+      # X-N8N-Callback-Key against the two Backend routes that only n8n
+      # should ever call (POST /scans/{id}/tasks, /scans/{id}/complete).
+      # Create Scan (Manual)/Get Target (Manual)/Generate Report/Download
+      # Report still use BACKEND_API_KEY - those hit the same routes the
+      # Frontend does, not the n8n-only callback pair.
+      N8N_CALLBACK_API_KEY: ${N8N_CALLBACK_API_KEY}
       # Checked by the "Check Webhook Secret" node right after Webhook
       # Trigger, against the X-Webhook-Secret header the Backend sends
       # (backend/app/services/pipeline_service.py) — same shared-secret

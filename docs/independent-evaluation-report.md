@@ -482,3 +482,118 @@ Igual que en rondas anteriores, no se pudo disparar en vivo el camino de
 fallo de `Complete Scan` (requeriría tumbar el Backend a mitad de
 pipeline); se verificó por inspección de la conexión JSON en vez de
 fingir una prueba que no se hizo.
+
+## 12. Quinta evaluación independiente (2026-08-23)
+
+**Nota de conflicto de interés, otra vez explícita** (Secciones 0, 8, 9,
+10): esta evaluación la generó el mismo asistente que implementó los 8
+fixes de la Sección 11. Mismo método: tres revisores de código frescos
+en paralelo, sin acceso a este archivo ni a mensajes de commit, contra
+`main` en `b0a1bd3` (después de mergear la Sección 11). Los hallazgos
+más relevantes de cada revisor se verificaron a mano (lectura directa
+del código) antes de incluirlos acá, no solo se tomó el reporte al pie
+de la letra — esa verificación matizó uno de los hallazgos (ver más
+abajo).
+
+### 12.1 Documento
+
+Sin cambios desde la Sección 10/11: esta ronda no tocó el `.docx` más
+allá del hash de referencia (actualizado por separado, ver la Sección
+11). **Evaluación del documento: 8/10, sin cambio** — no hay nada nuevo
+que evaluar.
+
+### 12.2 Código — tres revisores frescos, cada uno con hallazgos nuevos y genuinos
+
+**Backend + DB + Scanner: 8,5/10** (sube de 7,5). Ningún hallazgo Alto
+o Crítico esta vez — la ronda de fixes de la Sección 11 (guarda de
+`delete_target`, truncado de `Service.host`/`protocol`, fallback de
+CVSS en Nuclei, truncado centralizado de `title`) cerró exactamente lo
+que las rondas anteriores habían señalado, sin introducir un problema
+nuevo del mismo tipo esta vez. Dos hallazgos Medio genuinos y no
+señalados antes: (1) la cookie de sesión de DVWA usada para el escaneo
+autenticado (Recomendación #5) queda persistida en texto plano en
+`ScanTask.command` y se devuelve sin redactar por `GET
+/scans/{id}/tasks` — el propio test de `scan_runner` lo confirma
+explícitamente (`assert "Cookie: ... PHPSESSID=abc" in result.command`),
+así que es comportamiento intencional, no un descuido, pero sigue
+siendo una violación de higiene de secretos real si esto se apuntara
+alguna vez a un target con credenciales reales; (2) el Backend usa la
+misma `BACKEND_API_KEY` para las rutas de operador (`targets`) y las
+rutas que solo debería llamar n8n (`/scans/{id}/tasks`,
+`/scans/{id}/complete`) — a diferencia del Scanner Service, que sí
+separa `INTERNAL_API_KEY` de lo que el Frontend puede ver. Cualquiera
+con la key que ya tiene el Frontend puede forjar hallazgos o completar
+un scan directamente, saltándose el pipeline.
+
+**Reports + n8n + Infraestructura: 7/10** (baja de 7,5). El hallazgo
+más serio: `Scan: WhatWeb`/`Nikto`/`Nuclei`/`ZAP` tienen
+`continueOnFail` pero **ninguno tiene un IF de verificación posterior**
+— a diferencia de `Scan: Nmap` (cuyo fallo sí lo capta `Select HTTP
+Port` → `IF: No HTTP Service Found`) y de `Complete Scan` (que la
+Sección 11 acaba de blindar). Un scan puede llegar a `completed` sin
+haber corrido ninguna de las cuatro herramientas web, sin que quede
+registro de eso en ningún lado — verificado directamente en el JSON
+(`continueOnFail: true`, `retryOnFail` ausente, sin nodo IF corriente
+abajo). También nuevo: `Compare Webhook Secret (Constant-Time)`
+compara `$env.N8N_WEBHOOK_SECRET` sin garantizar que no esté vacío — si
+lo estuviera, dos cadenas vacías (largo 0 los dos lados) producen
+`secret_matches: true`. **Matizado tras verificar**: el Backend sí
+tiene un `field_validator` que rechaza arrancar con
+`N8N_WEBHOOK_SECRET` vacío (`backend/app/config.py:88-93`), así que en
+el despliegue documentado (mismo valor de `.env` para ambos servicios)
+esto no es explotable hoy — pero n8n en sí mismo no repite esa
+validación, así que es un hueco real de defensa en profundidad, no una
+falla completa de autenticación en la configuración por defecto. Medio,
+no Alto, con esa salvedad. Además: el Form Trigger de n8n no tiene
+ningún chequeo de secreto (solo el Webhook Trigger lo tiene) y el
+puerto de n8n está publicado — permite lanzar scans reales sin
+credencial alguna si se conoce un `target_id`.
+
+**Frontend: 7/10** (sin cambio, pero por hallazgos distintos a los ya
+corregidos en la Sección 11 — el patrón de "algo nuevo en cada ronda"
+se sostiene). El más interesante: `tasksQuery`/`findingsQuery` dejan de
+hacer poll (`refetchInterval: pollWhileRunning`) apenas `running` pasa
+a `false`, pero eso solo **detiene** el polling futuro — no dispara un
+último fetch garantizado, a diferencia de `reportsQuery` (que sí usa
+`enabled: !running`, un mecanismo que fuerza un fetch real en la
+transición). Hasta ~2s de datos de cola (el último hallazgo o tarea
+escrito justo antes del cierre) pueden faltar en lo que la UI ya
+etiqueta como "lista completa". También real: cancelar el diálogo de
+confirmación de borrado mientras la mutación de borrado sigue en vuelo
+no la cancela — el usuario cree que canceló, pero `onSuccess` igual
+navega a `/targets` momentos después (verificado: solo el botón de
+confirmar respeta `pending`, Cancelar/Escape/backdrop no).
+
+### 12.3 Puntaje final: **7,7/10**
+
+| Dimensión | Puntaje | Peso |
+|---|---|---|
+| Documento | 8/10 | ~35% |
+| Backend + DB + Scanner | 8,5/10 | ~25% |
+| Reports + n8n + Infraestructura | 7/10 | ~20% |
+| Frontend | 7/10 | ~20% |
+
+**Sube respecto a la ronda anterior (7,4/10)**, principalmente porque
+los 4 fixes de backend de la Sección 11 funcionaron sin generar un
+problema nuevo del mismo tipo esta vez (algo que no había pasado en
+ninguna de las tres rondas de código anteriores). Pero el patrón de
+fondo de este proyecto se sostiene en las otras dos dimensiones: n8n
+bajó porque un revisor fresco encontró un hueco más serio que los ya
+cerrados (4 de 5 herramientas de escaneo sin ninguna red de contención,
+un hallazgo que ninguna de las cuatro rondas anteriores había señalado
+pese a haber revisado ese mismo workflow varias veces), y el Frontend
+se mantuvo en 7 con hallazgos completamente distintos a los que motivaron
+ese mismo puntaje la ronda pasada. Ninguna de las cuatro rondas de
+evaluación de este proyecto ha terminado con "no hay nada más que
+encontrar", y esta quinta tampoco.
+
+Para una próxima ronda, en orden de impacto esperado: (1) IF de
+verificación después de `Scan: WhatWeb`/`Nikto`/`Nuclei`/`ZAP`, mismo
+patrón que ya existe para Nmap y para Complete Scan; (2) separar
+`BACKEND_API_KEY` en dos tiers (operador vs. llamadas internas de n8n),
+mismo patrón que el Scanner Service ya usa con `INTERNAL_API_KEY`; (3)
+la corrección del "cancelar no cancela" en `ConfirmDialog`/
+`TargetDetailPage`; (4) resincronizar `tasksQuery`/`findingsQuery` con
+`enabled`/una invalidación explícita en la transición running→terminal,
+igual que `reportsQuery`; (5) D3 sigue siendo, de las cinco rondas, el
+hallazgo sustantivo más citado y menos tocado.
