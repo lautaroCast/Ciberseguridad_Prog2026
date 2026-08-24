@@ -597,3 +597,119 @@ la corrección del "cancelar no cancela" en `ConfirmDialog`/
 `enabled`/una invalidación explícita en la transición running→terminal,
 igual que `reportsQuery`; (5) D3 sigue siendo, de las cinco rondas, el
 hallazgo sustantivo más citado y menos tocado.
+
+## 13. Sexta evaluación independiente (2026-08-24)
+
+**Nota de conflicto de interés, otra vez explícita** (Secciones 0, 8, 9,
+10, 12): esta evaluación la generó el mismo asistente que implementó
+el plan estratégico de la Sección 12 (fixes de la 5ª ronda + D3). Mismo
+método: tres revisores de código frescos en paralelo, sin acceso a este
+archivo ni a mensajes de commit, contra `main` en `410bcd1` (después de
+mergear el plan estratégico completo).
+
+### 13.1 Documento
+
+Sin cambios desde la Sección 12: esta ronda no tocó el `.docx` más allá
+del hash de referencia. **Evaluación del documento: 8/10, sin cambio.**
+
+### 13.2 Código — tres revisores frescos, cada uno con hallazgos nuevos y genuinos
+
+**Backend + DB + Scanner: 8/10** (baja levemente de 8,5, dentro del
+mismo rango alto). Ningún hallazgo Alto — el patrón de "sin
+Critical/High" que arrancó en la ronda anterior se sostiene. Dos
+hallazgos Medio genuinos y verificados: (1) `GET /reports/{id}/download`
+(`backend/app/routers/reports.py:69`) llama
+`upstream.raise_for_status()` **fuera** del bloque `try/except` que
+envuelve la llamada — un 500/503 del Reports Service escapa como
+excepción no manejada en vez del 502 limpio que el propio
+`report_service.generate_report` ya produce para el mismo tipo de
+fallo (verificado: el `try` solo envuelve `httpx.get(...)`, la llamada
+a `raise_for_status()` es una sentencia separada después, sin ningún
+`@app.exception_handler` registrado para `httpx.HTTPStatusError` en
+`main.py`); (2) `Finding.service_id` es una FK real, indexada y
+expuesta en la API, pero ningún código la puebla nunca — cada
+`Finding` reporta `service_id: null` siempre, así que "vulnerabilidades
+por servicio/puerto" —un caso de uso natural para esta plataforma— no
+se puede derivar de los datos tal como están, pese a que el esquema fue
+diseñado para soportarlo (reconocido en un comentario de test, nunca
+resuelto). También señalado: el patrón de test contra Postgres real
+para detectar truncado de `VARCHAR` (que ya existió una vez para
+corregir un bug real) solo se generalizó a `service_repository`, no a
+`finding_repository`/`technology_repository`/`cve_reference`, que
+comparten el mismo riesgo estructural.
+
+**Reports + n8n + Infraestructura: 6,5/10** (baja de 7). El hallazgo
+más señalado por este revisor —la comparación de secreto del webhook
+falla en abierto si `N8N_WEBHOOK_SECRET` está vacío— es el mismo que
+la Sección 12 ya investigó y clasificó como Medio, no Alto, tras
+verificar que el propio `backend/app/config.py` tiene un
+`field_validator` que rechaza arrancar con ese valor vacío
+(re-verificado ahora: el validador sigue presente,
+`_require_n8n_webhook_secret`, línea 89). Bajo el despliegue
+documentado (mismo `.env` para ambos servicios), esto sigue siendo un
+hueco real de defensa en profundidad —n8n no impone la misma garantía
+de forma independiente— pero no una vulnerabilidad explotable en la
+configuración por defecto; se mantiene la misma severidad rebajada que
+la ronda anterior, no la calificación "Alta" que este revisor le dio
+sin ese contexto. Hallazgo nuevo y genuino, sí aceptado: de los 4 nodos
+`Mark Scan Failed - *`/`Complete Scan` cuyo trabajo es sacar un scan de
+`running`, solo `Complete Scan` recibió reintentos + verificación
+posterior (rondas 4-5) — los otros 3 (`Mark Scan Failed - Target No
+Disponible`, `Sin Puerto HTTP`, `Contexto Invalido`) siguen sin
+reintento y sin chequeo, exactamente la misma clase de bug que motivó
+arreglar `Complete Scan`, no generalizada a sus tres hermanos. También
+nuevo: los 5 nodos `Scan: *` (las llamadas reales a las herramientas)
+no tienen `retryOnFail`, a diferencia de los 5 `Ingest: *` que sí lo
+tienen desde la ronda 4 — la llamada más cara y valiosa tiene menos
+resiliencia que la más barata.
+
+**Frontend: 8/10** (sube de 7). Primera vez que este alcance no tiene
+ningún hallazgo Alto real tras verificar — el hallazgo que el revisor
+marcó como "High" (el error de borrado de un target queda invisible
+detrás del modal de confirmación abierto) es real y confirmado: el
+`ErrorBanner` de `deleteMutation.error` se renderiza en el flujo normal
+de la página, debajo del backdrop del modal (`z-index: 10`), y nada
+cierra el diálogo ni mueve el error al primer plano cuando la mutación
+falla mientras el diálogo sigue abierto. Dos hallazgos Medio de
+accesibilidad en `ConfirmDialog` (el texto de consecuencias no está
+asociado vía `aria-describedby`, el contenido de fondo no se marca
+`aria-hidden`/`inert` mientras el modal está abierto) — reales, pero
+coherentes con el patrón ya visto: cada ronda de este componente cierra
+una brecha de accesibilidad y el escrutinio fresco encuentra la
+siguiente capa.
+
+### 13.3 Puntaje final: **7,7/10**
+
+| Dimensión | Puntaje | Peso |
+|---|---|---|
+| Documento | 8/10 | ~35% |
+| Backend + DB + Scanner | 8/10 | ~25% |
+| Reports + n8n + Infraestructura | 6,5/10 | ~20% |
+| Frontend | 8/10 | ~20% |
+
+**Se mantiene igual que la ronda anterior (7,7/10), pero por una
+composición distinta.** El plan estratégico de la Sección 12 cerró
+efectivamente el hallazgo más citado en las cinco rondas anteriores
+(D3) y subió el puntaje del Frontend a su mejor nota de todo el
+proyecto — pero Reports+n8n+Infraestructura bajó, porque el mismo
+patrón que el propio proyecto ya identificó y corrigió parcialmente
+(`continueOnFail` sin verificación posterior) resultó generalizado a
+solo 1 de 4 nodos que comparten el mismo riesgo, y a ninguno de los 5
+nodos `Scan: *`. El patrón de fondo de las seis rondas de este proyecto
+se sostiene sin excepción: cada vez que se cierra una brecha real,
+aparece otra —a veces en el mismo archivo, a veces en el nodo de al
+lado— que ninguna ronda anterior había señalado.
+
+Para una próxima ronda, en orden de impacto esperado: (1) generalizar
+reintentos/verificación posterior a los 3 nodos `Mark Scan Failed - *`
+restantes y a los 5 `Scan: *`, cerrando el mismo patrón que
+`Complete Scan` ya resolvió para sí mismo; (2) mover
+`upstream.raise_for_status()` dentro del `try/except` en
+`reports.py::download_report`, mismo patrón ya correcto en
+`report_service.generate_report`; (3) decidir qué hacer con
+`Finding.service_id` (poblarlo realmente, o documentarlo como no
+poblado de forma explícita en vez de dejarlo como una FK silenciosamente
+vacía); (4) el error de borrado de un target invisible detrás del
+modal en `TargetDetailPage`; (5) D3 puede darse por cerrado — es la
+primera ronda, de las seis, en que ningún revisor lo vuelve a citar
+como hallazgo abierto.
