@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     backend_api_key: str
     internal_api_key: str
     n8n_webhook_secret: str
+    n8n_callback_api_key: str
 
     @field_validator("backend_allowed_lab_hosts")
     @classmethod
@@ -94,6 +95,18 @@ class Settings(BaseSettings):
                 "successfully and then have n8n's Webhook Trigger reject every call with "
                 "no valid value to ever match. Set it to a random secret shared with n8n "
                 "(see .env.example)."
+            )
+        return value
+
+    @field_validator("n8n_callback_api_key")
+    @classmethod
+    def _require_n8n_callback_api_key(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError(
+                "N8N_CALLBACK_API_KEY must not be empty — POST /scans/{id}/tasks and "
+                "POST /scans/{id}/complete would boot successfully and then reject every "
+                "call from n8n with no valid value to ever match. Set it to a random "
+                "secret shared with n8n, distinct from BACKEND_API_KEY (see .env.example)."
             )
         return value
 

@@ -1,4 +1,9 @@
+import os
 import uuid
+
+from fastapi.testclient import TestClient
+
+from app.main import app
 
 
 def _create_target(client):
@@ -119,3 +124,56 @@ def test_list_findings_for_scan_empty(client):
 def test_list_findings_for_scan_unknown_scan_404(client):
     response = client.get(f"/scans/{uuid.uuid4()}/findings")
     assert response.status_code == 404
+
+
+def test_complete_scan_rejects_the_frontend_api_key_alone(client):
+    # 5th independent evaluation: /scans/{id}/complete and /scans/{id}/tasks
+    # used to share BACKEND_API_KEY with every Frontend-facing route, so
+    # anyone holding the Frontend's key (which the Frontend necessarily
+    # does) could force-complete a scan or forge its ingested tasks. They
+    # now require the separate N8N_CALLBACK_API_KEY (X-N8N-Callback-Key)
+    # instead - the Frontend's own X-API-Key must not be sufficient here.
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+
+    frontend_only_client = TestClient(
+        app, headers={"X-API-Key": os.environ["BACKEND_API_KEY"]}
+    )
+    response = frontend_only_client.post(
+        f"/scans/{scan['id']}/complete", json={"status": "completed"}
+    )
+    assert response.status_code == 401
+
+
+def test_ingest_scan_task_rejects_the_frontend_api_key_alone(client):
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+
+    frontend_only_client = TestClient(
+        app, headers={"X-API-Key": os.environ["BACKEND_API_KEY"]}
+    )
+    response = frontend_only_client.post(
+        f"/scans/{scan['id']}/tasks",
+        json={
+            "tool": "nmap",
+            "command": "nmap ...",
+            "status": "completed",
+            "started_at": "2026-08-20T00:00:00Z",
+            "finished_at": "2026-08-20T00:00:10Z",
+            "raw_output": "",
+            "parsed": None,
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_targets_reject_the_n8n_callback_key_alone(client):
+    # The reverse direction: the callback key must not double as a
+    # Frontend-tier credential either.
+    callback_only_client = TestClient(
+        app, headers={"X-N8N-Callback-Key": os.environ["N8N_CALLBACK_API_KEY"]}
+    )
+    response = callback_only_client.post(
+        "/targets", json={"name": "should-not-be-created", "host": "juice-shop"}
+    )
+    assert response.status_code == 401
