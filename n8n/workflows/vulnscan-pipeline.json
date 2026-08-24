@@ -239,7 +239,10 @@
         4480,
         1984
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -823,7 +826,10 @@
         5680,
         1650
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -986,7 +992,10 @@
         5040,
         1984
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -1075,6 +1084,21 @@
       "position": [
         5248,
         1792
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Mark Scan Failed nodes: retried, same reasoning as Complete Scan\n\nThe three \"Mark Scan Failed - *\" nodes (Target No Disponible, Sin Puerto HTTP, Contexto Invalido) are each the terminal call in their own failure branch - none has any node after it. A transient blip on the call itself (not the logical failure it is reporting) used to have no retry, unlike Complete Scan - so a scan that should have been marked failed could instead be left stuck in running forever, exactly the bug class Complete Scan was already fixed for.\n\nretryOnFail (3 tries, 2s apart) added to all three - same values Complete Scan already uses. No downstream IF-gate needed here (unlike Complete Scan -> Generate Report): these three have no success path after them to protect.",
+        "height": 260,
+        "width": 480
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-10000000000c",
+      "name": "Sticky Note - Mark Scan Failed Retries",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4480,
+        2260
       ]
     }
   ],
