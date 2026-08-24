@@ -35,15 +35,21 @@ export function ConfirmDialog({
   // while onKeyDown still always calls the latest onCancel via the ref
   // (no stale-closure risk from never re-running the effect).
   const onCancelRef = useRef(onCancel);
+  const pendingRef = useRef(pending);
   useEffect(() => {
     onCancelRef.current = onCancel;
+    pendingRef.current = pending;
   });
 
   useEffect(() => {
     cancelRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onCancelRef.current();
+        // pending: the confirm action is already in flight and can't be
+        // un-done from here — closing the dialog now would just make the
+        // user think they backed out while onConfirm's mutation still
+        // resolves (and its onSuccess still runs) moments later.
+        if (!pendingRef.current) onCancelRef.current();
         return;
       }
       // Focus trap: without this, Tab/Shift+Tab can move focus out of the
@@ -74,7 +80,7 @@ export function ConfirmDialog({
     <div
       className="backdrop"
       onClick={(event) => {
-        if (event.target === event.currentTarget) onCancel();
+        if (event.target === event.currentTarget && !pending) onCancel();
       }}
     >
       <div ref={dialogRef} className="dialog" role="alertdialog" aria-modal="true" aria-label={title}>
@@ -85,7 +91,14 @@ export function ConfirmDialog({
           {children}
         </div>
         <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
-          <button ref={cancelRef} type="button" className="btn" onClick={onCancel}>
+          <button
+            ref={cancelRef}
+            type="button"
+            className="btn"
+            onClick={() => {
+              if (!pending) onCancel();
+            }}
+          >
             Cancelar
           </button>
           <button

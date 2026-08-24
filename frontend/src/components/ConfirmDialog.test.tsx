@@ -98,3 +98,78 @@ describe("ConfirmDialog focus trap", () => {
     expect(document.activeElement).toBe(confirm);
   });
 });
+
+describe("ConfirmDialog while a confirm action is pending", () => {
+  // 5th independent evaluation: only the confirm button respected `pending`
+  // - Cancelar/Escape/backdrop-click all still called onCancel, so a user
+  // who "cancelled" while the mutation was in flight had the dialog close
+  // as if nothing was happening, while onConfirm's mutation (and its
+  // onSuccess, e.g. a navigation) still ran moments later regardless.
+  it("ignores Cancelar while pending", () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        title="¿Confirmar?"
+        confirmLabel="Eliminar todo"
+        pending={true}
+        onCancel={onCancel}
+        onConfirm={vi.fn()}
+      >
+        contenido
+      </ConfirmDialog>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("ignores Escape while pending", () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        title="¿Confirmar?"
+        confirmLabel="Eliminar todo"
+        pending={true}
+        onCancel={onCancel}
+        onConfirm={vi.fn()}
+      >
+        contenido
+      </ConfirmDialog>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("ignores a backdrop click while pending", () => {
+    const onCancel = vi.fn();
+    const { container } = render(
+      <ConfirmDialog
+        title="¿Confirmar?"
+        confirmLabel="Eliminar todo"
+        pending={true}
+        onCancel={onCancel}
+        onConfirm={vi.fn()}
+      >
+        contenido
+      </ConfirmDialog>,
+    );
+    fireEvent.click(container.querySelector(".backdrop")!);
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("still responds to Cancelar/Escape once pending clears", () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        title="¿Confirmar?"
+        confirmLabel="Eliminar todo"
+        pending={false}
+        onCancel={onCancel}
+        onConfirm={vi.fn()}
+      >
+        contenido
+      </ConfirmDialog>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
