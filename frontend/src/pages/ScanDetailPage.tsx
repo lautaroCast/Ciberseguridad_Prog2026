@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
@@ -81,6 +81,21 @@ export function ScanDetailPage() {
     queryFn: () => listReports(scanId),
     enabled: !running,
   });
+
+  // `pollWhileRunning` flipping to `false` only stops *future* polling of
+  // tasksQuery/findingsQuery — unlike reportsQuery's `enabled: !running`,
+  // it doesn't force one more fetch on the transition itself, so up to
+  // POLL_INTERVAL_MS of tail data (the last tool/finding written right at
+  // completion) could be missing from what the UI already calls "the
+  // complete list". Force exactly one refetch on the true->false edge.
+  const wasRunningRef = useRef(running);
+  useEffect(() => {
+    if (wasRunningRef.current && !running) {
+      queryClient.invalidateQueries({ queryKey: ["scan-tasks", scanId] });
+      queryClient.invalidateQueries({ queryKey: ["findings", scanId] });
+    }
+    wasRunningRef.current = running;
+  }, [running, queryClient, scanId]);
 
   const createReportMutation = useMutation({
     mutationFn: (format: ReportFormat) => createReport(scanId, format),
@@ -587,6 +602,33 @@ function ScanBanner({
     );
   }
 
+  // A tool whose *ingest call itself* failed (n8n's Ingest: * node, not the
+  // scan itself) never gets a ScanTask row at all — invisible to the
+  // `failedTools` check above, which only sees tasks that made it into the
+  // database. n8n threads that gap into `error_message` even on an
+  // otherwise-"completed" scan (see n8n/workflows/vulnscan-pipeline.json's
+  // "Summarize Tool Failures" node) specifically so it doesn't read as a
+  // clean, complete result here.
+  if (errorMessage) {
+    return (
+      <div className="callout callout--warn stack" style={{ marginBottom: 26, gap: 8 }}>
+        <div className="row" style={{ gap: 9 }}>
+          <span style={{ color: "var(--warn)", flexShrink: 0, marginTop: 1 }}>
+            <AlertIcon />
+          </span>
+          <div>
+            <div className="callout__title">El pipeline terminó con advertencias</div>
+            <div style={{ marginTop: 2 }}>
+              Corrieron {completedTools} de {toolCount} herramientas registradas. Esta lista
+              podría estar incompleta.
+            </div>
+          </div>
+        </div>
+        <pre className="pre">{errorMessage}</pre>
+      </div>
+    );
+  }
+
   return (
     <div className="callout" style={{ marginBottom: 26 }}>
       <span style={{ color: "var(--ok)", flexShrink: 0, marginTop: 1 }}>
@@ -619,24 +661,29 @@ function SortableHeader({
 }) {
   const active = sortKey === activeKey;
   return (
-    <button
-      type="button"
-      className="th th--sortable"
-      style={{
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        padding: 0,
-        fontFamily: "inherit",
-        textAlign: "left",
-        ...style,
-      }}
-      onClick={() => onSort(sortKey)}
+    <span
+      role="columnheader"
       aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
+      style={{ textAlign: "left", ...style }}
     >
-      {label}
-      {active && <span aria-hidden="true">{direction === "asc" ? " ▲" : " ▼"}</span>}
-    </button>
+      <button
+        type="button"
+        className="th th--sortable"
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          fontFamily: "inherit",
+          textAlign: "inherit",
+          width: "100%",
+        }}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        {active && <span aria-hidden="true">{direction === "asc" ? " ▲" : " ▼"}</span>}
+      </button>
+    </span>
   );
 }
 
@@ -666,8 +713,8 @@ function FindingsTable({
   onSort: (key: SortKey) => void;
 }) {
   return (
-    <div className="tbl">
-      <div className="tbl__head">
+    <div className="tbl" role="table" aria-label="Hallazgos">
+      <div className="tbl__head" role="row">
         <SortableHeader
           label="Severidad"
           sortKey="severity"
@@ -717,30 +764,34 @@ function FindingsTable({
           <Fragment key={finding.id}>
             <button
               type="button"
+              role="row"
               className={open ? "tbl__row tbl__row--clickable tbl__row--open" : "tbl__row tbl__row--clickable"}
               onClick={() => onToggle(finding.id)}
               aria-expanded={open}
             >
-              <span className="row" style={{ width: 100, flexShrink: 0, gap: 7 }}>
+              <span role="cell" className="row" style={{ width: 100, flexShrink: 0, gap: 7 }}>
                 <SeverityMeter severity={finding.severity} />
                 <span className="sev-label" style={{ color: severityColor(finding.severity) }}>
                   {SEVERITY_META[finding.severity].label}
                 </span>
               </span>
-              <span style={{ flexGrow: 1, fontSize: 13 }}>{finding.title}</span>
+              <span role="cell" style={{ flexGrow: 1, fontSize: 13 }}>{finding.title}</span>
               <span
+                role="cell"
                 className="mono"
                 style={{ width: 128, flexShrink: 0, fontSize: 11, color: "var(--ink-3)" }}
               >
                 {finding.finding_type}
               </span>
               <span
+                role="cell"
                 className="mono"
                 style={{ width: 74, flexShrink: 0, fontSize: 11, color: "var(--ink-2)" }}
               >
                 {tool ? toolLabel(tool) : "—"}
               </span>
               <span
+                role="cell"
                 className="mono"
                 style={{
                   width: 44,
