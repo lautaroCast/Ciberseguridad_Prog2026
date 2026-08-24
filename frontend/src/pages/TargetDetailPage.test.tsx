@@ -15,7 +15,7 @@ vi.mock("../api", () => ({
     status === "completed" || status === "failed" || status === "cancelled",
 }));
 
-import { getTarget, listScansForTarget, updateTarget } from "../api";
+import { deleteTarget, getTarget, listScansForTarget, updateTarget } from "../api";
 import { TargetDetailPage } from "./TargetDetailPage";
 
 const ACTIVE_TARGET: TargetRead = {
@@ -97,5 +97,24 @@ describe("TargetDetailPage — deleting a target", () => {
     renderPage();
     const deleteButton = await screen.findByRole("button", { name: "Eliminar" });
     await waitFor(() => expect(deleteButton).not.toBeDisabled());
+  });
+
+  // 6th independent evaluation: the ErrorBanner for deleteMutation.error
+  // used to render in the page's normal flow, underneath the open
+  // ConfirmDialog's full-viewport backdrop - a failed delete left the
+  // dialog sitting open with no visible explanation anywhere on screen.
+  it("shows the delete error inside the still-open confirmation dialog", async () => {
+    vi.mocked(getTarget).mockResolvedValue(ACTIVE_TARGET);
+    vi.mocked(listScansForTarget).mockResolvedValue([]);
+    vi.mocked(deleteTarget).mockRejectedValue(new Error("network error"));
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Eliminar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Eliminar todo" }));
+
+    expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
+    // The dialog itself must still be open and showing the error, not
+    // just some detached banner elsewhere on the page.
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 });
