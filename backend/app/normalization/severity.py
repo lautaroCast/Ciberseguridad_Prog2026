@@ -6,6 +6,8 @@ qualitative ranges follow FIRST.org's spec: None=0.0, Low=0.1-3.9,
 Medium=4.0-6.9, High=7.0-8.9, Critical=9.0-10.0.
 """
 
+from typing import Any
+
 from models import SeverityLevel
 
 _LABELS: dict[str, SeverityLevel] = {
@@ -24,6 +26,31 @@ _ZAP_RISKCODE: dict[str, SeverityLevel] = {
     "2": SeverityLevel.MEDIUM,
     "3": SeverityLevel.HIGH,
 }
+
+
+def sanitize_cvss_score(value: Any) -> float | None:
+    """Coerces a tool-derived CVSS score to a real float in [0.0, 10.0],
+    or None if it isn't usable at all.
+
+    7th independent evaluation: nuclei_normalizer.py used to pass Nuclei's
+    `classification["cvss-score"]` straight through, untouched, to both
+    `from_cvss_score` below (a bare `float(score)`, no try/except) and to
+    `Finding.cvss_score` (`Numeric(3,1)` — real cap 99.9). An unsanitized
+    community Nuclei template with a non-numeric or out-of-range value
+    would raise partway through normalization, and the single
+    `db.begin_nested()` savepoint in scan_task_service.py rolls back the
+    *entire* scan_task's findings, not just the bad one — silently
+    zeroing out every real finding that tool run produced. Sanitizing
+    once, here, before the value reaches either of those two call sites,
+    closes the concrete trigger without changing that transaction's
+    granularity (a per-finding savepoint would be a much larger, riskier
+    change to fix a bad-input problem, not a transaction-design one).
+    """
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    return max(0.0, min(10.0, score))
 
 
 def from_cvss_score(score: float | None) -> SeverityLevel:

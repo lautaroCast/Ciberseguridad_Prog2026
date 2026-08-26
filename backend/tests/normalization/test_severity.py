@@ -46,6 +46,28 @@ def test_from_label(label, expected):
 
 
 @pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, None),
+        ("not-a-number", None),
+        ("", None),
+        ([1, 2, 3], None),
+        (7.5, 7.5),
+        ("7.5", 7.5),
+        (0, 0.0),
+        (-5.0, 0.0),
+        (15.0, 10.0),
+        (99.9, 10.0),
+    ],
+)
+def test_sanitize_cvss_score(value, expected):
+    # 7th independent evaluation: an unsanitized value from a malformed
+    # Nuclei template could reach either from_cvss_score's bare float()
+    # call or the DB's Numeric(3,1) column (real cap 99.9) unvalidated.
+    assert severity.sanitize_cvss_score(value) == expected
+
+
+@pytest.mark.parametrize(
     ("riskcode", "expected"),
     [
         ("0", SeverityLevel.INFO),

@@ -106,3 +106,38 @@ def test_does_not_override_an_explicit_info_label_with_cvss_score():
     ]
     result = nuclei_normalizer.normalize(parsed)
     assert result.findings[0].severity == SeverityLevel.INFO
+
+
+def test_malformed_cvss_score_does_not_raise_and_falls_back_to_info():
+    # 7th independent evaluation: a non-numeric cvss-score used to reach
+    # severity.from_cvss_score's bare float() call unguarded, raising
+    # ValueError partway through normalization - which the ingest
+    # savepoint would roll back entirely, discarding every other real
+    # finding from the same tool run.
+    parsed = [
+        {
+            "template-id": "some-template",
+            "info": {
+                "name": "Malformed score finding",
+                "classification": {"cvss-score": "not-a-number"},
+            },
+        }
+    ]
+    result = nuclei_normalizer.normalize(parsed)
+    assert result.findings[0].severity == SeverityLevel.INFO
+    assert result.findings[0].cvss_score is None
+
+
+def test_out_of_range_cvss_score_is_clamped_not_stored_raw():
+    parsed = [
+        {
+            "template-id": "some-template",
+            "info": {
+                "name": "Out-of-range score finding",
+                "severity": "critical",
+                "classification": {"cvss-score": 15.0},
+            },
+        }
+    ]
+    result = nuclei_normalizer.normalize(parsed)
+    assert result.findings[0].cvss_score == 10.0
