@@ -29,8 +29,7 @@ const ACTIVE_TARGET: TargetRead = {
   updated_at: "2026-08-21T00:00:00Z",
 };
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderPage(queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/targets/target-1"]}>
@@ -116,5 +115,28 @@ describe("TargetDetailPage — deleting a target", () => {
     // The dialog itself must still be open and showing the error, not
     // just some detached banner elsewhere on the page.
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+  });
+});
+
+describe("TargetDetailPage — a background refetch failing after data already loaded", () => {
+  // 7th independent evaluation: `if (targetQuery.error) return <ErrorBanner/>`
+  // used to be checked before `if (!targetQuery.data) return null` — since
+  // TanStack Query never clears `data` on a failed background refetch, this
+  // discarded a perfectly good, already-rendered target the instant any
+  // later poll failed. The page must keep showing the target plus an inline
+  // error banner, not go blank.
+  it("keeps showing the already-loaded target instead of blanking out", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(getTarget).mockResolvedValueOnce(ACTIVE_TARGET);
+    vi.mocked(listScansForTarget).mockResolvedValue([]);
+
+    renderPage(queryClient);
+    await screen.findByRole("heading", { name: "juice-shop-demo" });
+
+    vi.mocked(getTarget).mockRejectedValueOnce(new Error("network error"));
+    await queryClient.refetchQueries({ queryKey: ["target", "target-1"] });
+
+    expect(screen.getByRole("heading", { name: "juice-shop-demo" })).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
   });
 });

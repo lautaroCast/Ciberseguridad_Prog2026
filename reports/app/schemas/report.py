@@ -28,6 +28,14 @@ class ScanInfo(BaseModel):
     triggered_by: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    # 7th independent evaluation: the Backend's ScanRead already carries
+    # error_message (which n8n threads a tool_failure_summary into even on
+    # an otherwise "completed" scan, since round 6) - but this schema had
+    # no matching field, so Pydantic silently dropped it and no template
+    # ever rendered it. The pipeline could compute which tool failed, but
+    # that information was architecturally incapable of reaching the
+    # actual report artifact an operator reads.
+    error_message: str | None = None
 
 
 class CveReferenceInfo(BaseModel):

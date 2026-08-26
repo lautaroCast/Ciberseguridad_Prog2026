@@ -12,3 +12,14 @@ def test_xss_title_is_escaped(xss_report_request):
     output = render_html(xss_report_request)
     assert "<script>alert(1)</script>" not in output
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in output
+
+
+def test_scan_error_message_renders_as_warning(scan_error_report_request):
+    output = render_html(scan_error_report_request)
+    assert "nuclei: tool exited with code 1, no results collected" in output
+    assert "Advertencia" in output
+
+
+def test_no_warning_block_when_scan_has_no_error(sample_report_request):
+    output = render_html(sample_report_request)
+    assert "Advertencia" not in output

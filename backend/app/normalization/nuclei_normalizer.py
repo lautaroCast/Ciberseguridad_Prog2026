@@ -26,7 +26,11 @@ def normalize(parsed: list[dict[str, Any]] | None) -> NormalizedData:
         # already uses for its own possibly-bare-string field.
         if isinstance(cve_ids, str):
             cve_ids = [cve_ids]
-        cvss_score = classification.get("cvss-score")
+        # Sanitized once here (not left as the raw tool value) so neither
+        # `from_cvss_score` below nor the DB write further downstream ever
+        # sees a non-numeric or out-of-CVSS-range value — see
+        # severity.sanitize_cvss_score's own docstring for why this matters.
+        cvss_score = severity.sanitize_cvss_score(classification.get("cvss-score"))
         cve_references = [
             CveReferenceData(cve_id=str(cve_id), cvss_score=cvss_score) for cve_id in cve_ids
         ]

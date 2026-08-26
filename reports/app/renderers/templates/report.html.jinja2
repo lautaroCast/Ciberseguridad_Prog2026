@@ -26,6 +26,7 @@
   table.findings tr:nth-child(even) { background: #fafafa; }
   .cve { font-family: monospace; font-size: 10px; color: #333; }
   .footer { margin-top: 32px; font-size: 9px; color: #999; }
+  .warning { background: #fdf3e7; border: 1px solid #d68910; color: #7a4a00; padding: 8px 12px; border-radius: 4px; margin-bottom: 24px; font-size: 10.5px; }
 </style>
 </head>
 <body>
@@ -40,6 +41,12 @@
     <tr><td>Finalizado</td><td>{{ scan.finished_at or "-" }}</td></tr>
     <tr><td>Disparado por</td><td>{{ scan.triggered_by or "-" }}</td></tr>
   </table>
+
+  {% if scan.error_message %}
+  <div class="warning">
+    <strong>Advertencia:</strong> {{ scan.error_message }}
+  </div>
+  {% endif %}
 
   <div class="summary">
     {% for level in ["critical", "high", "medium", "low", "info"] %}
