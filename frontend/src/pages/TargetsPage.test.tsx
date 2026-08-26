@@ -47,8 +47,7 @@ function scan(overrides: Partial<ScanRead> = {}): ScanRead {
   };
 }
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderPage(queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/targets"]}>
@@ -88,6 +87,29 @@ describe("TargetsPage", () => {
     renderPage();
     await screen.findByText("juice-shop-demo");
     expect(screen.getByText("nunca escaneado")).toBeInTheDocument();
+  });
+
+  // 8th independent evaluation: `scanHistoryFailed` used to be checked
+  // before whether `scanQuery.data` still had a value from an earlier
+  // successful fetch - a single transient poll error hid an already-known
+  // last-scan link behind "no se pudo cargar".
+  it("keeps showing the last-scan link instead of hiding it after a later poll fails", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listScansForTarget).mockResolvedValueOnce([scan()]);
+
+    renderPage(queryClient);
+    await screen.findByText("juice-shop-demo");
+    const linksBefore = screen.getAllByRole("link");
+    expect(linksBefore.some((link) => link.getAttribute("href") === "/scans/scan-1")).toBe(true);
+
+    vi.mocked(listScansForTarget).mockRejectedValueOnce(new Error("network error"));
+    await queryClient.refetchQueries({ queryKey: ["target-scans", "target-1"] });
+
+    await waitFor(() => {
+      const links = screen.getAllByRole("link");
+      expect(links.some((link) => link.getAttribute("href") === "/scans/scan-1")).toBe(true);
+    });
+    expect(screen.queryByText("no se pudo cargar")).not.toBeInTheDocument();
   });
 
   it("disables the Registrar button until a name is entered", async () => {

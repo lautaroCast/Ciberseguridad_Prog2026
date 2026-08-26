@@ -277,10 +277,9 @@ export function ScanDetailPage() {
       <div className="th" style={{ marginBottom: 12 }}>
         Herramientas · ejecución secuencial
       </div>
+      <ErrorBanner error={tasksQuery.error} />
       {tasksQuery.isLoading ? (
         <TableSkeleton rows={5} />
-      ) : tasksQuery.error ? (
-        <ErrorBanner error={tasksQuery.error} />
       ) : (
         <ToolTimeline rows={breakdown} />
       )}
@@ -922,7 +921,10 @@ function FindingDetail({ finding }: { finding: FindingRead }) {
           ) : (
             finding.cve_references.map((cve) => (
               <div key={cve.id} className="row" style={{ gap: 9, marginBottom: 4 }}>
-                {cve.source_url ? (
+                {/* Only http(s) is ever a real CVE reference URL - guards
+                    against a javascript: URL from a compromised/malformed
+                    upstream CVE feed executing on click. */}
+                {cve.source_url && /^https?:\/\//i.test(cve.source_url) ? (
                   <a
                     href={cve.source_url}
                     target="_blank"
