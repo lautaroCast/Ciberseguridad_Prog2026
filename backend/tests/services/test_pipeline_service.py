@@ -86,3 +86,21 @@ def test_trigger_pipeline_on_inactive_target_raises(db_session):
 
     with pytest.raises(target_service.TargetInactiveError):
         pipeline_service.trigger_pipeline(db_session, target.id)
+
+
+def test_trigger_pipeline_while_one_is_already_running_raises(db_session, monkeypatch):
+    # 8th independent evaluation: two concurrent "Correr pipeline" triggers
+    # against the same target used to be able to create two scans at once -
+    # against dvwa this is consequential since dvwa_auth.
+    # get_authenticated_cookie mutates shared server-side session state a
+    # second concurrent scan would also mutate mid-run.
+    target = _make_target(db_session)
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _FakeResponse(200))
+
+    pipeline_service.trigger_pipeline(db_session, target.id)
+
+    with pytest.raises(scan_service.ScanAlreadyRunningError):
+        pipeline_service.trigger_pipeline(db_session, target.id)
+
+    scans = scan_service.list_scans_for_target(db_session, target.id)
+    assert len(scans) == 1

@@ -17,6 +17,10 @@ def test_list_scans_for_target_ordered_newest_first(db_session):
     # on real wall-clock separation between the two create_scan() calls.
     target = _make_target(db_session)
     first = scan_service.create_scan(db_session, target_id=target.id, triggered_by="a")
+    # ix_scans_one_active_per_target only allows one non-terminal scan per
+    # target - complete the first before creating the second, same as a
+    # real sequential history would look.
+    scan_service.complete_scan(db_session, first.id, status=ScanStatus.COMPLETED, error_message=None)
     second = scan_service.create_scan(db_session, target_id=target.id, triggered_by="b")
 
     from datetime import UTC, datetime
@@ -85,6 +89,35 @@ def test_complete_scan_without_pipeline_run_id_leaves_it_unset(db_session):
     )
 
     assert updated.pipeline_run_id is None
+
+
+def test_create_scan_while_one_is_already_running_raises(db_session):
+    # 8th independent evaluation: create_scan only checked
+    # Target.is_active, never whether the target already had a
+    # non-terminal scan - ix_scans_one_active_per_target is the real
+    # guard (a partial unique index), this proves the service surfaces it
+    # as a clean domain exception rather than a raw IntegrityError.
+    target = _make_target(db_session)
+    first = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+    with pytest.raises(scan_service.ScanAlreadyRunningError):
+        scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+    # The first scan must be completely unaffected by the failed second
+    # attempt (no partial write, no rollback side effect on it).
+    reloaded = scan_service.get_scan_or_raise(db_session, first.id)
+    assert reloaded.status == ScanStatus.RUNNING
+
+
+def test_create_scan_allowed_again_once_the_first_reaches_a_terminal_status(db_session):
+    target = _make_target(db_session)
+    first = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+    scan_service.complete_scan(db_session, first.id, status=ScanStatus.FAILED, error_message="x")
+
+    second = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+    assert second.id != first.id
+    assert second.status == ScanStatus.RUNNING
 
 
 def test_list_scans_for_target_does_not_leak_other_targets_scans(db_session):

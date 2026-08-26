@@ -12,7 +12,11 @@ from app.routers.reports import InvalidReportFilePathError, ReportFileUnavailabl
 from app.security import verify_api_key, verify_n8n_callback_key
 from app.services.pipeline_service import PipelineTriggerError
 from app.services.report_service import ReportGenerationError, ReportNotFoundError
-from app.services.scan_service import ScanAlreadyTerminalError, ScanNotFoundError
+from app.services.scan_service import (
+    ScanAlreadyRunningError,
+    ScanAlreadyTerminalError,
+    ScanNotFoundError,
+)
 from app.services.target_service import (
     TargetHasActiveScansError,
     TargetInactiveError,
@@ -103,6 +107,21 @@ async def scan_already_terminal_handler(
 ) -> JSONResponse:
     return JSONResponse(
         status_code=409, content={"detail": f"Scan '{exc}' already reached a terminal status."}
+    )
+
+
+@app.exception_handler(ScanAlreadyRunningError)
+async def scan_already_running_handler(
+    request: Request, exc: ScanAlreadyRunningError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": (
+                f"Target '{exc}' already has a scan in progress; "
+                "wait for it to reach a terminal status before starting another."
+            )
+        },
     )
 
 

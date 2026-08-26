@@ -16,12 +16,13 @@ a second regardless of how long the scan itself takes.
 import uuid
 
 import httpx
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.repositories import scan_repository
 from app.services import target_service
-from app.services.scan_service import TERMINAL_STATUSES
+from app.services.scan_service import TERMINAL_STATUSES, ScanAlreadyRunningError
 from models import Scan, ScanStatus
 
 
@@ -31,7 +32,14 @@ class PipelineTriggerError(Exception):
 
 def trigger_pipeline(db: Session, target_id: uuid.UUID) -> Scan:
     target = target_service.get_active_target_or_raise(db, target_id)
-    scan = scan_repository.create_scan(db, target_id=target_id, triggered_by="n8n-pipeline")
+    try:
+        scan = scan_repository.create_scan(db, target_id=target_id, triggered_by="n8n-pipeline")
+    except IntegrityError as exc:
+        # Real guard is ix_scans_one_active_per_target - see
+        # ScanAlreadyRunningError's own docstring for why this isn't just an
+        # optimistic pre-check.
+        db.rollback()
+        raise ScanAlreadyRunningError(str(target_id)) from exc
 
     settings = get_settings()
     payload = {"scan_id": str(scan.id), "target_id": str(target_id), "host": target.host}

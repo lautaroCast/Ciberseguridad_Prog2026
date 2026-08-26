@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,7 +31,40 @@ class Scan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """
 
     __tablename__ = "scans"
-    __table_args__ = (Index("ix_scans_target_id", "target_id"),)
+    __table_args__ = (
+        Index("ix_scans_target_id", "target_id"),
+        # 8th independent evaluation: create_scan/trigger_pipeline only
+        # checked Target.is_active, never whether the target already had a
+        # non-terminal scan - two concurrent triggers could run two scans at
+        # once against the same host, and against dvwa specifically
+        # scanner/app/services/dvwa_auth.py's get_authenticated_cookie
+        # mutates shared server-side session state a second concurrent scan
+        # would also be mutating mid-run. Same idiom already used for
+        # targets.name (a DB-level uniqueness guard, with the Python-level
+        # check in the service layer as an optimistic fast path only) -
+        # here the uniqueness is conditional on status, hence a partial
+        # index rather than a plain unique constraint.
+        Index(
+            "ix_scans_one_active_per_target",
+            "target_id",
+            unique=True,
+            # No explicit ::scan_status cast on the literals: Postgres
+            # infers the enum type from the column context and implicitly
+            # casts a bare string literal to it, which is what makes this
+            # portable across postgres_session's per-test isolated schema
+            # (schema_translate_map) - an explicit `'COMPLETED'::scan_status`
+            # instead resolves the type name via search_path, which binds
+            # to the wrong schema's copy of the enum there. Casting the
+            # column to text (`status::text NOT IN (...)`) was tried too
+            # and rejected outright: Postgres' enum->text cast isn't marked
+            # IMMUTABLE, which index predicates require.
+            # Both dialects store the Python member *name* (uppercase -
+            # "COMPLETED"), not ScanStatus.COMPLETED.value ("completed") -
+            # confirmed against a real Postgres via \dT+ scan_status.
+            postgresql_where=text("status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED')"),
+            sqlite_where=text("status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED')"),
+        ),
+    )
 
     target_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("targets.id", ondelete="CASCADE"), nullable=False

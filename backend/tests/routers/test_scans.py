@@ -18,8 +18,12 @@ def _create_scan(client, target_id):
 
 
 def test_list_scans_for_target_happy_path(client):
+    # ix_scans_one_active_per_target allows only one non-terminal scan per
+    # target - complete the first before creating the second, same as a
+    # real sequential history would look.
     target = _create_target(client)
-    client.post(f"/targets/{target['id']}/scans", json={})
+    first = client.post(f"/targets/{target['id']}/scans", json={}).json()
+    client.post(f"/scans/{first['id']}/complete", json={"status": "completed"})
     client.post(f"/targets/{target['id']}/scans", json={})
 
     response = client.get(f"/targets/{target['id']}/scans")
