@@ -7,10 +7,10 @@ database.
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from models import Target
+from models import TERMINAL_SCAN_STATUSES, Scan, Target
 
 
 def list_targets(db: Session, *, is_active: bool | None = None) -> list[Target]:
@@ -57,6 +57,32 @@ def update_target(db: Session, target: Target, updates: dict) -> Target:
     return target
 
 
-def delete_target(db: Session, target: Target) -> None:
-    db.delete(target)
+def delete_target(db: Session, target_id: uuid.UUID) -> bool:
+    """Atomically deletes a target only if it has no non-terminal scan.
+
+    7th independent evaluation: this used to take the already-fetched ORM
+    `Target` and unconditionally `db.delete()` it, with the "does it have
+    an active scan" check done in Python by the caller
+    (app/services/target_service.py) beforehand — not atomic with this
+    delete, so a scan created in the gap between that check and this call
+    would still get destroyed by the cascade. Same "let a single
+    conditional statement be the source of truth" idea already used for
+    `scan_repository.complete_scan`'s conditional UPDATE, adapted to a
+    DELETE: the condition here is a NOT EXISTS subquery (targets has no
+    column of its own that reflects "has an active scan") instead of a
+    WHERE on the row's own columns.
+
+    Returns False if no row matched — the target doesn't exist, or it has
+    a non-terminal scan — so the caller can tell those apart from its own
+    prior GET-based existence check and raise the correct domain error
+    either way.
+    """
+    has_active_scan = (
+        select(Scan.id)
+        .where(Scan.target_id == target_id, Scan.status.not_in(TERMINAL_SCAN_STATUSES))
+        .exists()
+    )
+    stmt = delete(Target).where(Target.id == target_id, ~has_active_scan)
+    result = db.execute(stmt)
     db.commit()
+    return result.rowcount > 0

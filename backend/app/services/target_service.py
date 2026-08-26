@@ -94,12 +94,24 @@ def update_target(db: Session, target_id: uuid.UUID, updates: dict) -> Target:
 
 
 def delete_target(db: Session, target_id: uuid.UUID) -> None:
-    target = get_target_or_raise(db, target_id)
+    get_target_or_raise(db, target_id)
     active_scans = [
         scan
         for scan in scan_repository.list_scans_for_target(db, target_id)
         if scan.status not in TERMINAL_SCAN_STATUSES
     ]
     if active_scans:
+        # Optimistic fast path only, same caveat as this module's own
+        # register_target: not atomic with the delete below. The real
+        # guard is target_repository.delete_target's own conditional
+        # DELETE — this just gives the common (non-racy) case a clear
+        # error immediately instead of waiting for that statement's
+        # rowcount to say the same thing.
         raise TargetHasActiveScansError(str(target_id))
-    target_repository.delete_target(db, target)
+    deleted = target_repository.delete_target(db, target_id)
+    if not deleted:
+        # A scan was created in the gap between the check above and this
+        # delete (or the target vanished, but get_target_or_raise above
+        # already ruled that out moments earlier) - the conditional
+        # DELETE's own WHERE clause is what actually caught it.
+        raise TargetHasActiveScansError(str(target_id))
