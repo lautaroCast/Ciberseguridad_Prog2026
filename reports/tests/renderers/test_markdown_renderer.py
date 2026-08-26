@@ -18,3 +18,14 @@ def test_severity_summary_table_present(sample_report_request):
     output = render_markdown(sample_report_request)
     assert "| CRITICAL | 1 |" in output
     assert "| INFO | 1 |" in output
+
+
+def test_scan_error_message_renders_as_warning(scan_error_report_request):
+    output = render_markdown(scan_error_report_request)
+    assert "nuclei: tool exited with code 1, no results collected" in output
+    assert "Advertencia" in output
+
+
+def test_no_warning_block_when_scan_has_no_error(sample_report_request):
+    output = render_markdown(sample_report_request)
+    assert "Advertencia" not in output

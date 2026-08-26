@@ -20,3 +20,13 @@ def test_cve_references_included(sample_report_request):
     parsed = json.loads(render_json(sample_report_request))
     critical_finding = next(f for f in parsed["findings"] if f["severity"] == "critical")
     assert critical_finding["cve_references"][0]["cve_id"] == "CVE-2021-1234"
+
+
+def test_scan_error_message_included(scan_error_report_request):
+    parsed = json.loads(render_json(scan_error_report_request))
+    assert parsed["scan"]["error_message"] == "nuclei: tool exited with code 1, no results collected"
+
+
+def test_scan_error_message_null_when_absent(sample_report_request):
+    parsed = json.loads(render_json(sample_report_request))
+    assert parsed["scan"]["error_message"] is None

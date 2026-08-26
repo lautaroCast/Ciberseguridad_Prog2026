@@ -6,7 +6,9 @@
 **Iniciado:** {{ scan.started_at or "-" }}
 **Finalizado:** {{ scan.finished_at or "-" }}
 **Disparado por:** {{ scan.triggered_by or "-" }}
-
+{% if scan.error_message %}
+> **Advertencia:** {{ scan.error_message }}
+{% endif %}
 ## Resumen por severidad
 
 | Severidad | Cantidad |

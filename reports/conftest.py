@@ -67,3 +67,13 @@ def xss_report_request(sample_report_request: ReportRequest) -> ReportRequest:
     data = sample_report_request.model_dump()
     data["findings"][0]["title"] = "<script>alert(1)</script>"
     return ReportRequest(**data)
+
+
+@pytest.fixture
+def scan_error_report_request(sample_report_request: ReportRequest) -> ReportRequest:
+    """7th independent evaluation: a scan that completed but had a tool
+    failure along the way (ScanInfo.error_message set) — used to confirm
+    the warning renders in every format, not just that the field parses."""
+    data = sample_report_request.model_dump()
+    data["scan"]["error_message"] = "nuclei: tool exited with code 1, no results collected"
+    return ReportRequest(**data)
