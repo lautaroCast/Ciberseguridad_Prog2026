@@ -9,7 +9,14 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 7th independent evaluation: this job intermittently timed out on
+    # shared GitHub-hosted runners — the real pipeline run alone budgets
+    # 15 minutes internally (integration_test.py's PIPELINE_TIMEOUT_SECONDS),
+    # and build + healthchecks + n8n import can legitimately take another
+    # 10-15 on a contended 2-vCPU runner, leaving little slack against the
+    # previous 30-minute ceiling. Raised, not the internal timeouts
+    # themselves (those are already calibrated against real scan durations).
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -21,9 +28,19 @@ jobs:
 
       - name: Wait for services to be healthy
         run: |
+          # 120s per service (was 180s): in the happy path every service
+          # reports healthy within seconds (verified repeatedly against the
+          # real stack), so this only shortens how long a genuinely stuck
+          # service eats into the job's total time budget before failing
+          # with a clear message, instead of silently consuming up to 21
+          # minutes (7 services x 180s) of the 45-minute ceiling above.
           for s in backend scanner reports n8n frontend dvwa juice-shop; do
             echo "Waiting for $s..."
-            timeout 180 sh -c "until [ \"\$(docker inspect -f '{{.State.Health.Status}}' vulnscan-$s 2>/dev/null)\" = healthy ]; do sleep 3; done"
+            if ! timeout 120 sh -c "until [ \"\$(docker inspect -f '{{.State.Health.Status}}' vulnscan-$s 2>/dev/null)\" = healthy ]; do sleep 3; done"; then
+              echo "$s did not become healthy in time — its logs:"
+              docker compose logs "$s"
+              exit 1
+            fi
           done
 
       # A fresh n8n instance has no workflow imported — it's normally done
