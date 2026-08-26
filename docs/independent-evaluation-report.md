@@ -713,3 +713,110 @@ vacía); (4) el error de borrado de un target invisible detrás del
 modal en `TargetDetailPage`; (5) D3 puede darse por cerrado — es la
 primera ronda, de las seis, en que ningún revisor lo vuelve a citar
 como hallazgo abierto.
+
+## 14. Séptima evaluación independiente — evaluación del proyecto completo (2026-08-25)
+
+**Nota de conflicto de interés, otra vez explícita** (Secciones 0, 8, 9,
+10, 12, 13): esta evaluación la generó el mismo asistente que implementó
+los fixes de la Sección 13. Mismo método, esta vez pedido explícitamente
+como evaluación del **proyecto completo**: tres revisores de código
+frescos en paralelo, sin acceso a este archivo ni a mensajes de commit,
+contra `main` en `ecb6d42` (después de mergear los 8 fixes de la ronda
+anterior), más mi propia relectura del documento.
+
+### 14.1 Documento
+
+Sin cambios de contenido desde la Sección 12 (solo el hash de referencia,
+actualizado dos veces desde entonces). Releí el Resumen/Abstract y el
+Índice para confirmar que no hay drift. **Evaluación del documento:
+8/10, sin cambio.**
+
+### 14.2 Código — tres revisores frescos, cada uno con hallazgos nuevos y genuinos
+
+**Backend + DB + Scanner: 8/10** (se mantiene). El hallazgo más serio de
+toda esta ronda, en cualquier alcance: **una sola fila con un dato
+malformado puede hacer desaparecer silenciosamente todos los hallazgos
+reales de una herramienta completa.** `scan_task_service.py:105-166`
+envuelve el normalizado completo de un `scan_task` —cada `Service`,
+`Technology`, `Finding` y `CveReference` que produjo la herramienta— en
+un único `SAVEPOINT`; cualquier excepción en cualquier punto revierte
+todo el bloque y resetea los contadores a cero, no solo el ítem que
+falló. Verificado un disparador concreto:
+`nuclei_normalizer.py:29` pasa `classification.get("cvss-score")`
+directo a `Finding.cvss_score` (`Numeric(3,1)`, tope real 99,9) **sin
+validar**, a diferencia de cada otro campo derivado de herramienta en el
+mismo módulo, que sí se trunca defensivamente. Un template de Nuclei de
+la comunidad (no saneado) con un `cvss-score` fuera de rango haría que
+un scan que legítimamente encontró 50 vulnerabilidades reales reporte 0
+— exactamente la clase de problema que compromete la métrica de recall
+que la propia tesis mide. También nuevo: `delete_target` (agregado en
+la ronda 4) sigue siendo un check-then-act sin respaldo atómico, a
+diferencia de `register_target`/`complete_scan`, que sí lo tienen — el
+propio código de este proyecto ya sabe resolver esta clase de carrera y
+no se aplicó acá.
+
+**Reports + n8n + Infraestructura: 7/10** (se mantiene). Hallazgo nuevo
+y genuino, verificado a mano: el `error_message`/`tool_failure_summary`
+que el Backend sí envía a la Reports Service (`ScanRead.error_message`
+existe y viaja en el payload) se pierde en silencio porque
+`reports/app/schemas/report.py`'s `ScanInfo` **no tiene ese campo** —
+Pydantic descarta los campos extra por defecto, y ningún template lo
+renderiza. Es decir: el pipeline ya calcula qué herramienta falló
+(ronda 6), pero esa información es arquitectónicamente incapaz de llegar
+al artefacto final que un operador realmente lee — el reporte PDF/HTML
+puede mostrar "completed" sin ninguna mención de que faltó una
+herramienta. El fail-open del webhook secret se re-verificó y se
+mantiene con la misma severidad rebajada de las rondas 5-6 (el
+validador de arranque del Backend sigue ahí). También reafirmado: los 5
+nodos `Scan: *` siguen sin `retryOnFail` (decisión ya tomada y
+reafirmada en la ronda 6) y `n8n:latest` sigue sin pinnear (deferido,
+mismo razonamiento de rondas anteriores).
+
+**Frontend: 6,5/10** (baja de 8 — el hallazgo más severo de todo el
+proyecto en esta ronda). Verificado a mano contra el comportamiento real
+de TanStack Query: `TargetDetailPage.tsx:69-70` y
+`ScanDetailPage.tsx:218-219` hacen `if (query.error) return
+<ErrorBanner .../>` **antes** de comprobar si `query.data` todavía tiene
+un valor válido de un fetch anterior exitoso — TanStack Query nunca
+borra `data` en un fallo de refetch en segundo plano, así que un solo
+error transitorio (un blip de red durante los 4-6 minutos de polling
+cada 2s mientras un scan corre) hace desaparecer toda la página —botón
+de borrado, historial de scans, tabla de hallazgos, todo— y la reemplaza
+por un banner de error, exactamente la clase de "dato parcial leído como
+completo" (o en este caso, "un error transitorio leído como pérdida
+total") que el propio proyecto se cuidó de evitar en `findingsQuery`/
+`tasksQuery` en las mismas páginas. Es una inconsistencia real dentro
+del mismo archivo, no solo entre archivos.
+
+### 14.3 Puntaje final: **7,5/10**
+
+| Dimensión | Puntaje | Peso |
+|---|---|---|
+| Documento | 8/10 | ~35% |
+| Backend + DB + Scanner | 8/10 | ~25% |
+| Reports + n8n + Infraestructura | 7/10 | ~20% |
+| Frontend | 6,5/10 | ~20% |
+
+**Baja de 7,7 a 7,5**, empujada casi enteramente por el Frontend — la
+misma área que había alcanzado su techo histórico (8/10) la ronda
+anterior ahora tiene el hallazgo más severo de todo el proyecto en esta
+ronda. Esto no contradice el progreso de la ronda 6 (los fixes de esa
+ronda siguen sosteniéndose, ninguno fue revertido ni cuestionado por
+estos revisores) — es, una vez más, la misma señal que las siete rondas
+de este proyecto vienen mostrando sin excepción: escrutinio fresco
+siempre encuentra algo real, y esta vez le tocó a un patrón (guardas de
+`error` que descartan `data` válido) que ninguna de las seis rondas
+anteriores había mirado desde ese ángulo específico.
+
+Para una próxima ronda, en orden de impacto esperado: (1) las guardas
+`if (query.error) return <ErrorBanner/>` en `TargetDetailPage`/
+`ScanDetailPage` deben comprobar primero si `data` sigue disponible,
+mismo patrón que `findingsQuery`/`tasksQuery` ya usan en los mismos
+archivos; (2) el `SAVEPOINT` todo-o-nada de `scan_task_service.py` más
+la falta de validación del `cvss-score` de Nuclei — el par de hallazgos
+que más directamente amenaza la métrica de recall que la tesis mide;
+(3) conectar `tool_failure_summary` al `ScanInfo` de la Reports Service
+para que el reporte final pueda reflejar un fallo parcial; (4) el
+`delete_target` sin respaldo atómico, cerrando la única brecha de "el
+proyecto ya sabe resolver esto pero no lo aplicó acá" que quedó en el
+backend.
