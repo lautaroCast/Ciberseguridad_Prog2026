@@ -67,9 +67,15 @@ export function TargetDetailPage() {
   });
 
   if (targetQuery.isLoading) return <TableSkeleton rows={3} />;
-  if (targetQuery.error) return <ErrorBanner error={targetQuery.error} />;
+  if (!targetQuery.data) {
+    // Never fetched successfully at all (as opposed to a later background
+    // refetch failing) — there's no cached target to render around, so a
+    // full-page error is correct here. See the inline ErrorBanner below for
+    // the "already had data, a refresh failed" case.
+    if (targetQuery.error) return <ErrorBanner error={targetQuery.error} />;
+    return null;
+  }
   const target = targetQuery.data;
-  if (!target) return null;
 
   const scans = scansQuery.data ?? [];
 
@@ -133,6 +139,7 @@ export function TargetDetailPage() {
         </button>
       </div>
 
+      <ErrorBanner error={targetQuery.error} />
       <ErrorBanner error={pipelineMutation.error} />
       <ErrorBanner error={updateActiveMutation.error} />
 

@@ -75,8 +75,7 @@ const INFO: FindingRead = {
   severity: "info",
 };
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderPage(queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/scans/scan-1"]}>
@@ -379,6 +378,34 @@ describe("ScanDetailPage forces one more fetch when the scan finishes", () => {
 
     await vi.waitFor(() => expect(findingsCalls).toBeGreaterThan(1));
     await vi.waitFor(() => expect(screen.getByText("Apache Struts RCE")).toBeInTheDocument());
+  });
+});
+
+describe("ScanDetailPage — a background poll failing after data already loaded", () => {
+  // 7th independent evaluation: `if (scanQuery.error) return <ErrorBanner/>`
+  // used to be checked before `if (!scan) return null` — since TanStack
+  // Query never clears `data` on a failed background refetch, a single
+  // transient error during the 4-6 minute polling window blanked out the
+  // whole page. It must instead keep showing the already-loaded scan plus
+  // an inline error banner.
+  beforeEach(() => {
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listFindings).mockResolvedValue([CRITICAL]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("keeps showing the already-loaded scan instead of blanking out", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(getScan).mockResolvedValueOnce(SCAN);
+
+    renderPage(queryClient);
+    await screen.findByText("Apache Struts RCE");
+
+    vi.mocked(getScan).mockRejectedValueOnce(new Error("network error"));
+    await queryClient.refetchQueries({ queryKey: ["scan", "scan-1"] });
+
+    expect(screen.getByText("Apache Struts RCE")).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
   });
 });
 

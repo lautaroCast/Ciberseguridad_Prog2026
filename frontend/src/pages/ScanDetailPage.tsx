@@ -216,8 +216,14 @@ export function ScanDetailPage() {
   }
 
   if (scanQuery.isLoading) return <TableSkeleton rows={5} />;
-  if (scanQuery.error) return <ErrorBanner error={scanQuery.error} />;
-  if (!scan) return null;
+  if (!scan) {
+    // Never fetched successfully at all (as opposed to a later background
+    // poll failing) — there's no cached scan to render around, so a full-page
+    // error is correct here. See the inline ErrorBanner below for the
+    // "already had data, a later poll failed" case.
+    if (scanQuery.error) return <ErrorBanner error={scanQuery.error} />;
+    return null;
+  }
 
   const elapsed = elapsedSeconds(scan.started_at ?? scan.created_at, scan.finished_at);
   const toolCount = breakdown.length;
@@ -255,6 +261,8 @@ export function ScanDetailPage() {
           </div>
         </div>
       </div>
+
+      <ErrorBanner error={scanQuery.error} />
 
       <ScanBanner
         running={running}
