@@ -65,7 +65,9 @@ def normalize(parsed: dict[str, Any] | None) -> NormalizedData:
                     severity=severity.from_zap_riskcode(alert.get("riskcode")),
                     description=alert.get("desc"),
                     evidence=_evidence_from_instances(alert),
-                    confidence=alert.get("confidence"),
+                    confidence=(
+                        str(alert["confidence"]) if alert.get("confidence") is not None else None
+                    ),
                 )
             )
     return NormalizedData(findings=findings)
