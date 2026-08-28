@@ -176,7 +176,10 @@
         4480,
         1728
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -1008,7 +1011,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Constant-time comparison, mirroring secrets.compare_digest used\n// elsewhere in this platform (backend/scanner/reports) for the\n// equivalent shared-secret checks — n8n's IF node only offers a plain\n// string-equals operator, which short-circuits on the first differing\n// character.\n//\n// Wrapped in try/catch and fail-closed (secret_matches: false) on any\n// unexpected error: this is the first node in the production (Webhook\n// Trigger) path, before any node-level safety net exists downstream —\n// an uncaught throw here would abort the whole execution with the scan\n// the Backend already created (before ever calling this webhook) stuck\n// in running forever. Failing closed reuses the IF node's existing\n// false branch (-> Respond Unauthorized) instead of needing a new one,\n// and \"reject on doubt\" is the correct default for an auth check\n// anyway.\ntry {\n  const received = String(($json.headers && $json.headers['x-webhook-secret']) || '');\n  const expected = String($env.N8N_WEBHOOK_SECRET || '');\n\n  let diff = received.length === expected.length ? 0 : 1;\n  const maxLen = Math.max(received.length, expected.length);\n  for (let i = 0; i < maxLen; i++) {\n    const a = i < received.length ? received.charCodeAt(i) : 0;\n    const b = i < expected.length ? expected.charCodeAt(i) : 0;\n    diff |= a ^ b;\n  }\n\n  return [{ json: { ...$json, secret_matches: diff === 0 } }];\n} catch (err) {\n  return [{ json: { ...$json, secret_matches: false } }];\n}"
+        "jsCode": "// Constant-time comparison, mirroring secrets.compare_digest used\n// elsewhere in this platform (backend/scanner/reports) for the\n// equivalent shared-secret checks — n8n's IF node only offers a plain\n// string-equals operator, which short-circuits on the first differing\n// character.\n//\n// Wrapped in try/catch and fail-closed (secret_matches: false) on any\n// unexpected error: this is the first node in the production (Webhook\n// Trigger) path, before any node-level safety net exists downstream —\n// an uncaught throw here would abort the whole execution with the scan\n// the Backend already created (before ever calling this webhook) stuck\n// in running forever. Failing closed reuses the IF node's existing\n// false branch (-> Respond Unauthorized) instead of needing a new one,\n// and \"reject on doubt\" is the correct default for an auth check\n// anyway.\ntry {\n  const received = String(($json.headers && $json.headers['x-webhook-secret']) || '');\n  const expected = String($env.N8N_WEBHOOK_SECRET || '');\n\n  // Fail closed if the secret itself is unset/blank (9th independent\n  // evaluation): without this, an empty expected value plus a caller\n  // that omits the header entirely both have length 0, the loop below\n  // runs zero iterations, and diff stays 0 - a misconfigured/blank\n  // secret would let an unauthenticated caller trigger real scans.\n  // Today this is masked by docker-compose.yml's boot order (the\n  // Backend's own config validator refuses to start with a blank\n  // secret, and n8n depends on the Backend being healthy) - but\n  // nothing in this node itself enforced it until now.\n  if (!expected) {\n    return [{ json: { ...$json, secret_matches: false } }];\n  }\n\n\n  let diff = received.length === expected.length ? 0 : 1;\n  const maxLen = Math.max(received.length, expected.length);\n  for (let i = 0; i < maxLen; i++) {\n    const a = i < received.length ? received.charCodeAt(i) : 0;\n    const b = i < expected.length ? expected.charCodeAt(i) : 0;\n    diff |= a ^ b;\n  }\n\n  return [{ json: { ...$json, secret_matches: diff === 0 } }];\n} catch (err) {\n  return [{ json: { ...$json, secret_matches: false } }];\n}"
       },
       "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000006",
       "name": "Compare Webhook Secret (Constant-Time)",
@@ -1108,6 +1111,72 @@
       "position": [
         4480,
         2260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000010-c1",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000010",
+      "name": "IF: Generate Report Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5576,
+        1730
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000011-c1",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-100000000011",
+      "name": "IF: Download Report Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5768,
+        1730
       ]
     }
   ],
@@ -1344,7 +1413,7 @@
       "main": [
         [
           {
-            "node": "Download Report",
+            "node": "IF: Generate Report Failed",
             "type": "main",
             "index": 0
           }
@@ -1355,7 +1424,7 @@
       "main": [
         [
           {
-            "node": "Send Report Email",
+            "node": "IF: Download Report Failed",
             "type": "main",
             "index": 0
           }
@@ -1472,6 +1541,42 @@
         [
           {
             "node": "Complete Scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Generate Report Failed": {
+      "main": [
+        [
+          {
+            "node": "Pipeline Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Download Report Failed": {
+      "main": [
+        [
+          {
+            "node": "Pipeline Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Report Email",
             "type": "main",
             "index": 0
           }
