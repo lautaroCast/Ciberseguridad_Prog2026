@@ -29,3 +29,15 @@ def test_scan_error_message_renders_as_warning(scan_error_report_request):
 def test_no_warning_block_when_scan_has_no_error(sample_report_request):
     output = render_markdown(sample_report_request)
     assert "Advertencia" not in output
+
+
+def test_finding_confidence_and_cvss_score_render(confidence_cvss_report_request):
+    output = render_markdown(confidence_cvss_report_request)
+    assert "- **Confianza:** 3" in output
+    assert "- **CVSS:** 6.1 (CVSS:3.1/AV:N/AC:L)" in output
+
+
+def test_no_confidence_or_cvss_line_when_absent(sample_report_request):
+    output = render_markdown(sample_report_request)
+    assert "Confianza:" not in output
+    assert "**CVSS:**" not in output
