@@ -191,7 +191,11 @@ export function TargetsPage() {
             const scans = scanQuery?.data;
             const latest = lastScanOf(scans);
             const running = latest ? !isTerminalStatus(latest.status) : false;
-            const scanHistoryFailed = Boolean(scanQuery?.error);
+            // Never loaded at all (as opposed to a later background poll
+            // failing) is the only case with no cached data to fall back
+            // on - a transient poll error after data already loaded must
+            // not hide an already-known last-scan link.
+            const scanHistoryNeverLoaded = !scans && Boolean(scanQuery?.error);
 
             return (
               <div key={target.id} className="tbl__row" role="row">
@@ -231,16 +235,16 @@ export function TargetsPage() {
                 </span>
 
                 <span role="cell" style={{ width: 190, flexShrink: 0, fontSize: 12, color: "var(--ink-2)" }}>
-                  {scanHistoryFailed && (
+                  {scanHistoryNeverLoaded && (
                     <span className="row" style={{ gap: 5, color: "var(--bad)" }}>
                       <AlertIcon size={12} />
                       no se pudo cargar
                     </span>
                   )}
-                  {!scanHistoryFailed && !latest && (
+                  {!scanHistoryNeverLoaded && !latest && (
                     <span style={{ color: "var(--ink-3)" }}>nunca escaneado</span>
                   )}
-                  {!scanHistoryFailed && latest && (
+                  {!scanHistoryNeverLoaded && latest && (
                     <Link
                       to={`/scans/${latest.id}`}
                       className="row"

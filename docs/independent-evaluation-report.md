@@ -820,3 +820,132 @@ para que el reporte final pueda reflejar un fallo parcial; (4) el
 `delete_target` sin respaldo atómico, cerrando la única brecha de "el
 proyecto ya sabe resolver esto pero no lo aplicó acá" que quedó en el
 backend.
+
+## 15. Octava evaluación independiente — evaluación del proyecto completo (2026-08-26)
+
+**Nota de conflicto de interés, otra vez explícita** (Secciones 0, 8, 9,
+10, 12, 13, 14): esta evaluación la generó el mismo asistente que
+implementó los 4 fixes de la Sección 14 (commits en
+`fix/seventh-independent-eval`, mergeados a `main` en `0357df2`). Mismo
+método: tres revisores de código frescos en paralelo, sin acceso a este
+archivo ni a mensajes de commit, instruidos a no confiar en comentarios
+o notas ("ya está arreglado") y a verificar todo contra el código real,
+contra `main` en `0357df2`, más mi propia relectura del documento y
+verificación manual de los hallazgos más severos de cada revisor antes
+de escribir esta sección.
+
+### 15.1 Documento
+
+Sin cambios de contenido desde la Sección 12 (solo el hash de
+referencia, actualizado tres veces desde entonces, ahora `0357df2`).
+**Evaluación del documento: 8/10, sin cambio.**
+
+### 15.2 Código — tres revisores frescos, cada uno con hallazgos nuevos y genuinos
+
+**Backend + DB + Scanner: 8,5/10** (sube de 8 — primera suba de esta
+dimensión en el proyecto). Cero hallazgos Critical/High: los cuatro
+fixes de la ronda anterior (sanitización de `cvss-score`, `delete_target`
+atómico, más los ya sostenidos de rondas previas) se verificaron
+directamente y se mantienen — el propio revisor probó explícitamente el
+guard atómico de `delete_target` y la sanitización de CVSS y los
+encontró correctos, no solo "según el comentario". Lo que impide un
+puntaje más alto es que la misma disciplina de estas correcciones
+—centralizar el saneo de un valor no confiable antes de que llegue a un
+punto que puede fallar— no se generalizó a los vecinos estructuralmente
+idénticos: `zap_normalizer.py:68` no castea `confidence` a `str` como sí
+hace cada otro campo del mismo módulo, `nmap_normalizer.py:19` no
+protege `int(item["port"])` con try/except pese a que el mismo patrón de
+"un valor malo tira abajo toda la corrida" que motivó `sanitize_cvss_score`
+aplica igual acá (mismo savepoint, mismo blast radius). Nuevo, genuino:
+no existe ningún invariante contra dos scans concurrentes sobre el mismo
+target (`scan_service.create_scan`/`pipeline_service.trigger_pipeline`
+solo chequean `is_active`) — inconsistente con la disciplina de
+concurrencia que el resto del código sí aplica (`complete_scan`,
+`delete_target`), y con una consecuencia real contra DVWA porque
+`dvwa_auth.get_authenticated_cookie` muta estado compartido del lado del
+servidor (sesión de login, nivel de seguridad) que un segundo scan
+concurrente también mutaría a mitad de corrida.
+
+**Reports + n8n + Infraestructura: 7/10** (se mantiene). El fix de la
+ronda anterior (`ScanInfo.error_message` llega ahora a los 3 formatos de
+reporte) se verificó y sostiene. Hallazgo nuevo más severo de esta
+ronda, verificado a mano: `Generate Report`, `Download Report` y
+`Send Report Email` (`n8n/workflows/vulnscan-pipeline.json`) tienen
+`continueOnFail: true` pero **ningún `retryOnFail`**, a diferencia de
+`Complete Scan` (`retryOnFail: true, maxTries: 3`) — el mismo patrón de
+"nodo de una sola llamada rápida, agregale reintento" que ya se aplicó
+ahí y a los 3 nodos `Mark Scan Failed - *`, nunca generalizado a este
+segundo cluster estructuralmente idéntico. Peor: el nodo terminal
+`Pipeline Complete` arma un `message` diagnóstico ("Report: ... Email:
+...") pero **no tiene ninguna conexión saliente** (confirmado: no
+aparece como key en el objeto `connections` del JSON) — un scan puede
+quedar `"completed"` en la base de datos sin que su reporte se haya
+generado nunca y sin que el email se haya enviado nunca, y el único
+rastro de esa falla es un campo que ningún sistema lee jamás. También
+nuevo y verificado: ninguna de las rutas de error de n8n está cubierta
+por CI — el job rápido (`ci.yml`) ni siquiera levanta `n8n`, y el job
+E2E solo ejercita el camino feliz; los tres nodos `Code` con lógica no
+trivial (`Resolve Pipeline Context`, `Select HTTP Port`, `Compare
+Webhook Secret (Constant-Time)`) no tienen ningún test unitario en
+ningún lado del repositorio.
+
+**Frontend: 7/10** (sube de 6,5 — el fix de la ronda anterior sostiene
+parcialmente, pero el mismo patrón reaparece sin corregir en dos lugares
+más). El fix de la Sección 14 (`targetQuery`/`scanQuery` en
+`TargetDetailPage`/`ScanDetailPage` comprueban `data` antes que `error`)
+se verificó y se mantiene, con test de regresión real que fuerza un
+refetch fallido después de un éxito. Pero el mismo revisor, instruido
+específicamente a buscar este patrón en cualquier otra query de las
+mismas páginas, encontró exactamente eso — verificado a mano, código
+real, no solo el reporte del subagente: `ScanDetailPage.tsx:280-286`
+(`tasksQuery`, la query de herramientas que hace polling cada 2s durante
+todo el scan) sigue haciendo `tasksQuery.error ? <ErrorBanner/> :
+<ToolTimeline/>` sin comprobar primero si `tasksQuery.data` (ya usado en
+`breakdown`, línea 123) sigue disponible — el mismo archivo que ya
+"sabe" resolver esto para `scanQuery`/`findingsQuery` no lo aplicó a su
+tercera query. Y en `TargetsPage.tsx:194,234-254`, `scanHistoryFailed`
+(derivado de `scanQuery?.error`) se comprueba antes que `latest`
+(derivado de `scanQuery?.data`), ocultando un enlace al último scan ya
+cargado detrás de "no se pudo cargar" ante un solo error transitorio de
+polling. Ninguno de los dos casos tiene test de regresión, a diferencia
+de los dos que sí se corrigieron. Hallazgo adicional, menor: la URL de
+CVE (`ScanDetailPage.tsx:925-934`, `cve.source_url`) se renderiza como
+`<a href>` sin validar el esquema — un feed de CVE comprometido podría
+en teoría inyectar un `javascript:` href; mitigado por `target="_blank"
+rel="noreferrer"` pero no eliminado.
+
+### 15.3 Puntaje final: **7,7/10**
+
+| Dimensión | Puntaje | Peso |
+|---|---|---|
+| Documento | 8/10 | ~35% |
+| Backend + DB + Scanner | 8,5/10 | ~25% |
+| Reports + n8n + Infraestructura | 7/10 | ~20% |
+| Frontend | 7/10 | ~20% |
+
+**Sube de 7,5 a 7,7**, empujado por el Backend (8→8,5, primera suba de
+esa dimensión) y por el Frontend recuperando parte de su caída anterior
+(6,5→7, ya que el hallazgo original de la ronda 7 está genuinamente
+resuelto y probado). Esto **no** es evidencia de que el proyecto haya
+alcanzado un techo de calidad — es, otra vez, la misma señal de las ocho
+rondas: cada corrección puntual deja sin tocar a su vecino estructural
+más cercano. El Frontend es el ejemplo más nítido hasta ahora: la ronda
+7 corrigió el patrón `error`-antes-que-`data` en las dos queries
+*principales* de dos páginas, y esta ronda lo encontró intacto en una
+*segunda* query de la misma página (`ScanDetailPage`) y en una página
+distinta (`TargetsPage`) — el fix nunca se generalizó a un helper o
+convención compartida, se aplicó síntoma por síntoma.
+
+Para una próxima ronda, en orden de impacto esperado: (1) las mismas
+guardas `error`-antes-que-`data`, ahora en `tasksQuery`
+(`ScanDetailPage.tsx`) y en las queries por-target de `TargetsPage.tsx`
+— idealmente extraídas a un hook/patrón compartido esta vez, no
+corregidas caso por caso otra vez; (2) `retryOnFail` en `Generate
+Report`/`Download Report`/`Send Report Email`, más darle una salida real
+al diagnóstico de `Pipeline Complete` (aunque sea un log estructurado o
+un campo persistido, no solo una variable de ejecución que nadie lee);
+(3) algún tipo de cobertura de CI para las rutas de error de n8n, aunque
+sea un test que dispare el webhook con un secreto incorrecto y confirme
+el 401 sin efectos secundarios; (4) el invariante de "un solo scan activo
+por target", cerrando la brecha de concurrencia más concreta que quedó
+en el backend.

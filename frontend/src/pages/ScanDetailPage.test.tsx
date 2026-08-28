@@ -108,6 +108,34 @@ describe("ScanDetailPage", () => {
     expect(screen.getByText(/#cmd=/)).toBeInTheDocument();
   });
 
+  // 8th independent evaluation: cve.source_url used to render as <a href>
+  // with no scheme check - a compromised/malformed upstream CVE feed
+  // could inject a javascript: URL that executes on click.
+  it("does not render a CVE reference with a non-http(s) source_url as a link", async () => {
+    const UNSAFE_CVE = {
+      ...CRITICAL,
+      id: "finding-unsafe-cve",
+      title: "Unsafe CVE Source",
+      cve_references: [
+        {
+          id: "cve-1",
+          cve_id: "CVE-2099-0001",
+          cvss_score: null,
+          cvss_vector: null,
+          description: null,
+          source_url: "javascript:alert(1)",
+        },
+      ],
+    };
+    vi.mocked(listFindings).mockResolvedValue([UNSAFE_CVE]);
+
+    renderPage();
+    fireEvent.click(await screen.findByText("Unsafe CVE Source"));
+
+    const cveText = await screen.findByText("CVE-2099-0001");
+    expect(cveText.tagName).toBe("SPAN");
+  });
+
   // Info findings dominate a real run (~21 of 32); showing them by default
   // buries the ones that need action.
   it("hides info findings by default and says how many are hidden", async () => {
@@ -405,6 +433,34 @@ describe("ScanDetailPage — a background poll failing after data already loaded
     await queryClient.refetchQueries({ queryKey: ["scan", "scan-1"] });
 
     expect(screen.getByText("Apache Struts RCE")).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage — a background poll failing on tasksQuery after data already loaded", () => {
+  // 8th independent evaluation: the same error-before-data bug fixed for
+  // scanQuery in the block above was still present in this page's own
+  // tasksQuery, one query lower in the same component - `tasksQuery.error
+  // ? <ErrorBanner/> : <ToolTimeline/>` hid the whole tool timeline (still
+  // fully populated from cached data) on a single transient poll failure.
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listFindings).mockResolvedValue([CRITICAL]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("keeps showing the tool timeline instead of blanking it out", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listScanTasks).mockResolvedValueOnce([task("t-nuclei", "nuclei")]);
+
+    renderPage(queryClient);
+    await screen.findByText("Apache Struts RCE");
+    expect(screen.getAllByText("Nuclei").length).toBeGreaterThan(0);
+
+    vi.mocked(listScanTasks).mockRejectedValueOnce(new Error("network error"));
+    await queryClient.refetchQueries({ queryKey: ["scan-tasks", "scan-1"] });
+
+    expect(screen.getAllByText("Nuclei").length).toBeGreaterThan(0);
     expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
   });
 });

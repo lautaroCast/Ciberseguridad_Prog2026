@@ -13,16 +13,24 @@ from app.normalization.types import NormalizedData, ServiceData
 
 
 def normalize(parsed: list[dict[str, Any]] | None) -> NormalizedData:
-    services = [
-        ServiceData(
-            host=str(item["host"]),
-            port=int(item["port"]),
-            protocol=str(item.get("protocol") or "tcp"),
-            service_name=item.get("service_name"),
-            product=item.get("product"),
-            version=item.get("version"),
+    services: list[ServiceData] = []
+    for item in parsed or []:
+        if item.get("host") is None or item.get("port") is None:
+            continue
+        try:
+            port = int(item["port"])
+        except (TypeError, ValueError):
+            # A malformed port on one entry shouldn't drop every other real
+            # service Nmap found in the same run - skip just this one.
+            continue
+        services.append(
+            ServiceData(
+                host=str(item["host"]),
+                port=port,
+                protocol=str(item.get("protocol") or "tcp"),
+                service_name=item.get("service_name"),
+                product=item.get("product"),
+                version=item.get("version"),
+            )
         )
-        for item in (parsed or [])
-        if item.get("host") is not None and item.get("port") is not None
-    ]
     return NormalizedData(services=services)

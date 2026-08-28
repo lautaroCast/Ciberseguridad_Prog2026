@@ -32,3 +32,14 @@ def test_missing_port_filtered_out():
 def test_empty_input():
     assert nmap_normalizer.normalize([]).services == []
     assert nmap_normalizer.normalize(None).services == []
+
+
+def test_non_numeric_port_skipped_not_raised():
+    # 8th independent evaluation: int(item["port"]) used to have no
+    # try/except, unlike the sanitization pattern this project applies
+    # elsewhere (severity.sanitize_cvss_score) - one malformed port used to
+    # crash the whole batch instead of just being skipped.
+    parsed = [{"host": "dvwa", "port": "not-a-port"}, {"host": "dvwa", "port": 80}]
+    result = nmap_normalizer.normalize(parsed)
+    assert len(result.services) == 1
+    assert result.services[0].port == 80

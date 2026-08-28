@@ -7,6 +7,7 @@ duplicated check) rather than trusting the id blindly.
 
 import uuid
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.repositories import scan_repository
@@ -36,9 +37,21 @@ class ScanAlreadyTerminalError(Exception):
     outcome."""
 
 
+class ScanAlreadyRunningError(Exception):
+    """Raised when a target already has a non-terminal scan and a new one
+    is requested. The real guard is `ix_scans_one_active_per_target`, a
+    partial unique index on `scans.target_id` — this exception is what an
+    `IntegrityError` from that index gets translated into, same idiom as
+    `target_service.register_target`'s own unique-constraint catch."""
+
+
 def create_scan(db: Session, *, target_id: uuid.UUID, triggered_by: str | None) -> Scan:
     target_service.get_active_target_or_raise(db, target_id)
-    return scan_repository.create_scan(db, target_id=target_id, triggered_by=triggered_by)
+    try:
+        return scan_repository.create_scan(db, target_id=target_id, triggered_by=triggered_by)
+    except IntegrityError as exc:
+        db.rollback()
+        raise ScanAlreadyRunningError(str(target_id)) from exc
 
 
 def list_scans_for_target(db: Session, target_id: uuid.UUID) -> list[Scan]:

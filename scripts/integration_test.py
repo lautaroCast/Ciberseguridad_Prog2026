@@ -135,8 +135,29 @@ def run_error_paths() -> None:
     check(missing.status_code == 404, f"unknown target -> 404 (got {missing.status_code})")
 
 
+def run_n8n_webhook_auth_check() -> None:
+    print("== n8n webhook auth ==")
+    webhook_url = f"{os.environ['N8N_WEBHOOK_BASE_URL']}/webhook/vulnscan-pipeline"
+    # Same secret the Backend itself uses to trigger the pipeline
+    # (config.py's n8n_webhook_secret) - deliberately corrupted here so this
+    # never accidentally succeeds even if n8n's own secret were misconfigured
+    # to accept anything.
+    wrong_secret = os.environ["N8N_WEBHOOK_SECRET"] + "-wrong"
+    response = httpx.post(
+        webhook_url,
+        json={"scan_id": str(uuid.uuid4()), "target_id": str(uuid.uuid4()), "host": "dvwa"},
+        headers={"X-Webhook-Secret": wrong_secret},
+        timeout=15.0,
+    )
+    check(
+        response.status_code == 401,
+        f"wrong webhook secret -> 401 (got {response.status_code})",
+    )
+
+
 def main() -> None:
     run_error_paths()
+    run_n8n_webhook_auth_check()
     run_happy_path()
 
     print()

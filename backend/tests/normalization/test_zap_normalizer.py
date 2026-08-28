@@ -117,3 +117,19 @@ def test_evidence_is_truncated_for_alerts_with_many_instances():
     parsed = {"site": [{"alerts": [{"name": "X", "riskcode": "1", "instances": instances}]}]}
     result = zap_normalizer.normalize(parsed)
     assert len(result.findings[0].evidence) == zap_normalizer._MAX_EVIDENCE_LENGTH
+
+
+def test_confidence_is_coerced_to_a_real_string():
+    # 8th independent evaluation: `confidence` used to pass through raw,
+    # unlike every other field in this module (title=str(...)) -
+    # finding_repository._truncate does value[:max_length], which raises
+    # TypeError on a non-str/None confidence.
+    parsed = {"site": [{"alerts": [{"name": "X", "riskcode": "1", "confidence": 2}]}]}
+    result = zap_normalizer.normalize(parsed)
+    assert result.findings[0].confidence == "2"
+
+
+def test_confidence_is_none_when_absent():
+    parsed = {"site": [{"alerts": [{"name": "X", "riskcode": "1"}]}]}
+    result = zap_normalizer.normalize(parsed)
+    assert result.findings[0].confidence is None
