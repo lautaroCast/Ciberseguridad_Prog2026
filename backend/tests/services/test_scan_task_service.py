@@ -47,21 +47,24 @@ def test_ingest_happy_path_creates_services_from_normalizer(db_session):
     assert result.scan_task.tool_name == "nmap"
 
 
-def test_ingest_twice_refines_existing_service_row_instead_of_duplicating(db_session):
-    """service_repository.get_or_create_service upserts on (scan_id, host,
-    port, protocol) via insert-first + catch-IntegrityError (not a
-    select-first check-then-act) — this exercises that path for the
-    ordinary sequential case: a second Nmap-style ingest for the same
-    scan/host/port/protocol must update the same row, not create a
-    second one, and must carry over the newer field values."""
+def test_ingesting_the_same_tool_twice_is_an_idempotent_replay_not_a_refine(db_session):
+    """9th independent evaluation: n8n's Ingest: * nodes retry on transient
+    failures (continueOnFail + retryOnFail) - a retry of an ingest that
+    already succeeded must not duplicate or re-normalize anything, even
+    with a different (e.g. more complete) payload the second time. The
+    unique (scan_id, tool_name) index is the real guard; this proves
+    ingest_scan_task's IntegrityError handling returns the *first* call's
+    result untouched rather than re-running the normalizer."""
     scan = _make_scan(db_session)
-    _ingest(
+    first = _ingest(
         db_session,
         scan.id,
         tool="nmap",
         parsed=[{"host": "juice-shop", "port": 80, "service_name": "http"}],
     )
-    result = _ingest(
+    assert first.services_upserted == 1
+
+    second = _ingest(
         db_session,
         scan.id,
         tool="nmap",
@@ -75,11 +78,12 @@ def test_ingest_twice_refines_existing_service_row_instead_of_duplicating(db_ses
             }
         ],
     )
-    assert result.services_upserted == 1
+    assert second.services_upserted == 0
+    assert second.scan_task.id == first.scan_task.id
 
     from sqlalchemy import select as sa_select
 
-    from models import Service
+    from models import Service, ScanTask
 
     services = (
         db_session.execute(sa_select(Service).where(Service.scan_id == scan.id))
@@ -87,8 +91,17 @@ def test_ingest_twice_refines_existing_service_row_instead_of_duplicating(db_ses
         .all()
     )
     assert len(services) == 1
-    assert services[0].product == "nginx"
-    assert services[0].version == "1.25.0"
+    # The retry's payload (product/version) must never have reached the
+    # normalizer - the first call's values survive untouched.
+    assert services[0].product is None
+    assert services[0].version is None
+
+    scan_tasks = (
+        db_session.execute(sa_select(ScanTask).where(ScanTask.scan_id == scan.id))
+        .scalars()
+        .all()
+    )
+    assert len(scan_tasks) == 1
 
 
 def test_ingest_happy_path_creates_findings_from_normalizer(db_session):

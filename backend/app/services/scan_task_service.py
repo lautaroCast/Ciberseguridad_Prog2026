@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.normalization.registry import get_normalizer
@@ -75,17 +76,36 @@ def ingest_scan_task(
 ) -> IngestResult:
     get_scan_or_raise(db, scan_id)  # 404s before writing anything if the scan doesn't exist
 
-    scan_task = scan_task_repository.create_scan_task(
-        db,
-        scan_id=scan_id,
-        tool_name=tool,
-        status=_STATUS_MAP[status],
-        command=command,
-        raw_output=raw_output,
-        started_at=started_at,
-        finished_at=finished_at,
-        error_message=error_message,
-    )
+    try:
+        scan_task = scan_task_repository.create_scan_task(
+            db,
+            scan_id=scan_id,
+            tool_name=tool,
+            status=_STATUS_MAP[status],
+            command=command,
+            raw_output=raw_output,
+            started_at=started_at,
+            finished_at=finished_at,
+            error_message=error_message,
+        )
+    except IntegrityError:
+        # ix_scan_tasks_scan_id_tool_name (unique) caught a retried ingest -
+        # n8n's Ingest: * nodes retry on transient failures, so this means
+        # the first attempt already committed successfully (this whole
+        # function is one transaction end to end, per the module docstring
+        # - there's no partial state a retry could be "completing"). Return
+        # the existing row idempotently rather than a 409: a 409 here would
+        # make Summarize Tool Failures report this tool as failed even
+        # though its real data already landed on the first attempt.
+        db.rollback()
+        existing = scan_task_repository.get_scan_task_by_scan_and_tool(db, scan_id, tool)
+        assert existing is not None  # the IntegrityError just proved a row exists
+        return IngestResult(
+            scan_task=existing,
+            services_upserted=0,
+            technologies_created=0,
+            findings_created=0,
+        )
 
     services_upserted = technologies_created = findings_created = 0
 

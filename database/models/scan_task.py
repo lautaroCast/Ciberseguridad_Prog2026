@@ -28,7 +28,18 @@ class ScanTask(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """
 
     __tablename__ = "scan_tasks"
-    __table_args__ = (Index("ix_scan_tasks_scan_id_tool_name", "scan_id", "tool_name"),)
+    __table_args__ = (
+        # unique=True (9th independent evaluation): n8n's Ingest: * nodes
+        # retry on transient failures (continueOnFail + retryOnFail,
+        # maxTries: 3) with only a 30s timeout - a lost/delayed response
+        # to an ingest that actually succeeded would otherwise let the
+        # retry insert a second ScanTask and re-run the normalizer,
+        # duplicating every Service/Technology/Finding/CveReference that
+        # tool run produced. See scan_task_service.ingest_scan_task's own
+        # handling of the resulting IntegrityError for why this returns
+        # the existing row instead of a 409.
+        Index("ix_scan_tasks_scan_id_tool_name", "scan_id", "tool_name", unique=True),
+    )
 
     scan_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("scans.id", ondelete="CASCADE"), nullable=False
