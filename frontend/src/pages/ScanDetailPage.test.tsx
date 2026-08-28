@@ -253,6 +253,32 @@ describe("ScanDetailPage when the scan was cancelled", () => {
   });
 });
 
+describe("ScanDetailPage strips ANSI escapes from scan.error_message", () => {
+  // 9th independent evaluation: ToolTimeline already stripped ANSI escapes
+  // from a task's error_message, but ScanBanner rendered the scan-level
+  // error_message raw in 3 places (failed/cancelled/completed-with-
+  // warnings) - real nuclei output can carry literal SGR escapes.
+  const ESC = String.fromCharCode(27);
+
+  it("does not render raw ANSI escape codes in the failed-scan banner", async () => {
+    vi.mocked(getScan).mockResolvedValue({
+      ...SCAN,
+      status: "failed",
+      error_message: `[${ESC}[1;31mFTL${ESC}[0m] Could not run nuclei: no templates provided for scan`,
+    });
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+
+    renderPage();
+    expect(await screen.findByText("Escaneo fallido")).toBeInTheDocument();
+    expect(
+      screen.getByText("[FTL] Could not run nuclei: no templates provided for scan"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\[1;31m/)).not.toBeInTheDocument();
+  });
+});
+
 describe("ScanDetailPage with more than five tools reported", () => {
   beforeEach(() => {
     vi.mocked(getScan).mockResolvedValue({ ...SCAN, status: "running", finished_at: null });

@@ -26,7 +26,7 @@ import { SeverityMeter } from "../components/SeverityMeter";
 import { TableSkeleton } from "../components/Skeleton";
 import { ToolBreakdown } from "../components/ToolBreakdown";
 import { ToolErrors, ToolTimeline } from "../components/ToolTimeline";
-import { elapsedSeconds, formatDateTime, formatDuration } from "../lib/format";
+import { elapsedSeconds, formatDateTime, formatDuration, stripAnsi } from "../lib/format";
 import { SEVERITY_META, SEVERITY_ORDER, severityColor } from "../lib/severity";
 import { buildToolBreakdown, toolLabel } from "../lib/tools";
 import type { FindingRead, ReportFormat, ReportRead, ScanStatus, Severity } from "../types";
@@ -268,7 +268,7 @@ export function ScanDetailPage() {
         running={running}
         stalled={stalled}
         status={scan.status}
-        errorMessage={scan.error_message}
+        errorMessage={scan.error_message ? stripAnsi(scan.error_message) : null}
         completedTools={completedTools}
         toolCount={toolCount}
         failedTools={failedTools.map((row) => row.label)}
@@ -929,6 +929,7 @@ function FindingDetail({ finding }: { finding: FindingRead }) {
                     href={cve.source_url}
                     target="_blank"
                     rel="noreferrer"
+                    aria-label={`${cve.cve_id} (abre en una pestaña nueva)`}
                     className="mono"
                     style={{ fontSize: 12, fontWeight: 500 }}
                   >

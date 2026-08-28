@@ -18,7 +18,7 @@ import { Crumbs } from "../components/Layout";
 import { TableSkeleton } from "../components/Skeleton";
 import { StatusIcon } from "../components/StatusIcon";
 import { statusColor, statusLabel } from "../lib/status";
-import { elapsedSeconds, formatDateTime, formatDuration } from "../lib/format";
+import { elapsedSeconds, formatDateTime, formatDuration, stripAnsi } from "../lib/format";
 import type { ScanRead } from "../types";
 
 export function TargetDetailPage() {
@@ -299,7 +299,7 @@ export function TargetDetailPage() {
                   {seconds === null ? "—" : formatDuration(seconds)}
                 </span>
                 <span role="cell" style={{ flexGrow: 1, fontSize: 12, color: "var(--ink-3)" }}>
-                  {scan.error_message ?? "—"}
+                  {scan.error_message ? stripAnsi(scan.error_message) : "—"}
                 </span>
               </Link>
             );
