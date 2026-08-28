@@ -46,3 +46,16 @@ def create_scan_task(
 def list_scan_tasks_for_scan(db: Session, scan_id: uuid.UUID) -> list[ScanTask]:
     stmt = select(ScanTask).where(ScanTask.scan_id == scan_id).order_by(ScanTask.created_at)
     return list(db.scalars(stmt))
+
+
+def get_scan_task_by_scan_and_tool(
+    db: Session, scan_id: uuid.UUID, tool_name: str
+) -> ScanTask | None:
+    """Backs the idempotent-replay path in scan_task_service.ingest_scan_task
+    - looked up only after create_scan_task's insert hits the unique
+    (scan_id, tool_name) index, to return the row a retried ingest already
+    created instead of duplicating it."""
+    stmt = select(ScanTask).where(
+        ScanTask.scan_id == scan_id, ScanTask.tool_name == tool_name
+    )
+    return db.scalars(stmt).first()

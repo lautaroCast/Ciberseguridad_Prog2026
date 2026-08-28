@@ -65,7 +65,7 @@
       {% for f in findings %}
       <tr>
         <td><span class="badge {{ f.severity }}">{{ f.severity|upper }}</span></td>
-        <td><strong>{{ f.title }}</strong>{% if f.description %}<br><span style="color:#666">{{ f.description }}</span>{% endif %}</td>
+        <td><strong>{{ f.title }}</strong>{% if f.description %}<br><span style="color:#666">{{ f.description }}</span>{% endif %}{% if f.confidence or f.cvss_score %}<br><span style="color:#999;font-size:10px">{% if f.confidence %}Confianza: {{ f.confidence }}{% endif %}{% if f.confidence and f.cvss_score %} · {% endif %}{% if f.cvss_score %}CVSS {{ f.cvss_score }}{% if f.cvss_vector %} ({{ f.cvss_vector }}){% endif %}{% endif %}</span>{% endif %}</td>
         <td>{{ f.finding_type }}</td>
         <td>{{ f.evidence or "-" }}</td>
         <td>

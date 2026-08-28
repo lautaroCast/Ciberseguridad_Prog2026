@@ -43,6 +43,19 @@ export function ConfirmDialog({
     pendingRef.current = pending;
   });
 
+  // Restores focus to whatever triggered the dialog (e.g. the "Eliminar"
+  // button) once it closes - without this, closing via Cancelar/Escape/
+  // backdrop/confirm abandons focus entirely, dropping a keyboard/screen-
+  // reader user back to a page with no clear focus position. The dialog
+  // is always mounted fresh on open and unmounted on close (the parent
+  // renders it as `{open && <ConfirmDialog/>}`), so capturing
+  // document.activeElement at mount and restoring it at unmount covers
+  // the real lifecycle exactly - no `open` prop or extra state needed.
+  useEffect(() => {
+    const triggerElement = document.activeElement as HTMLElement | null;
+    return () => triggerElement?.focus();
+  }, []);
+
   useEffect(() => {
     cancelRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {

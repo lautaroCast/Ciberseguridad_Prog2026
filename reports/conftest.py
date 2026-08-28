@@ -77,3 +77,17 @@ def scan_error_report_request(sample_report_request: ReportRequest) -> ReportReq
     data = sample_report_request.model_dump()
     data["scan"]["error_message"] = "nuclei: tool exited with code 1, no results collected"
     return ReportRequest(**data)
+
+
+@pytest.fixture
+def confidence_cvss_report_request(sample_report_request: ReportRequest) -> ReportRequest:
+    """9th independent evaluation: confidence/cvss_score are normalized onto
+    every finding (zap_normalizer.py, nuclei_normalizer.py) but were never
+    rendered in HTML/Markdown — only JSON, as a side effect of dumping the
+    whole model. No cve_references here, to isolate that this is the
+    finding's own confidence/cvss_score, not a CVE's."""
+    data = sample_report_request.model_dump()
+    data["findings"][1]["confidence"] = "3"
+    data["findings"][1]["cvss_score"] = "6.1"
+    data["findings"][1]["cvss_vector"] = "CVSS:3.1/AV:N/AC:L"
+    return ReportRequest(**data)

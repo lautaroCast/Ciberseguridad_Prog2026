@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { TargetRead } from "../types";
+import type { ScanRead, TargetRead } from "../types";
 
 vi.mock("../api", () => ({
   getTarget: vi.fn(),
@@ -138,5 +138,34 @@ describe("TargetDetailPage — a background refetch failing after data already l
 
     expect(screen.getByRole("heading", { name: "juice-shop-demo" })).toBeInTheDocument();
     expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
+  });
+});
+
+describe("TargetDetailPage strips ANSI escapes from a scan's error_message in the history table", () => {
+  // 9th independent evaluation: same gap as ScanDetailPage's ScanBanner —
+  // this table cell rendered scan.error_message raw.
+  const ESC = String.fromCharCode(27);
+
+  it("does not render raw ANSI escape codes in the scan history table", async () => {
+    const FAILED_SCAN: ScanRead = {
+      id: "scan-1",
+      target_id: "target-1",
+      status: "failed",
+      pipeline_run_id: null,
+      triggered_by: null,
+      started_at: "2026-08-21T00:00:00Z",
+      finished_at: "2026-08-21T00:04:00Z",
+      error_message: `[${ESC}[1;31mFTL${ESC}[0m] Could not run nuclei: no templates provided for scan`,
+      created_at: "2026-08-21T00:00:00Z",
+    };
+    vi.mocked(getTarget).mockResolvedValue(ACTIVE_TARGET);
+    vi.mocked(listScansForTarget).mockResolvedValue([FAILED_SCAN]);
+
+    renderPage();
+
+    expect(
+      await screen.findByText("[FTL] Could not run nuclei: no templates provided for scan"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\[1;31m/)).not.toBeInTheDocument();
   });
 });

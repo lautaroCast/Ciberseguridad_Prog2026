@@ -228,4 +228,37 @@ describe("ConfirmDialog accessibility", () => {
       root.remove();
     }
   });
+
+  // 9th independent evaluation: closing the dialog (Cancelar/Escape/
+  // backdrop/confirm) abandoned focus entirely instead of returning it to
+  // whatever opened the dialog - a real gap for keyboard/screen-reader
+  // users, who lost their place in the page after every interaction.
+  it("restores focus to the triggering element on unmount", () => {
+    const trigger = document.createElement("button");
+    trigger.textContent = "Eliminar";
+    document.body.appendChild(trigger);
+
+    try {
+      trigger.focus();
+      expect(document.activeElement).toBe(trigger);
+
+      const { unmount } = render(
+        <ConfirmDialog
+          title="¿Confirmar?"
+          confirmLabel="Eliminar todo"
+          onCancel={vi.fn()}
+          onConfirm={vi.fn()}
+        >
+          contenido
+        </ConfirmDialog>,
+      );
+      // The dialog moves focus to Cancelar on open, away from the trigger.
+      expect(document.activeElement).not.toBe(trigger);
+
+      unmount();
+      expect(document.activeElement).toBe(trigger);
+    } finally {
+      trigger.remove();
+    }
+  });
 });

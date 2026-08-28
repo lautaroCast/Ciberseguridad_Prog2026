@@ -27,6 +27,10 @@
 {% endif -%}
 {% if f.evidence %}- **Evidencia:** {{ f.evidence }}
 {% endif -%}
+{% if f.confidence %}- **Confianza:** {{ f.confidence }}
+{% endif -%}
+{% if f.cvss_score %}- **CVSS:** {{ f.cvss_score }}{% if f.cvss_vector %} ({{ f.cvss_vector }}){% endif %}
+{% endif -%}
 {% if f.cve_references %}- **CVE:** {% for cve in f.cve_references %}{{ cve.cve_id }}{% if not loop.last %}, {% endif %}{% endfor %}
 {% endif %}
 {% else %}
