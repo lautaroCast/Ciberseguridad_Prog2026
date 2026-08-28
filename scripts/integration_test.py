@@ -155,9 +155,59 @@ def run_n8n_webhook_auth_check() -> None:
     )
 
 
+def run_n8n_invalid_context_check() -> None:
+    print("== n8n invalid pipeline context ==")
+    # Resolve Pipeline Context (n8n/workflows/vulnscan-pipeline.json) marks
+    # context_invalid=true whenever scan_id/target_id/host is missing, and
+    # IF: Invalid Pipeline Context -> IF: Has Scan Id routes that straight to
+    # Mark Scan Failed - Contexto Invalido when a scan_id survived - this is
+    # the single convergence point every pipeline execution passes through,
+    # so a silent regression here would affect every real scan. Testable
+    # without touching the lab: create a target/scan through the public API
+    # (bypassing n8n entirely), then call the webhook directly with a
+    # correct secret but a body missing "host".
+    name = f"e2e-invalid-ctx-{uuid.uuid4().hex[:8]}"
+    create = httpx.post(
+        f"{BASE_URL}/targets",
+        json={"name": name, "host": "dvwa", "description": "integration_test.py"},
+        headers=HEADERS,
+        timeout=15.0,
+    )
+    target_id = create.json()["id"]
+
+    try:
+        scan = httpx.post(
+            f"{BASE_URL}/targets/{target_id}/scans", json={}, headers=HEADERS, timeout=15.0
+        )
+        scan_id = scan.json()["id"]
+
+        webhook_url = f"{os.environ['N8N_WEBHOOK_BASE_URL']}/webhook/vulnscan-pipeline"
+        response = httpx.post(
+            webhook_url,
+            json={"scan_id": scan_id, "target_id": target_id},  # "host" deliberately omitted
+            headers={"X-Webhook-Secret": os.environ["N8N_WEBHOOK_SECRET"]},
+            timeout=15.0,
+        )
+        check(response.status_code == 200, f"webhook accepts the call -> 200 (got {response.status_code})")
+
+        deadline = time.monotonic() + 30
+        status = "running"
+        while time.monotonic() < deadline:
+            status = httpx.get(
+                f"{BASE_URL}/scans/{scan_id}", headers=HEADERS, timeout=15.0
+            ).json()["status"]
+            if status in TERMINAL_STATUSES:
+                break
+            time.sleep(2)
+        check(status == "failed", f"scan with missing host reaches 'failed' (got '{status}')")
+    finally:
+        httpx.delete(f"{BASE_URL}/targets/{target_id}", headers=HEADERS, timeout=15.0)
+
+
 def main() -> None:
     run_error_paths()
     run_n8n_webhook_auth_check()
+    run_n8n_invalid_context_check()
     run_happy_path()
 
     print()
