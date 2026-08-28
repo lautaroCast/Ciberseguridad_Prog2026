@@ -949,3 +949,163 @@ sea un test que dispare el webhook con un secreto incorrecto y confirme
 el 401 sin efectos secundarios; (4) el invariante de "un solo scan activo
 por target", cerrando la brecha de concurrencia más concreta que quedó
 en el backend.
+
+**Estado de (3) al cierre de la ronda 8**: implementado — nueva función
+`run_n8n_webhook_auth_check` en `scripts/integration_test.py`, verificada
+en vivo contra el stack real (401 confirmado). (4) también implementado
+— ver commit `93066de` (índice único parcial `ix_scans_one_active_per_target`).
+
+## 16. Auditoría independiente del Documento + barrido de cierre de código (2026-08-28)
+
+Después de la ronda 8, el usuario preguntó por qué seguir iterando sobre
+código probablemente no movería mucho el promedio ponderado, y pidió un
+plan que combine corrección de errores y revisión del documento,
+priorizando lo de mayor impacto. Investigación previa al plan (agentes
+Explore, solo lectura): un barrido de los 8 call sites de `useQuery`/
+`useQueries` en el Frontend confirmó que la clase de bug `error`-antes-
+que-`data` (rondas 7 y 8) está genuinamente cerrada — los 8 ya manejan
+el patrón correctamente. Un barrido de `whatweb_normalizer.py` y
+`nikto_normalizer.py` (los 2 normalizadores que ninguna ronda había
+auditado para la clase de bug de saneo defensivo de `zap`/`nmap`/
+`nuclei`) confirmó que ambos ya están limpios. De los 6 nodos IF de n8n,
+solo 1 tenía cobertura de test — llevado a 2 esta ronda (ver más abajo).
+
+Con el camino de código prácticamente agotado, el mayor impacto
+disponible era el Documento: sin revisión de contenido fresca desde la
+ronda 5 (solo el hash de referencia, actualizado 3 veces desde
+entonces), y sus revisiones previas siempre las hizo el mismo asistente
+que escribió las correcciones — útil, pero no "independiente" en el
+mismo sentido que el código. Se lanzó un único revisor fresco de
+propósito general (sin acceso a este archivo, a `docs/self-audit-
+report.md`, ni al historial de commits), con el `.docx` extraído a
+texto vía `pandoc` más acceso de lectura al repositorio real completo,
+instruido con criterios genéricos de revisión académica (sin mencionar
+el historial específico de este proyecto) y a verificar toda afirmación
+técnica/cuantitativa contra el código y los datos reales antes de
+confiar en ella.
+
+### 16.1 Hallazgos del Documento (verificados a mano antes de reportarlos acá)
+
+**Crítico — Anexo F (`docker-compose.yml`) y Anexo J (`.env.example`)
+están desactualizados pese a presentarse como copia literal del
+repositorio.** Verificado directamente contra los archivos reales en el
+commit que el propio documento declara (`30693d9`): el bloque `backend`
+real tiene `read_only: true`, `cap_drop: [ALL]`, `security_opt:
+[no-new-privileges:true]` y las variables `N8N_WEBHOOK_SECRET`/
+`N8N_CALLBACK_API_KEY` — ninguno de los cuatro aparece en la
+reproducción del Anexo F. El bloque `n8n` real también tiene
+`read_only`/`cap_drop`/`no-new-privileges`, ausentes igual en el anexo.
+Anexo J, a la inversa, incluye `BACKEND_SECRET_KEY=change_me_local_dev_only`
+— una variable que **no existe** en el `.env.example` real ni en ningún
+código activo (fue eliminada en una ronda anterior por no tener uso).
+
+**Crítico — Sección 17 (Trabajos Futuros) lista la notificación
+automática de reportes por email como trabajo futuro; ya está
+implementada y activa.** Verificado: `n8n/workflows/vulnscan-
+pipeline.json` tiene un nodo real `Send Report Email` (tipo
+`n8n-nodes-base.emailSend`, `disabled: false`, conectado desde
+`Download Report`, con `retryOnFail`/`maxTries: 3` agregados en la
+ronda 8), parte del flujo real `Generate Report → Download Report →
+Send Report Email → Pipeline Complete`. La Sección 17 la agrupa junto a
+la integración con Jira/ServiceNow/Redmine (esa sí genuinamente no
+construida) como si ambas fueran trabajo pendiente.
+
+**Alto — Anexo G subestima el tamaño real del workflow de n8n.**
+Afirma "26 nodos, ~940 líneas"; el archivo real tiene **42 nodos y 1495
+líneas** (verificado contando el JSON real). Los ~16 nodos no
+contabilizados no son decorativos: incluyen `Check Webhook Secret`,
+`Compare Webhook Secret (Constant-Time)`, `Respond OK`/`Respond
+Unauthorized`, `IF: Invalid Pipeline Context`, `IF: Has Scan Id`, `IF:
+Complete Scan Failed`, `Summarize Tool Failures` y `Send Report Email`
+— todos nodos reales, conectados, que implementan lógica de seguridad y
+manejo de fallos que el relato de 13 pasos del Anexo D nunca describe.
+
+**Alto — Sección 13.2 / Tabla 15 describen un modelo de autenticación
+de una sola clave compartida; el backend real ya implementa un modelo
+de dos niveles más robusto que mitiga exactamente el riesgo discutido.**
+Verificado: el texto solo menciona "el header X-API-Key obligatorio en
+todo endpoint salvo /health". El código real (`backend/app/
+security.py`, `callback_router` en `backend/app/routers/scans.py`)
+separa `verify_api_key` (Frontend) de `verify_n8n_callback_key`
+(`X-N8N-Callback-Key`/`N8N_CALLBACK_API_KEY`, solo para las 2 rutas que
+n8n llama de vuelta) — precisamente para que la key del Frontend no
+pueda falsificar la ingesta de resultados de scan. El Webhook Trigger
+de n8n además está protegido por un secreto comparado en tiempo
+constante (`N8N_WEBHOOK_SECRET`). Ninguno de los dos aparece en la
+Tabla 15.
+
+**Alto — Sección 11.7 / Anexo A no mencionan el nuevo invariante de
+concurrencia de `scans` (ronda 8).** El índice único parcial
+`ix_scans_one_active_per_target` (`database/models/scan.py`) no
+aparece en la Tabla 7, en el SQL reproducido del Anexo A, ni en el
+análisis de riesgos (13) o limitaciones (14) — un cambio de esquema y
+comportamiento no reflejado.
+
+**Medio — el "0% de recall" del Resumen/Abstract simplifica una
+distinción metodológica que solo se aclara en la Sección 12.5.** Las
+Tablas 12/13 muestran en realidad un recall de Nuclei/ZAP de 0,273 sin
+autenticar (no 0%) — el 0% corresponde específicamente al nivel "alta
+confianza" de un esquema de 3 niveles que la Sección 12.5 sí explica
+correctamente después. No es una fabricación, pero el resumen ejecutivo
+comprime la distinción de una forma que, leída antes que la Sección
+12.5, parece contradecir las tablas.
+
+**Medio — Anexo I muestra una salida de ejemplo (`"finding_type":
+"web_vulnerability"`) que parece contradecir la corrección de
+clasificación de la Sección 12.5**, porque la muestra es de un scan de
+2026-08-15, anterior al fix real y vigente (`category.
+from_zap_cweid`, verificado). No está señalado como muestra antigua.
+
+**Bajo — Tabla 5 (endpoints principales) omite `GET /targets/
+{target_id}/scans`**, que sí existe. Menor, dado que la tabla es
+explícitamente no exhaustiva.
+
+**Lo que se verificó limpio** (no relleno — vale decirlo): las Tablas 9
+y 11, la campaña de seguimiento de Juice Shop (Sección 9.9), la Tabla 3
+de versiones de librerías, y el esquema de la base de datos del Anexo A
+coinciden con los artefactos reales (`scripts/measurement_campaign_
+results/*.md`, `*/requirements.txt`, `database/models/*.py`) al
+detalle. Las citas resuelven a venues/DOIs reales y plausibles.
+
+**Evaluación honesta del documento**: metodológicamente es inusualmente
+autocrítico para este tipo de trabajo (reporta el 0% de recall y la
+ausencia del brazo manual sin maquillarlos), y sus afirmaciones
+cuantitativas son trazables a artefactos reales, no inventadas. Su
+debilidad es la vigencia: el código avanzó (hardening de contenedores,
+modelo de dos claves, autenticación de webhook, un nodo de email activo,
+un nuevo invariante de concurrencia) desde que los anexos y varias
+secciones de prosa se sincronizaron por última vez — **aun cuando el
+documento se ancla explícitamente a un commit que ya contiene todos
+esos cambios**, socavando su propio encuadre de "verificado contra el
+código real" justo en los lugares (Anexos F/G/J, Secciones 13.2/17)
+donde esa afirmación se hace más explícita.
+
+### 16.2 n8n — cobertura de test para `IF: Invalid Pipeline Context` + `IF: Has Scan Id`
+
+De los 5 nodos IF sin cobertura identificados en la ronda 8, se agregó
+test para el de mayor impacto verificado: `IF: Invalid Pipeline
+Context` está en el único punto de convergencia de *toda* ejecución del
+pipeline (si se rompe en silencio, afecta al 100% de los scans reales).
+Verificado leyendo `Resolve Pipeline Context`: si falta `scan_id`,
+`target_id` o `host`, marca `context_invalid: true` preservando
+`scan_id` — `IF: Invalid Pipeline Context` (true) → `IF: Has Scan Id`
+(true) → `Mark Scan Failed - Contexto Invalido`. Testeable sin tocar el
+lab: crear un target/scan reales vía la API pública (sin pasar por
+n8n), llamar al webhook con el secreto correcto pero sin el campo
+`host`, y confirmar que el scan termina en `"failed"`. Nueva función
+`run_n8n_invalid_context_check` en `scripts/integration_test.py`,
+verificada en vivo contra el stack real (`OK` en ambos checks).
+
+`IF: No HTTP Service Found` (requiere un target sin servicio HTTP,
+inexistente en el whitelist actual — ampliar el lab para esto es
+desproporcionado) y `IF: Target Lookup Failed` (solo camino manual/demo,
+nunca producción) quedan sin test, documentado como limitación
+aceptada. `IF: Complete Scan Failed` tampoco se testea (impacto
+cosmético, `Complete Scan` ya tiene su propio retry).
+
+**Pendiente, explícitamente no resuelto en esta ronda**: los hallazgos
+del Documento (§16.1) no se corrigieron todavía — se decidió
+deliberadamente no corregir a ciegas antes de tener el informe completo
+(mismo error que este proyecto ya identificó: corregir el síntoma que
+un revisor nombra, no la clase completa). El siguiente paso es un plan
+de corrección dedicado para estos 8 hallazgos.
