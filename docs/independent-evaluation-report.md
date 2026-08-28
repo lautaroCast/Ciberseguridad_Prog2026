@@ -1103,9 +1103,116 @@ nunca producción) quedan sin test, documentado como limitación
 aceptada. `IF: Complete Scan Failed` tampoco se testea (impacto
 cosmético, `Complete Scan` ya tiene su propio retry).
 
-**Pendiente, explícitamente no resuelto en esta ronda**: los hallazgos
-del Documento (§16.1) no se corrigieron todavía — se decidió
-deliberadamente no corregir a ciegas antes de tener el informe completo
-(mismo error que este proyecto ya identificó: corregir el síntoma que
-un revisor nombra, no la clase completa). El siguiente paso es un plan
-de corrección dedicado para estos 8 hallazgos.
+**Estado al cierre**: los 8 hallazgos del Documento (§16.1) se
+corrigieron en su totalidad esta misma sesión (plan dedicado, aprobado
+y ejecutado) — ver §17.1 para el detalle de qué se aplicó y su
+verificación.
+
+## 17. Novena evaluación independiente (2026-08-28)
+
+Con el Documento ya corregido (§16.1 aplicado en su totalidad) y los
+3 barridos de código de §16.2 confirmando que las clases de bug de las
+rondas 7-8 seguían cerradas, el usuario pidió correr una novena ronda
+formal (3 revisores de código frescos + relectura del documento) contra
+`main` en `3660006`, mismo método de siempre.
+
+### 17.1 Documento
+
+Las 8 correcciones de §16.1 se aplicaron directamente al `.docx` esta
+sesión: Anexos F/J re-pegados completos desde los archivos reales
+actuales (hardening de contenedores, modelo de 2 claves, sin
+`BACKEND_SECRET_KEY`); Sección 17 ya no lista la notificación por email
+como trabajo futuro (Sección 11.6 documenta el nodo `Send Report Email`
+real); Anexo G corregido a 42 nodos/1495 líneas; Sección 13.2 + Tabla 15
+documentan el modelo de auth de 2 niveles; Tabla 7 menciona el nuevo
+índice de concurrencia; Sección 12.5 aclara alta-confianza vs. recall
+global; Anexo I reemplazado por una muestra real generada en vivo esta
+sesión (confirma visualmente que la clasificación y la evidencia de ZAP
+ya no muestran el bug pre-fix); Tabla 5 completa. Verificado: conteos
+estables, TOC/campos intactos, hash de referencia actualizado a
+`3660006`, copia de entrega re-sincronizada. **Evaluación del
+documento: 8/10** — mismo valor que rondas anteriores, pero ahora
+respaldado por una auditoría fresca real en vez de "sin cambios desde
+la ronda 5."
+
+### 17.2 Código — tres revisores frescos, cada uno con hallazgos nuevos y genuinos
+
+**Backend + DB + Scanner: 7/10** (baja de 8,5 — hallazgo Alto nuevo y
+verificado a mano). `POST /scans/{id}/tasks` (`scan_task_service.
+ingest_scan_task`) no es idempotente — inserta un `ScanTask` nuevo y
+corre el normalizador completo sin chequear si ya existe uno para el
+mismo `(scan_id, tool_name)` (el índice `ix_scan_tasks_scan_id_tool_name`,
+verificado, es un índice plano, no único). Verificado también en el
+workflow real: los 5 nodos `Ingest: *` tienen `retryOnFail: true,
+maxTries: 3` con un timeout de solo 30s (`n8n/workflows/vulnscan-
+pipeline.json`) — si la respuesta del Backend se demora más de eso
+(plausible: `raw_output` puede llegar a 50MB, y `create_finding`/
+`create_cve_reference` insertan fila por fila sin bulk insert), n8n
+reintenta la misma llamada y el Backend no tiene forma de reconocerla
+como un reintento: duplica `Finding`/`CveReference` de esa herramienta.
+Es exactamente la misma clase "un reintento no debe duplicar el
+efecto" que ya se resolvió dos veces en código vecino (`scans.status`
+vía UPDATE condicional, `delete_target` vía índice único parcial) pero
+nunca se generalizó al endpoint de ingesta — y es el que la propia
+configuración de reintentos del pipeline más directamente ejercita.
+Corrompe además la métrica que la tesis mide (recall/precisión), no es
+solo un problema de performance. Sin hallazgos Critical.
+
+**Reports + n8n + Infraestructura: 7/10** (se mantiene). Dos hallazgos
+Alto reafirmados/profundizados: (1) el secreto del webhook de n8n
+falla abierto si `N8N_WEBHOOK_SECRET` está vacío (cadenas de longitud
+0 comparadas producen `secret_matches: true`) — mitigado hoy solo por
+un efecto colateral del orden de arranque de `docker-compose.yml` (el
+Backend no levanta con el secreto vacío, y n8n depende de que el
+Backend esté healthy), no por una guarda propia del lado de n8n; (2)
+`Generate Report → Download Report → Send Report Email` siguen sin el
+mismo gate de "no continuar si el paso anterior falló" que sí se aplicó
+un paso antes (`IF: Complete Scan Failed`) — reafirma el hallazgo ya
+documentado en la ronda 8 como limitación aceptada, ahora con más
+detalle (el `message` de diagnóstico de `Pipeline Complete` sigue sin
+destino). Nuevo hallazgo Medio: `confidence`/`cvss_score` de cada
+finding se normalizan pero nunca se renderizan en HTML/MD/PDF (solo en
+JSON, como efecto colateral de volcar el modelo completo).
+
+**Frontend: 8/10** (sube de 7 — techo histórico, ahora por razones
+verificadas). El barrido explícito de los 8 call sites de `useQuery`/
+`useQueries` confirma que la clase `error`-antes-que-`data` está
+genuinamente cerrada en toda la app, con test de regresión por cada
+caso. Hallazgo Medio nuevo: `stripAnsi` se aplica al `error_message` de
+`ToolTimeline` pero no a las 3 apariciones estructuralmente idénticas
+en `ScanBanner` ni a la tabla de historial de `TargetDetailPage` — el
+mismo patrón "arreglado en un lugar, no en el vecino" una vez más, esta
+vez en el frontend. También: `ConfirmDialog` no restaura el foco al
+cerrarse (gap real de accesibilidad, sin test que lo cubra).
+
+### 17.3 Puntaje final: **7,6/10**
+
+| Dimensión | Puntaje | Peso |
+|---|---|---|
+| Documento | 8/10 | ~35% |
+| Backend + DB + Scanner | 7/10 | ~25% |
+| Reports + n8n + Infraestructura | 7/10 | ~20% |
+| Frontend | 8/10 | ~20% |
+
+**Baja de 7,7 a 7,6** — casi neutro en el promedio pese a movimientos
+reales en las cuatro dimensiones: Backend cae (8,5→7, el hallazgo de
+idempotencia de ingesta) y Frontend sube (7→8, su techo histórico) se
+cancelan casi exactamente por peso; Documento se mantiene en el mismo
+número pero ahora por una razón sustancialmente mejor (auditoría fresca
+real, no ausencia de cambios). El patrón de las 9 rondas se sostiene:
+ningún barrido de código, por prolijo que sea, agota la clase de
+hallazgo que un revisor genuinamente fresco puede encontrar — esta vez
+le tocó a la idempotencia de un endpoint que el propio pipeline
+reintenta, un ángulo que ninguna de las 8 rondas anteriores había
+mirado.
+
+Para una próxima ronda, en orden de impacto esperado: (1) idempotencia
+de `POST /scans/{id}/tasks` (mismo patrón de índice único parcial o
+UPSERT ya usado en este código para `services`, aplicado a
+`scan_tasks`/`findings`); (2) el secreto del webhook de n8n debería
+fallar cerrado con una guarda propia (no solo por el orden de arranque
+de `docker-compose.yml`); (3) el mismo gate de "no continuar tras un
+fallo" ya aplicado a `Complete Scan → Generate Report`, generalizado a
+`Generate Report → Download Report → Send Report Email`; (4) `stripAnsi`
+generalizado a los otros 4 lugares que renderizan `error_message`; (5)
+restauración de foco en `ConfirmDialog` al cerrarse.
