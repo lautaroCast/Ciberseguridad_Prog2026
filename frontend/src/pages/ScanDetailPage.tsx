@@ -522,7 +522,7 @@ function ScanBanner({
         <div>
           <div className="callout__title">En curso desde hace más de 10 minutos</div>
           <div style={{ marginTop: 2 }}>
-            Un pipeline normal tarda entre 4 y 6 minutos. Es probable que n8n haya abortado y el
+            Un pipeline normal tarda entre 5 y 8 minutos. Es probable que n8n haya abortado y el
             escaneo haya quedado en <span className="mono">running</span> sin nadie que lo cierre.
             Los hallazgos ya ingeridos siguen siendo válidos.
           </div>
@@ -542,8 +542,9 @@ function ScanBanner({
             El pipeline sigue ejecutándose
           </div>
           <div style={{ marginTop: 2 }}>
-            Tarda entre 4 y 6 minutos, dominado por el escaneo activo de ZAP. Los hallazgos
-            aparecen a medida que cada herramienta termina.
+            Tarda normalmente entre 5 y 8 minutos, dominado por el escaneo activo de ZAP — puede
+            tardar más según la carga del host. Los hallazgos aparecen a medida que cada
+            herramienta termina.
           </div>
         </div>
         <span className="th" style={{ flexShrink: 0 }}>

@@ -199,8 +199,9 @@ export function TargetDetailPage() {
               <ClockIcon />
             </span>
             <span>
-              Tarda entre <strong style={{ color: "var(--ink)" }}>4 y 6 minutos</strong>. Podés
-              cerrar la pestaña — sigue en segundo plano.
+              Tarda normalmente entre{" "}
+              <strong style={{ color: "var(--ink)" }}>5 y 8 minutos</strong>, según la carga del
+              host. Podés cerrar la pestaña — sigue en segundo plano.
             </span>
           </div>
           <div style={{ flexGrow: 1 }} />

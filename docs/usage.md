@@ -35,8 +35,10 @@ El botón **Correr Pipeline** dispara el pipeline completo de 12 etapas
 contra ese target (`POST /targets/{id}/pipeline` en el Backend, que a su
 vez llama al webhook de n8n). La llamada devuelve casi inmediatamente —
 el scan queda en estado `running` y el pipeline sigue corriendo en
-segundo plano. **Tarda entre 4 y 6 minutos**, dominado por el escaneo
-activo de ZAP; no hay indicador de progreso en vivo en esta pantalla,
+segundo plano. **Normalmente tarda entre 5 y 8 minutos**, dominado por el
+escaneo activo de ZAP — la duración exacta varía según la carga del host y
+puede extenderse más allá de ese rango; no hay indicador de progreso en
+vivo en esta pantalla,
 hay que refrescar o volver a entrar al detalle del scan para ver el
 estado actualizado.
 

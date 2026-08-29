@@ -149,8 +149,10 @@ PDF → envío por mail.
 
 ### Cuánto tarda
 
-**Entre 4 y 6 minutos.** El cuello de botella es ZAP (hace un escaneo activo
-real, no una simulación). No es que se cuelgue — podés seguir el progreso
+**Normalmente entre 5 y 8 minutos.** El cuello de botella es ZAP (hace un
+escaneo activo real, no una simulación), así que la duración exacta varía
+según la carga del host y puede extenderse más allá de ese rango. No es que
+se cuelgue — podés seguir el progreso
 en tiempo real desde la pestaña **Executions** de n8n, viendo cada nodo
 iluminarse a medida que corre.
 
