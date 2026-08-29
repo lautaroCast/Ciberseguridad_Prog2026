@@ -10,10 +10,17 @@ from sqlalchemy.orm import Session
 from models import Scan, ScanStatus
 
 
-def list_scans_for_target(db: Session, target_id: uuid.UUID) -> list[Scan]:
+def list_scans_for_target(
+    db: Session, target_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
+) -> list[Scan]:
     stmt = (
-        select(Scan).where(Scan.target_id == target_id).order_by(Scan.created_at.desc())
+        select(Scan)
+        .where(Scan.target_id == target_id)
+        .order_by(Scan.created_at.desc())
+        .offset(offset)
     )
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(db.execute(stmt).scalars().all())
 
 

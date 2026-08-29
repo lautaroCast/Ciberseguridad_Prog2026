@@ -6,6 +6,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
+from models import SeverityLevel
+
 
 class CveReferenceRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -32,6 +34,6 @@ class FindingRead(BaseModel):
     confidence: str | None
     cvss_score: Decimal | None
     cvss_vector: str | None
-    severity: str
+    severity: SeverityLevel
     created_at: datetime
     cve_references: list[CveReferenceRead] = []

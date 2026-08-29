@@ -11,7 +11,7 @@ import uuid
 from typing import Literal
 
 import httpx
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -47,8 +47,13 @@ def create_report(
 
 
 @router.get("/scans/{scan_id}/reports", response_model=list[ReportRead])
-def list_reports(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> list[ReportRead]:
-    return report_service.list_reports_for_scan(db, scan_id)
+def list_reports(
+    scan_id: uuid.UUID,
+    limit: int | None = Query(default=None, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[ReportRead]:
+    return report_service.list_reports_for_scan(db, scan_id, limit=limit, offset=offset)
 
 
 @router.get("/reports/{report_id}/download")

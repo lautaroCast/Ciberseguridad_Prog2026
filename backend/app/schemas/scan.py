@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from models import ScanStatus
+
 
 class ScanCreate(BaseModel):
     triggered_by: str | None = Field(default=None, max_length=100)
@@ -26,7 +28,7 @@ class ScanRead(BaseModel):
 
     id: uuid.UUID
     target_id: uuid.UUID
-    status: str
+    status: ScanStatus
     pipeline_run_id: str | None
     triggered_by: str | None
     started_at: datetime | None

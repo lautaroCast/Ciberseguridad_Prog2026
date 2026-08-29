@@ -43,8 +43,17 @@ def create_scan_task(
     return scan_task
 
 
-def list_scan_tasks_for_scan(db: Session, scan_id: uuid.UUID) -> list[ScanTask]:
-    stmt = select(ScanTask).where(ScanTask.scan_id == scan_id).order_by(ScanTask.created_at)
+def list_scan_tasks_for_scan(
+    db: Session, scan_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
+) -> list[ScanTask]:
+    stmt = (
+        select(ScanTask)
+        .where(ScanTask.scan_id == scan_id)
+        .order_by(ScanTask.created_at)
+        .offset(offset)
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(db.scalars(stmt))
 
 

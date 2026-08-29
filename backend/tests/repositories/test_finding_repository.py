@@ -6,6 +6,7 @@ pattern the rest of it already uses."""
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import inspect
 
 from app.repositories import finding_repository, scan_task_repository
 from app.services import scan_service, target_service
@@ -133,3 +134,32 @@ def test_create_cve_reference_allows_none_source_url(db_session):
     )
 
     assert reference.source_url is None
+
+
+def test_list_findings_for_scan_eager_loads_cve_references(db_session):
+    # report_service.generate_report (and the GET /scans/{id}/findings
+    # router) serialize every returned Finding through FindingRead, which
+    # walks `cve_references` for each one. Without eager loading, that's a
+    # separate lazy SELECT per finding the first time the relationship is
+    # touched — asserting `cve_references` is already populated (via
+    # inspect().unloaded) proves selectinload actually ran, which a plain
+    # "the data is correct" assertion would pass on either way since lazy
+    # loading also produces correct data, just N+1 queries to get there.
+    scan_task = _make_scan_task(db_session)
+    finding = _make_finding(db_session, scan_task)
+    finding_repository.create_cve_reference(
+        db_session,
+        finding_id=finding.id,
+        cve_id="CVE-2024-12345",
+        cvss_score=None,
+        cvss_vector=None,
+        description=None,
+        source_url=None,
+    )
+    db_session.commit()
+    db_session.expire_all()
+
+    [result] = finding_repository.list_findings_for_scan(db_session, scan_task.scan_id)
+
+    assert "cve_references" not in inspect(result).unloaded
+    assert len(result.cve_references) == 1

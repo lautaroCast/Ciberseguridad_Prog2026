@@ -108,9 +108,11 @@ def generate_report(db: Session, scan_id: uuid.UUID, format: str) -> Report:
     )
 
 
-def list_reports_for_scan(db: Session, scan_id: uuid.UUID) -> list[Report]:
+def list_reports_for_scan(
+    db: Session, scan_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
+) -> list[Report]:
     scan_service.get_scan_or_raise(db, scan_id)  # 404s for an unknown scan instead of returning []
-    return report_repository.list_reports_for_scan(db, scan_id)
+    return report_repository.list_reports_for_scan(db, scan_id, limit=limit, offset=offset)
 
 
 def get_report_or_raise(db: Session, report_id: uuid.UUID) -> Report:

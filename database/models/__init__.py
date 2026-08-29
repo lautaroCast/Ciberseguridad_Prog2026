@@ -15,7 +15,6 @@ from .enums import (
     ScanStatus,
     ScanTaskStatus,
     SeverityLevel,
-    UserRole,
 )
 from .finding import Finding
 from .report import Report
@@ -24,7 +23,6 @@ from .scan_task import ScanTask
 from .service import Service
 from .target import Target
 from .technology import Technology
-from .user import User
 
 __all__ = [
     "Base",
@@ -38,11 +36,9 @@ __all__ = [
     "Service",
     "Target",
     "Technology",
-    "User",
     "ScanStatus",
     "ScanTaskStatus",
     "SeverityLevel",
     "ReportFormat",
-    "UserRole",
     "TERMINAL_SCAN_STATUSES",
 ]

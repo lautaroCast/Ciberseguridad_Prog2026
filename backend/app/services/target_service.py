@@ -42,8 +42,10 @@ class TargetHasActiveScansError(Exception):
     through would silently destroy in-flight pipeline data."""
 
 
-def list_targets(db: Session, *, is_active: bool | None = None) -> list[Target]:
-    return target_repository.list_targets(db, is_active=is_active)
+def list_targets(
+    db: Session, *, is_active: bool | None = None, limit: int | None = None, offset: int = 0
+) -> list[Target]:
+    return target_repository.list_targets(db, is_active=is_active, limit=limit, offset=offset)
 
 
 def get_target_or_raise(db: Session, target_id: uuid.UUID) -> Target:

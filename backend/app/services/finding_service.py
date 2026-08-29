@@ -9,6 +9,8 @@ from app.services.scan_service import get_scan_or_raise
 from models import Finding
 
 
-def list_findings_for_scan(db: Session, scan_id: uuid.UUID) -> list[Finding]:
+def list_findings_for_scan(
+    db: Session, scan_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
+) -> list[Finding]:
     get_scan_or_raise(db, scan_id)  # 404s for an unknown scan instead of silently returning []
-    return finding_repository.list_findings_for_scan(db, scan_id)
+    return finding_repository.list_findings_for_scan(db, scan_id, limit=limit, offset=offset)

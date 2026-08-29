@@ -47,8 +47,3 @@ class ReportFormat(str, enum.Enum):
     HTML = "html"
     MARKDOWN = "markdown"
     JSON = "json"
-
-
-class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    ANALYST = "analyst"

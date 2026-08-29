@@ -53,10 +53,22 @@ def _refine(
 
     Shared by the fast SELECT-hit path and the insert-conflict fallback below
     so the two can't quietly drift apart on what "refine" means.
+
+    Checks `is not None`, not truthiness: these three args are already
+    `_truncate()`d by the caller, whose only sentinel for "this run's tool
+    output didn't include a value" is `None` (nmap_normalizer.py's
+    `item.get(...)` returns `None`, never `""`, for a missing field) — so an
+    explicit "" is real (if unusual) tool output, not "nothing new," and
+    must overwrite the same way any other new value does. A previous `x or
+    existing.x` version conflated the two, silently keeping the stale value
+    whenever a newer run reported an empty string here.
     """
-    existing.service_name = service_name or existing.service_name
-    existing.product = product or existing.product
-    existing.version = version or existing.version
+    if service_name is not None:
+        existing.service_name = service_name
+    if product is not None:
+        existing.product = product
+    if version is not None:
+        existing.version = version
     return existing
 
 

@@ -13,10 +13,15 @@ from sqlalchemy.orm import Session
 from models import TERMINAL_SCAN_STATUSES, Scan, Target
 
 
-def list_targets(db: Session, *, is_active: bool | None = None) -> list[Target]:
+def list_targets(
+    db: Session, *, is_active: bool | None = None, limit: int | None = None, offset: int = 0
+) -> list[Target]:
     stmt = select(Target).order_by(Target.created_at.desc())
     if is_active is not None:
         stmt = stmt.where(Target.is_active == is_active)
+    stmt = stmt.offset(offset)
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(db.execute(stmt).scalars().all())
 
 

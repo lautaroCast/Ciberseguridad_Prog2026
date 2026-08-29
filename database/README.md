@@ -53,8 +53,8 @@ docker compose run --rm migrate downgrade base   # tear down (dev only)
 - **Two extensibility escape hatches are plain strings, not enums**:
   `scan_tasks.tool_name` and `findings.finding_type`. New scanner adapters or
   finding categories are additive at the application layer; only genuinely
-  closed vocabularies (`scan_status`, `severity_level`, `report_format`,
-  `user_role`) are modeled as native PostgreSQL enums.
+  closed vocabularies (`scan_status`, `severity_level`, `report_format`)
+  are modeled as native PostgreSQL enums.
 - **`cve_references` is its own table**, not a column on `findings`, because
   a single finding (e.g. an outdated library flagged by Nuclei) can map to
   multiple CVEs.

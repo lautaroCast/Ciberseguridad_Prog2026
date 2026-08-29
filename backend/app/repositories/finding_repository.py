@@ -3,7 +3,7 @@
 import uuid
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from models import CveReference, Finding, SeverityLevel
 
@@ -81,6 +81,23 @@ def create_cve_reference(
     return reference
 
 
-def list_findings_for_scan(db: Session, scan_id: uuid.UUID) -> list[Finding]:
-    stmt = select(Finding).where(Finding.scan_id == scan_id).order_by(Finding.created_at.desc())
+def list_findings_for_scan(
+    db: Session, scan_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
+) -> list[Finding]:
+    # Both callers (the GET /scans/{id}/findings router, and
+    # report_service.generate_report building the Reports Service payload)
+    # serialize every returned Finding through FindingRead, which walks
+    # `cve_references` for each one. Without eager loading that's a lazy
+    # SELECT per finding — selectinload turns it into one extra query total
+    # (a single `WHERE finding_id IN (...)`), not N. joinedload would need a
+    # `.unique()` on the result to dedupe the row-multiplying JOIN instead.
+    stmt = (
+        select(Finding)
+        .where(Finding.scan_id == scan_id)
+        .options(selectinload(Finding.cve_references))
+        .order_by(Finding.created_at.desc())
+        .offset(offset)
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(db.execute(stmt).scalars().all())

@@ -17,7 +17,7 @@ separate instead of sharing one key.
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -60,8 +60,13 @@ def trigger_pipeline(target_id: uuid.UUID, db: Session = Depends(get_db)) -> Sca
 
 
 @router.get("/targets/{target_id}/scans", response_model=list[ScanRead])
-def list_scans_for_target(target_id: uuid.UUID, db: Session = Depends(get_db)) -> list[ScanRead]:
-    return scan_service.list_scans_for_target(db, target_id)
+def list_scans_for_target(
+    target_id: uuid.UUID,
+    limit: int | None = Query(default=None, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[ScanRead]:
+    return scan_service.list_scans_for_target(db, target_id, limit=limit, offset=offset)
 
 
 @router.get("/scans/{scan_id}", response_model=ScanRead)
@@ -111,12 +116,22 @@ def ingest_scan_task(
 
 
 @router.get("/scans/{scan_id}/findings", response_model=list[FindingRead])
-def list_findings(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> list[FindingRead]:
-    return finding_service.list_findings_for_scan(db, scan_id)
+def list_findings(
+    scan_id: uuid.UUID,
+    limit: int | None = Query(default=None, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[FindingRead]:
+    return finding_service.list_findings_for_scan(db, scan_id, limit=limit, offset=offset)
 
 
 @router.get("/scans/{scan_id}/tasks", response_model=list[ScanTaskRead])
-def list_scan_tasks(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> list[ScanTaskRead]:
+def list_scan_tasks(
+    scan_id: uuid.UUID,
+    limit: int | None = Query(default=None, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[ScanTaskRead]:
     """Per-tool execution record (start/finish timestamps, status), read-only.
 
     Added for scripts/measurement_campaign.py and scripts/ground_truth/ —
@@ -125,4 +140,4 @@ def list_scan_tasks(scan_id: uuid.UUID, db: Session = Depends(get_db)) -> list[S
     scripts/integration_test.py already exercises, instead of querying
     the database directly.
     """
-    return scan_task_service.list_scan_tasks_for_scan(db, scan_id)
+    return scan_task_service.list_scan_tasks_for_scan(db, scan_id, limit=limit, offset=offset)

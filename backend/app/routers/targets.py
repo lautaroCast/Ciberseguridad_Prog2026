@@ -10,7 +10,7 @@ propagate — no per-route try/except.
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -21,8 +21,13 @@ router = APIRouter(prefix="/targets", tags=["targets"])
 
 
 @router.get("", response_model=list[TargetRead])
-def list_targets(is_active: bool | None = None, db: Session = Depends(get_db)) -> list[TargetRead]:
-    return target_service.list_targets(db, is_active=is_active)
+def list_targets(
+    is_active: bool | None = None,
+    limit: int | None = Query(default=None, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[TargetRead]:
+    return target_service.list_targets(db, is_active=is_active, limit=limit, offset=offset)
 
 
 @router.post("", response_model=TargetRead, status_code=status.HTTP_201_CREATED)

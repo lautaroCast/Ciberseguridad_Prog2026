@@ -12,6 +12,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from models import ScanTaskStatus
+
 
 class ScanTaskIngest(BaseModel):
     tool: str = Field(min_length=1, max_length=50)
@@ -45,7 +47,7 @@ class ScanTaskRead(BaseModel):
     id: uuid.UUID
     scan_id: uuid.UUID
     tool_name: str
-    status: str
+    status: ScanTaskStatus
     command: str | None
     started_at: datetime | None
     finished_at: datetime | None

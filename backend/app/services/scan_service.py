@@ -54,9 +54,11 @@ def create_scan(db: Session, *, target_id: uuid.UUID, triggered_by: str | None) 
         raise ScanAlreadyRunningError(str(target_id)) from exc
 
 
-def list_scans_for_target(db: Session, target_id: uuid.UUID) -> list[Scan]:
+def list_scans_for_target(
+    db: Session, target_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
+) -> list[Scan]:
     target_service.get_target_or_raise(db, target_id)
-    return scan_repository.list_scans_for_target(db, target_id)
+    return scan_repository.list_scans_for_target(db, target_id, limit=limit, offset=offset)
 
 
 def get_scan_or_raise(db: Session, scan_id: uuid.UUID) -> Scan:

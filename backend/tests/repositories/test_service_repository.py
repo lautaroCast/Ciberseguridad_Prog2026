@@ -71,6 +71,41 @@ def test_get_or_create_service_refines_existing_row_when_host_was_already_trunca
     assert second.service_name == "http"
 
 
+def test_get_or_create_service_refine_applies_an_explicit_empty_string(db_session):
+    # _refine used to merge new field values with `x or existing.x`, which
+    # treats an explicit "" the same as "no new data this run" and silently
+    # keeps the stale value. `None` is the only sentinel a normalizer
+    # (nmap_normalizer.py's `item.get(...)`) actually uses for "not
+    # detected" — an explicit "" is real, if unusual, tool output and must
+    # overwrite the same as any other new value.
+    scan_id = uuid.uuid4()
+
+    first = service_repository.get_or_create_service(
+        db_session,
+        scan_id=scan_id,
+        host="dvwa",
+        port=80,
+        protocol="tcp",
+        service_name="http",
+        product="Apache",
+        version="2.4.41",
+    )
+
+    second = service_repository.get_or_create_service(
+        db_session,
+        scan_id=scan_id,
+        host="dvwa",
+        port=80,
+        protocol="tcp",
+        service_name="http",
+        product="",
+        version="2.4.41",
+    )
+
+    assert second.id == first.id
+    assert second.product == ""
+
+
 @pytest.mark.postgres
 def test_get_or_create_service_reraises_integrity_error_when_not_the_expected_race(
     postgres_session,

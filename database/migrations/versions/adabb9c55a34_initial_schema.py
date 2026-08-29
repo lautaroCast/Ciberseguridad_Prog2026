@@ -30,17 +30,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
-    op.create_table('users',
-    sa.Column('email', sa.String(length=255), nullable=False),
-    sa.Column('hashed_password', sa.String(length=255), nullable=False),
-    sa.Column('full_name', sa.String(length=255), nullable=True),
-    sa.Column('role', sa.Enum('ADMIN', 'ANALYST', name='user_role'), nullable=False),
-    sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email')
-    )
     op.create_table('scans',
     sa.Column('target_id', sa.UUID(), nullable=False),
     sa.Column('status', sa.Enum('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', name='scan_status'), nullable=False),
@@ -155,6 +144,5 @@ def downgrade() -> None:
     op.drop_table('scan_tasks')
     op.drop_table('reports')
     op.drop_table('scans')
-    op.drop_table('users')
     op.drop_table('targets')
     # ### end Alembic commands ###

@@ -43,6 +43,21 @@ def test_list_scans_for_target_unknown_target_404(client):
     assert response.status_code == 404
 
 
+def test_list_scans_for_target_respects_limit_and_offset(client):
+    target = _create_target(client)
+    for _ in range(3):
+        scan = client.post(f"/targets/{target['id']}/scans", json={}).json()
+        client.post(f"/scans/{scan['id']}/complete", json={"status": "completed"})
+
+    first_page = client.get(f"/targets/{target['id']}/scans", params={"limit": 2})
+    assert first_page.status_code == 200
+    assert len(first_page.json()) == 2
+
+    second_page = client.get(f"/targets/{target['id']}/scans", params={"limit": 2, "offset": 2})
+    assert second_page.status_code == 200
+    assert len(second_page.json()) == 1
+
+
 def test_complete_scan_happy_path(client):
     target = _create_target(client)
     scan = _create_scan(client, target["id"])
@@ -129,6 +144,65 @@ def test_list_findings_for_scan_empty(client):
 def test_list_findings_for_scan_unknown_scan_404(client):
     response = client.get(f"/scans/{uuid.uuid4()}/findings")
     assert response.status_code == 404
+
+
+def test_list_findings_for_scan_respects_limit_and_offset(client):
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+    client.post(
+        f"/scans/{scan['id']}/tasks",
+        json={
+            "tool": "nuclei",
+            "command": "nuclei -u http://juice-shop:80",
+            "status": "completed",
+            "started_at": "2026-08-20T00:00:00Z",
+            "finished_at": "2026-08-20T00:00:10Z",
+            "raw_output": "",
+            "parsed": [
+                {
+                    "template-id": f"t{i}",
+                    "type": "http",
+                    "host": "juice-shop",
+                    "info": {"name": f"Finding {i}", "severity": "low"},
+                }
+                for i in range(3)
+            ],
+        },
+    )
+
+    first_page = client.get(f"/scans/{scan['id']}/findings", params={"limit": 2})
+    assert first_page.status_code == 200
+    assert len(first_page.json()) == 2
+
+    second_page = client.get(f"/scans/{scan['id']}/findings", params={"limit": 2, "offset": 2})
+    assert second_page.status_code == 200
+    assert len(second_page.json()) == 1
+
+
+def test_list_scan_tasks_respects_limit_and_offset(client):
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+    for tool in ("nmap", "whatweb", "nikto"):
+        client.post(
+            f"/scans/{scan['id']}/tasks",
+            json={
+                "tool": tool,
+                "command": f"{tool} ...",
+                "status": "completed",
+                "started_at": "2026-08-20T00:00:00Z",
+                "finished_at": "2026-08-20T00:00:10Z",
+                "raw_output": "",
+                "parsed": None,
+            },
+        )
+
+    first_page = client.get(f"/scans/{scan['id']}/tasks", params={"limit": 2})
+    assert first_page.status_code == 200
+    assert len(first_page.json()) == 2
+
+    second_page = client.get(f"/scans/{scan['id']}/tasks", params={"limit": 2, "offset": 2})
+    assert second_page.status_code == 200
+    assert len(second_page.json()) == 1
 
 
 def test_complete_scan_rejects_the_frontend_api_key_alone(client):

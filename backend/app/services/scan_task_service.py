@@ -35,7 +35,9 @@ from app.services.scan_service import get_scan_or_raise
 from models import ScanTask, ScanTaskStatus
 
 
-def list_scan_tasks_for_scan(db: Session, scan_id: uuid.UUID) -> list[ScanTask]:
+def list_scan_tasks_for_scan(
+    db: Session, scan_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
+) -> list[ScanTask]:
     """Read-only accessor — no business rules beyond scan scoping.
 
     Exposes per-tool `started_at`/`finished_at` timestamps already stored
@@ -45,7 +47,7 @@ def list_scan_tasks_for_scan(db: Session, scan_id: uuid.UUID) -> list[ScanTask]:
     (scripts/ground_truth/) to know which tool produced each finding.
     """
     get_scan_or_raise(db, scan_id)  # 404s for an unknown scan instead of silently returning []
-    return scan_task_repository.list_scan_tasks_for_scan(db, scan_id)
+    return scan_task_repository.list_scan_tasks_for_scan(db, scan_id, limit=limit, offset=offset)
 
 _STATUS_MAP: dict[str, ScanTaskStatus] = {
     "completed": ScanTaskStatus.COMPLETED,

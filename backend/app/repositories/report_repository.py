@@ -27,6 +27,15 @@ def get_report(db: Session, report_id: uuid.UUID) -> Report | None:
     return db.get(Report, report_id)
 
 
-def list_reports_for_scan(db: Session, scan_id: uuid.UUID) -> list[Report]:
-    stmt = select(Report).where(Report.scan_id == scan_id).order_by(Report.generated_at.desc())
+def list_reports_for_scan(
+    db: Session, scan_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
+) -> list[Report]:
+    stmt = (
+        select(Report)
+        .where(Report.scan_id == scan_id)
+        .order_by(Report.generated_at.desc())
+        .offset(offset)
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(db.execute(stmt).scalars().all())

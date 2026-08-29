@@ -168,6 +168,28 @@ def test_list_reports_for_scan(client, monkeypatch):
     assert len(response.json()) == 1
 
 
+def test_list_reports_for_scan_respects_limit_and_offset(client, monkeypatch):
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+    for fmt in ("json", "html", "markdown"):
+        monkeypatch.setattr(
+            httpx,
+            "post",
+            lambda url, json, headers, timeout, fmt=fmt: _FakeResponse(
+                200, json_body={"format": fmt, "filename": f"{scan['id']}.{fmt}"}
+            ),
+        )
+        client.post(f"/scans/{scan['id']}/reports", params={"format": fmt})
+
+    first_page = client.get(f"/scans/{scan['id']}/reports", params={"limit": 2})
+    assert first_page.status_code == 200
+    assert len(first_page.json()) == 2
+
+    second_page = client.get(f"/scans/{scan['id']}/reports", params={"limit": 2, "offset": 2})
+    assert second_page.status_code == 200
+    assert len(second_page.json()) == 1
+
+
 def test_download_report_happy_path(client, monkeypatch):
     target = _create_target(client)
     scan = _create_scan(client, target["id"])

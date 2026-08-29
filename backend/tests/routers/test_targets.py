@@ -112,3 +112,30 @@ def test_delete_target_not_found(client):
 
     response = client.delete(f"/targets/{uuid.uuid4()}")
     assert response.status_code == 404
+
+
+def test_list_targets_respects_limit_and_offset(client):
+    client.post("/targets", json={"name": "t1", "host": "dvwa"})
+    client.post("/targets", json={"name": "t2", "host": "dvwa"})
+    client.post("/targets", json={"name": "t3", "host": "dvwa"})
+
+    first_page = client.get("/targets", params={"limit": 2})
+    assert first_page.status_code == 200
+    assert len(first_page.json()) == 2
+
+    second_page = client.get("/targets", params={"limit": 2, "offset": 2})
+    assert second_page.status_code == 200
+    assert len(second_page.json()) == 1
+
+    beyond_end = client.get("/targets", params={"limit": 2, "offset": 10})
+    assert beyond_end.status_code == 200
+    assert beyond_end.json() == []
+
+
+def test_list_targets_rejects_out_of_bounds_limit_or_offset(client):
+    # limit/offset use the same Query(ge=..., le=...) wiring on every list
+    # endpoint this change touched (targets/scans/findings/tasks/reports) —
+    # proven once here rather than duplicated per resource.
+    assert client.get("/targets", params={"limit": 501}).status_code == 422
+    assert client.get("/targets", params={"limit": 0}).status_code == 422
+    assert client.get("/targets", params={"offset": -1}).status_code == 422
