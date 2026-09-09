@@ -28,7 +28,7 @@ from app.schemas.report import ReportRequest
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
-_env = Environment(loader=FileSystemLoader(_TEMPLATES_DIR), autoescape=False)  # noqa: S701 — plain text output, not HTML
+_env = Environment(loader=FileSystemLoader(_TEMPLATES_DIR), autoescape=False)
 
 
 def render_markdown(data: ReportRequest) -> str:

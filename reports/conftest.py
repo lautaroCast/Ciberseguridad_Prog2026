@@ -2,11 +2,11 @@ import os
 
 os.environ.setdefault("INTERNAL_API_KEY", "test-internal-api-key")
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
+import pytest
+from fastapi.testclient import TestClient
 
-from app.main import app  # noqa: E402
-from app.schemas.report import (  # noqa: E402
+from app.main import app
+from app.schemas.report import (
     CveReferenceInfo,
     FindingInfo,
     ReportRequest,

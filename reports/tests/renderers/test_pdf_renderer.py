@@ -12,7 +12,7 @@ import pytest
 
 weasyprint = pytest.importorskip("weasyprint")
 
-from app.renderers.pdf_renderer import render_pdf  # noqa: E402
+from app.renderers.pdf_renderer import render_pdf
 
 
 def test_renders_pdf_bytes(sample_report_request):
