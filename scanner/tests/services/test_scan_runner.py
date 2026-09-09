@@ -2,8 +2,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.adapters.nikto_adapter import NiktoAdapter
 from app.adapters.nmap_adapter import NmapAdapter
 from app.services import dvwa_auth, scan_runner
@@ -95,7 +93,7 @@ def test_output_file_adapter_reads_from_file_not_stdout(monkeypatch, tmp_path):
     adapter = NiktoAdapter()
     written_path: dict[str, Path] = {}
 
-    def _fake_run(command, capture_output, text, timeout):
+    def _fake_run(command, capture_output, text, timeout, check):
         # Nikto's build_command places the output path right after "-output".
         output_path = Path(command[command.index("-output") + 1])
         assert not output_path.exists(), "scan_runner must unlink the pre-created temp file first"
@@ -121,7 +119,7 @@ def test_output_file_adapter_cleans_up_partial_file_on_timeout(monkeypatch, tmp_
     adapter = NiktoAdapter()
     written_path: dict[str, Path] = {}
 
-    def _fake_run(command, capture_output, text, timeout):
+    def _fake_run(command, capture_output, text, timeout, check):
         output_path = Path(command[command.index("-output") + 1])
         output_path.write_text('{"partial": true')  # truncated, as if killed mid-write
         written_path["value"] = output_path
@@ -135,12 +133,34 @@ def test_output_file_adapter_cleans_up_partial_file_on_timeout(monkeypatch, tmp_
     assert not written_path["value"].exists()
 
 
+def test_output_file_adapter_cleans_up_partial_file_on_unexpected_error(monkeypatch, tmp_path):
+    # Ronda I: only TimeoutExpired and FileNotFoundError cleaned up the
+    # temp file before this fix — any other unanticipated exception
+    # (a PermissionError, an adapter bug, ...) leaked it instead.
+    adapter = NiktoAdapter()
+    written_path: dict[str, Path] = {}
+
+    def _fake_run(command, capture_output, text, timeout, check):
+        output_path = Path(command[command.index("-output") + 1])
+        output_path.write_text('{"partial": true')
+        written_path["value"] = output_path
+        raise PermissionError("unexpected failure unrelated to timeout or a missing binary")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    result = scan_runner.execute(
+        adapter, target="juice-shop", port=80, scheme="http", options={}, timeout=30
+    )
+    assert result.status == "failed"
+    assert "Unexpected error" in result.error_message
+    assert not written_path["value"].exists()
+
+
 def test_authenticated_option_fetches_cookie_and_passes_it_to_build_command(monkeypatch):
     # Recomendación #5 (docs/independent-evaluation-report.md).
     adapter = NiktoAdapter()
     captured_commands: list[list[str]] = []
 
-    def _fake_run(command, capture_output, text, timeout):
+    def _fake_run(command, capture_output, text, timeout, check):
         captured_commands.append(command)
         return _completed(stdout="")
 
@@ -149,7 +169,7 @@ def test_authenticated_option_fetches_cookie_and_passes_it_to_build_command(monk
     )
     monkeypatch.setattr(subprocess, "run", _fake_run)
 
-    result = scan_runner.execute(
+    scan_runner.execute(
         adapter, target="dvwa", port=80, scheme="http", options={"authenticated": True}, timeout=30
     )
     # The real subprocess call must still carry the real cookie - the tool

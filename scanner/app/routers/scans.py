@@ -5,11 +5,12 @@ a new adapter to the registry makes it reachable here automatically, no
 router change required.
 """
 
+from fastapi import APIRouter, HTTPException
+
 from app.adapters.registry import get_adapter, list_tools
 from app.config import get_settings
 from app.schemas.scan import RawScanResult, ScanRequest
 from app.services import scan_runner
-from fastapi import APIRouter, HTTPException
 
 router = APIRouter(tags=["scans"])
 

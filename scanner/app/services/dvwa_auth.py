@@ -47,7 +47,7 @@ def get_authenticated_cookie(target: str, port: int = 80, scheme: str = "http") 
         login_page = client.get("/login.php")
         token = _extract_token(login_page.text)
 
-        login_response = client.post(
+        client.post(
             "/login.php",
             data={
                 "username": _USERNAME,
@@ -56,11 +56,21 @@ def get_authenticated_cookie(target: str, port: int = 80, scheme: str = "http") 
                 "user_token": token,
             },
         )
-        if login_response.status_code >= 400:
-            raise DvwaAuthError(f"login failed with status {login_response.status_code}")
-
+        # DVWA's login form never responds >=400 to this POST, whether the
+        # credentials are right or wrong (verified live against the real
+        # lab image) - it always redirects to /login.php with 302, success
+        # or failure alike. The only real signal is the *next* page: a
+        # successful login lands on /security.php with its form (and a
+        # fresh user_token); a failed one is bounced back to the login
+        # page, which has no such form.
         security_page = client.get("/security.php")
-        token = _extract_token(security_page.text)
+        match = _TOKEN_RE.search(security_page.text)
+        if match is None:
+            raise DvwaAuthError(
+                "login failed - /security.php did not return the expected "
+                "form (wrong credentials, or DVWA's DB wasn't seeded yet)"
+            )
+        token = match.group(1)
 
         security_response = client.post(
             "/security.php",

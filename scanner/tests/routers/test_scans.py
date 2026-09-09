@@ -5,17 +5,17 @@ from app.services import scan_runner
 
 
 def _fake_result(**overrides) -> RawScanResult:
-    defaults = dict(
-        tool="nmap",
-        target="juice-shop",
-        command="nmap ...",
-        status="completed",
-        started_at=datetime.now(UTC),
-        finished_at=datetime.now(UTC),
-        raw_output="",
-        parsed=[],
-        error_message=None,
-    )
+    defaults = {
+        "tool": "nmap",
+        "target": "juice-shop",
+        "command": "nmap ...",
+        "status": "completed",
+        "started_at": datetime.now(UTC),
+        "finished_at": datetime.now(UTC),
+        "raw_output": "",
+        "parsed": [],
+        "error_message": None,
+    }
     defaults.update(overrides)
     return RawScanResult(**defaults)
 

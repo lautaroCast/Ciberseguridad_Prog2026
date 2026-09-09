@@ -59,12 +59,19 @@ def test_missing_token_raises_dvwa_auth_error(monkeypatch):
 
 
 def test_login_failure_status_raises(monkeypatch):
+    # Ronda J: verified live against the real DVWA image that a wrong-
+    # password login POST responds 302 - the exact same status a
+    # successful login gets - never >=400. The only real signal is
+    # whether /security.php's follow-up GET comes back with its form
+    # (authenticated) or without one (redirected back to the login page).
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/login.php" and request.method == "GET":
             return httpx.Response(200, text=_LOGIN_PAGE)
         if request.url.path == "/login.php" and request.method == "POST":
-            return httpx.Response(500)
-        raise AssertionError("should not reach security.php after a failed login")
+            return httpx.Response(302, headers=[("location", "/login.php")])
+        if request.url.path == "/security.php" and request.method == "GET":
+            return httpx.Response(302, headers=[("location", "/login.php")], text="")
+        raise AssertionError(f"unexpected request: {request.method} {request.url.path}")
 
     _install_transport(monkeypatch, handler)
 

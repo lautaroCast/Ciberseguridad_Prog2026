@@ -24,6 +24,11 @@ from app.services import dvwa_auth
 _SUPPORTS_AUTH_COOKIE = {"nikto", "nuclei", "zap"}
 
 
+def _cleanup_output_file(output_path: str) -> None:
+    if output_path and Path(output_path).exists():
+        Path(output_path).unlink(missing_ok=True)
+
+
 def execute(
     adapter: ScannerAdapter,
     *,
@@ -105,7 +110,9 @@ def execute(
         command_str = command_str.replace(auth_cookie, "[redacted]")
 
     try:
-        proc = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout, check=False
+        )
     except subprocess.TimeoutExpired:
         # A killed tool may have already written partial output before the
         # timeout — clean it up here explicitly (the success path below
@@ -115,8 +122,7 @@ def execute(
         # also checks `uses_output_file` would run for every exit path,
         # including success, and would delete the file the success branch
         # still needs to read.
-        if output_path and Path(output_path).exists():
-            Path(output_path).unlink(missing_ok=True)
+        _cleanup_output_file(output_path)
         return RawScanResult(
             tool=adapter.tool_name,
             target=target,
@@ -128,8 +134,7 @@ def execute(
             error_message=f"Scan exceeded the {timeout}s timeout and was terminated.",
         )
     except FileNotFoundError as exc:
-        if output_path and Path(output_path).exists():
-            Path(output_path).unlink(missing_ok=True)
+        _cleanup_output_file(output_path)
         return RawScanResult(
             tool=adapter.tool_name,
             target=target,
@@ -139,6 +144,22 @@ def execute(
             finished_at=datetime.now(UTC),
             raw_output="",
             error_message=f"Tool binary not found: {exc}",
+        )
+    except Exception as exc:  # noqa: BLE001 — last resort so a bug here can't leak output_path forever
+        # Any other exception raised by subprocess.run or the code around
+        # it (a PermissionError, an adapter bug, ...) still leaves a
+        # tempfile on disk if uses_output_file — same cleanup as the two
+        # known cases above, generalized to whatever wasn't anticipated.
+        _cleanup_output_file(output_path)
+        return RawScanResult(
+            tool=adapter.tool_name,
+            target=target,
+            command=command_str,
+            status="failed",
+            started_at=started_at,
+            finished_at=datetime.now(UTC),
+            raw_output="",
+            error_message=f"Unexpected error while running the scan: {exc}",
         )
 
     if adapter.uses_output_file:

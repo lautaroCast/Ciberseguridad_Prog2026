@@ -12,8 +12,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-
-
 # The `options` keys that flow, largely unvalidated until now, straight into
 # a subprocess argv token by some adapter's `build_command` (nmap: `ports`,
 # nuclei: `severity`/`tags`, nikto: `max_time`, whatweb: `aggression` — see
