@@ -2,11 +2,11 @@
 
 import uuid
 
+from models import Finding
 from sqlalchemy.orm import Session
 
 from app.repositories import finding_repository
 from app.services.scan_service import get_scan_or_raise
-from models import Finding
 
 
 def list_findings_for_scan(

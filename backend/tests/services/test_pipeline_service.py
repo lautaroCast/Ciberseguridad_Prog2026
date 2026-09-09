@@ -8,9 +8,9 @@ import os
 
 import httpx
 import pytest
+from models import ScanStatus
 
 from app.services import pipeline_service, scan_service, target_service
-from models import ScanStatus
 
 
 def _make_target(db_session):
@@ -71,6 +71,67 @@ def test_trigger_pipeline_failure_marks_scan_failed(db_session, monkeypatch):
     assert len(scans) == 1
     assert scans[0].status == ScanStatus.FAILED
     assert "connection refused" in scans[0].error_message
+
+
+def test_trigger_pipeline_read_timeout_leaves_scan_running(db_session, monkeypatch):
+    # Ronda I: a ReadTimeout means the request body reached n8n in full,
+    # unlike ConnectError above (request never left this process) — n8n
+    # may already have started the pipeline. The scan must stay RUNNING,
+    # not be marked FAILED underneath it.
+    target = _make_target(db_session)
+
+    def _fake_post(url, json, headers, timeout):
+        raise httpx.ReadTimeout("timed out waiting for a response")
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+
+    with pytest.raises(pipeline_service.PipelineTriggerError):
+        pipeline_service.trigger_pipeline(db_session, target.id)
+
+    scans = scan_service.list_scans_for_target(db_session, target.id)
+    assert len(scans) == 1
+    assert scans[0].status == ScanStatus.RUNNING
+
+
+def test_trigger_pipeline_write_timeout_leaves_scan_running(db_session, monkeypatch):
+    # Ronda J: WriteTimeout is ReadTimeout's sibling under
+    # httpx.TimeoutException, not ConnectTimeout's — same "may have
+    # partially reached n8n" ambiguity, same treatment.
+    target = _make_target(db_session)
+
+    def _fake_post(url, json, headers, timeout):
+        raise httpx.WriteTimeout("timed out writing the request body")
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+
+    with pytest.raises(pipeline_service.PipelineTriggerError):
+        pipeline_service.trigger_pipeline(db_session, target.id)
+
+    scans = scan_service.list_scans_for_target(db_session, target.id)
+    assert len(scans) == 1
+    assert scans[0].status == ScanStatus.RUNNING
+
+
+def test_trigger_pipeline_target_deleted_mid_flight_raises_target_not_found(db_session, monkeypatch):
+    # Same IntegrityError symptom as
+    # test_trigger_pipeline_while_one_is_already_running_raises below
+    # (ix_scans_one_active_per_host), but this time from scans.target_id's
+    # FK — simulated by deleting the target row inside create_scan, in the
+    # window between get_active_target_or_raise's check and the insert.
+    from sqlalchemy.exc import IntegrityError
+
+    from app.repositories import target_repository
+
+    target = _make_target(db_session)
+
+    def _fake_create_scan(db, *, target_id, host, triggered_by):
+        target_repository.delete_target(db, target_id)
+        raise IntegrityError("insert into scans", {}, Exception("fk violation"))
+
+    monkeypatch.setattr(pipeline_service.scan_repository, "create_scan", _fake_create_scan)
+
+    with pytest.raises(target_service.TargetNotFoundError):
+        pipeline_service.trigger_pipeline(db_session, target.id)
 
 
 def test_trigger_pipeline_unknown_target_raises(db_session):

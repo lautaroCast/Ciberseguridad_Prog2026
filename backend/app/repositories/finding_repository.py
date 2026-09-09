@@ -2,10 +2,9 @@
 
 import uuid
 
+from models import CveReference, Finding, SeverityLevel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
-
-from models import CveReference, Finding, SeverityLevel
 
 # Tool-derived strings have no length guarantee; these columns are bounded
 # (database/models/finding.py, cve_reference.py) — truncate here, once,

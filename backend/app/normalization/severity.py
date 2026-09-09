@@ -6,6 +6,7 @@ qualitative ranges follow FIRST.org's spec: None=0.0, Low=0.1-3.9,
 Medium=4.0-6.9, High=7.0-8.9, Critical=9.0-10.0.
 """
 
+import math
 from typing import Any
 
 from models import SeverityLevel
@@ -49,6 +50,12 @@ def sanitize_cvss_score(value: Any) -> float | None:
     try:
         score = float(value)
     except (TypeError, ValueError):
+        return None
+    # float("nan") doesn't raise above, and NaN compares False against
+    # everything (including itself), so max(0.0, min(10.0, nan)) silently
+    # returns 10.0 instead of rejecting the value - the exact "non-numeric
+    # value" this function's docstring already promises to reject.
+    if math.isnan(score):
         return None
     return max(0.0, min(10.0, score))
 

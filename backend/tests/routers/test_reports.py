@@ -151,6 +151,24 @@ def test_create_report_missing_key_returns_502(client, monkeypatch):
     assert response.status_code == 502
 
 
+def test_create_report_null_filename_returns_502(client, monkeypatch):
+    # 2026-09-06 correction round: {"filename": null} is valid JSON with
+    # the key present, so it raises neither ValueError nor KeyError —
+    # is_safe_filename(None) used to crash with an unhandled TypeError
+    # instead of the same ReportGenerationError -> 502 path as the two
+    # sibling cases above.
+    target = _create_target(client)
+    scan = _create_scan(client, target["id"])
+
+    def _fake_post(url, json, headers, timeout):
+        return _FakeResponse(200, json_body={"filename": None, "format": "pdf"})
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+
+    response = client.post(f"/scans/{scan['id']}/reports", params={"format": "pdf"})
+    assert response.status_code == 502
+
+
 def test_list_reports_for_scan(client, monkeypatch):
     target = _create_target(client)
     scan = _create_scan(client, target["id"])

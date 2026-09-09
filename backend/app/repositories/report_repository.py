@@ -2,10 +2,9 @@
 
 import uuid
 
+from models import Report, ReportFormat
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from models import Report, ReportFormat
 
 
 def create_report(

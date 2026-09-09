@@ -10,10 +10,9 @@ always has its normalized rows alongside it, never a partial result.
 import uuid
 from datetime import datetime
 
+from models import ScanTask, ScanTaskStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from models import ScanTask, ScanTaskStatus
 
 
 def create_scan_task(

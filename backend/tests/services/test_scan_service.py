@@ -1,13 +1,13 @@
 import uuid
 
 import pytest
-
-from app.services import scan_service, target_service
 from models import ScanStatus
 
+from app.services import scan_service, target_service
 
-def _make_target(db_session, name="juice-shop-demo"):
-    return target_service.register_target(db_session, name=name, host="juice-shop", description=None)
+
+def _make_target(db_session, name="juice-shop-demo", host="juice-shop"):
+    return target_service.register_target(db_session, name=name, host=host, description=None)
 
 
 def test_list_scans_for_target_ordered_newest_first(db_session):
@@ -17,8 +17,8 @@ def test_list_scans_for_target_ordered_newest_first(db_session):
     # on real wall-clock separation between the two create_scan() calls.
     target = _make_target(db_session)
     first = scan_service.create_scan(db_session, target_id=target.id, triggered_by="a")
-    # ix_scans_one_active_per_target only allows one non-terminal scan per
-    # target - complete the first before creating the second, same as a
+    # ix_scans_one_active_per_host only allows one non-terminal scan per
+    # host - complete the first before creating the second, same as a
     # real sequential history would look.
     scan_service.complete_scan(db_session, first.id, status=ScanStatus.COMPLETED, error_message=None)
     second = scan_service.create_scan(db_session, target_id=target.id, triggered_by="b")
@@ -94,7 +94,7 @@ def test_complete_scan_without_pipeline_run_id_leaves_it_unset(db_session):
 def test_create_scan_while_one_is_already_running_raises(db_session):
     # 8th independent evaluation: create_scan only checked
     # Target.is_active, never whether the target already had a
-    # non-terminal scan - ix_scans_one_active_per_target is the real
+    # non-terminal scan - ix_scans_one_active_per_host is the real
     # guard (a partial unique index), this proves the service surfaces it
     # as a clean domain exception rather than a raw IntegrityError.
     target = _make_target(db_session)
@@ -109,6 +109,47 @@ def test_create_scan_while_one_is_already_running_raises(db_session):
     assert reloaded.status == ScanStatus.RUNNING
 
 
+def test_create_scan_target_deleted_mid_flight_raises_target_not_found(db_session, monkeypatch):
+    # Same IntegrityError symptom as
+    # test_create_scan_while_one_is_already_running_raises above
+    # (ix_scans_one_active_per_host), but this time from scans.target_id's
+    # FK — simulated by deleting the target row inside create_scan, in the
+    # window between get_active_target_or_raise's check and the insert.
+    from sqlalchemy.exc import IntegrityError
+
+    from app.repositories import target_repository
+
+    target = _make_target(db_session)
+
+    def _fake_create_scan(db, *, target_id, host, triggered_by):
+        target_repository.delete_target(db, target_id)
+        raise IntegrityError("insert into scans", {}, Exception("fk violation"))
+
+    monkeypatch.setattr(scan_service.scan_repository, "create_scan", _fake_create_scan)
+
+    with pytest.raises(target_service.TargetNotFoundError):
+        scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+
+
+def test_create_scan_while_a_sibling_target_on_the_same_host_is_running_raises(db_session):
+    # 2026-09-06 correction round: two different Target rows can point at
+    # the same physical host (nothing prevents that, by design - see the
+    # docs/installation.md pagination test and register_target's own
+    # lack of a host uniqueness check). Before this fix,
+    # ix_scans_one_active_per_target was keyed on target_id, so a scan
+    # against target_b here would never have collided with the one
+    # already running against target_a, even though they share a host -
+    # exactly the race scanner/app/services/dvwa_auth.py's shared
+    # session-state mutation is vulnerable to. host is now denormalized
+    # onto Scan and the index is keyed on it instead, so this must raise.
+    target_a = _make_target(db_session, name="dvwa-a", host="dvwa")
+    target_b = _make_target(db_session, name="dvwa-b", host="dvwa")
+    scan_service.create_scan(db_session, target_id=target_a.id, triggered_by=None)
+
+    with pytest.raises(scan_service.ScanAlreadyRunningError):
+        scan_service.create_scan(db_session, target_id=target_b.id, triggered_by=None)
+
+
 def test_create_scan_allowed_again_once_the_first_reaches_a_terminal_status(db_session):
     target = _make_target(db_session)
     first = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
@@ -121,8 +162,15 @@ def test_create_scan_allowed_again_once_the_first_reaches_a_terminal_status(db_s
 
 
 def test_list_scans_for_target_does_not_leak_other_targets_scans(db_session):
-    target_a = _make_target(db_session, name="target-a")
-    target_b = _make_target(db_session, name="target-b")
+    # host must differ between the two targets: Target.host itself has no
+    # uniqueness constraint (two targets *can* share a host, see
+    # test_create_scan_while_a_sibling_target_on_the_same_host_is_running_raises
+    # above) - but if both targets here shared a host, creating a
+    # non-terminal scan for each would collide against
+    # ix_scans_one_active_per_host (database/models/scan.py), which is
+    # not what this test is exercising (target-scoped listing isolation).
+    target_a = _make_target(db_session, name="target-a", host="juice-shop")
+    target_b = _make_target(db_session, name="target-b", host="dvwa")
     scan_service.create_scan(db_session, target_id=target_a.id, triggered_by=None)
     scan_b = scan_service.create_scan(db_session, target_id=target_b.id, triggered_by=None)
 

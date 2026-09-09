@@ -9,9 +9,8 @@ execution record.
 
 import uuid
 
-from sqlalchemy.orm import Session
-
 from models import Technology
+from sqlalchemy.orm import Session
 
 # Tool-derived strings have no length guarantee; these columns are bounded
 # (database/models/technology.py) — truncate here, once, same pattern as

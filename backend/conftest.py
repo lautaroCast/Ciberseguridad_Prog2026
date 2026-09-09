@@ -19,13 +19,13 @@ os.environ.setdefault("INTERNAL_API_KEY", "test-internal-api-key")
 os.environ.setdefault("N8N_WEBHOOK_SECRET", "test-n8n-webhook-secret")
 os.environ.setdefault("N8N_CALLBACK_API_KEY", "test-n8n-callback-api-key")
 
-import uuid  # noqa: E402
+import uuid
 
-import pytest  # noqa: E402
-from sqlalchemy import create_engine, event, text  # noqa: E402
-from sqlalchemy.exc import OperationalError  # noqa: E402
-from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
-from sqlalchemy.pool import StaticPool  # noqa: E402
+import pytest
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 def _make_gen_random_uuid_sqlite_compatible() -> None:
@@ -178,9 +178,10 @@ def postgres_session():
 
 @pytest.fixture
 def client(db_session):
+    from fastapi.testclient import TestClient
+
     from app.database import get_db
     from app.main import app
-    from fastapi.testclient import TestClient
 
     def _override_get_db():
         yield db_session

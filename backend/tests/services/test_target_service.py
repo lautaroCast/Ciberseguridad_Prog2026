@@ -1,10 +1,10 @@
 import uuid
 
 import pytest
+from models import ScanStatus
 
 from app.repositories import target_repository
 from app.services import scan_service, target_service
-from models import ScanStatus
 
 
 def test_register_target_with_allowed_host(db_session):

@@ -1,13 +1,12 @@
 """Persistence layer for `Scan` — plain SQLAlchemy queries, no business rules."""
 
 import uuid
+from collections.abc import Iterable
 from datetime import UTC, datetime
-from typing import Iterable
-
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 
 from models import Scan, ScanStatus
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
 
 def list_scans_for_target(
@@ -24,9 +23,12 @@ def list_scans_for_target(
     return list(db.execute(stmt).scalars().all())
 
 
-def create_scan(db: Session, *, target_id: uuid.UUID, triggered_by: str | None) -> Scan:
+def create_scan(
+    db: Session, *, target_id: uuid.UUID, host: str, triggered_by: str | None
+) -> Scan:
     scan = Scan(
         target_id=target_id,
+        host=host,
         status=ScanStatus.RUNNING,
         triggered_by=triggered_by,
         started_at=datetime.now(UTC),

@@ -18,14 +18,19 @@ separate instead of sharing one key.
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status
+from models import ScanStatus
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.finding import FindingRead
 from app.schemas.scan import ScanComplete, ScanCreate, ScanRead
 from app.schemas.scan_task import ScanTaskIngest, ScanTaskIngestResult, ScanTaskRead
-from app.services import finding_service, pipeline_service, scan_service, scan_task_service
-from models import ScanStatus
+from app.services import (
+    finding_service,
+    pipeline_service,
+    scan_service,
+    scan_task_service,
+)
 
 router = APIRouter(tags=["scans"])
 callback_router = APIRouter(tags=["scans"])

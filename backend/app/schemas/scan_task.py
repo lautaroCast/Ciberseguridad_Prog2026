@@ -10,9 +10,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from models import ScanTaskStatus
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ScanTaskIngest(BaseModel):

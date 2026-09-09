@@ -12,6 +12,7 @@ import re
 import uuid
 
 import httpx
+from models import Report, ReportFormat
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -20,7 +21,6 @@ from app.schemas.finding import FindingRead
 from app.schemas.scan import ScanRead
 from app.schemas.target import TargetRead
 from app.services import finding_service, scan_service, target_service
-from models import Report, ReportFormat
 
 # `file_path` is always generated server-side by the Reports Service as
 # "{scan_id}.{ext}" — but it arrives here as an untyped field in an HTTP
@@ -86,15 +86,20 @@ def generate_report(db: Session, scan_id: uuid.UUID, format: str) -> Report:
     # A 200 response doesn't guarantee a well-formed body: the Reports
     # Service being briefly unreachable behind a proxy, or a future schema
     # drift between the two services, could still hand back something that
-    # isn't valid JSON or is missing the keys this function expects — none
-    # of that is an httpx.HTTPError, so it would otherwise fall straight
-    # through as an unhandled 500 instead of the same ReportGenerationError
-    # -> 502 path already used for upstream failures above.
+    # isn't valid JSON, is missing the keys this function expects, or (2026-
+    # 09-06: a real gap this comment used to overlook) has the right key
+    # present but the wrong type — e.g. `{"filename": null}`, valid JSON
+    # that raises neither ValueError nor KeyError. None of that is an
+    # httpx.HTTPError, so it would otherwise fall straight through as an
+    # unhandled 500 instead of the same ReportGenerationError -> 502 path
+    # already used for upstream failures above.
     try:
         result = response.json()
         file_path = result["filename"]
+        if not isinstance(file_path, str):
+            raise TypeError(f"filename must be a string, got {type(file_path).__name__}")
         report_format = ReportFormat(result["format"])
-    except (ValueError, KeyError) as exc:
+    except (ValueError, KeyError, TypeError) as exc:
         raise ReportGenerationError(f"Reports Service returned an unexpected response: {exc}") from exc
 
     if not is_safe_filename(file_path):

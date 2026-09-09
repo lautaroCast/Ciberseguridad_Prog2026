@@ -7,12 +7,12 @@ duplicated check) rather than trusting the id blindly.
 
 import uuid
 
+from models import TERMINAL_SCAN_STATUSES, Scan, ScanStatus
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.repositories import scan_repository
 from app.services import target_service
-from models import TERMINAL_SCAN_STATUSES, Scan, ScanStatus
 
 # Re-exported under this module's established public name: pipeline_service.py
 # (and target_service.py's delete_target guard) import the same object
@@ -38,19 +38,35 @@ class ScanAlreadyTerminalError(Exception):
 
 
 class ScanAlreadyRunningError(Exception):
-    """Raised when a target already has a non-terminal scan and a new one
-    is requested. The real guard is `ix_scans_one_active_per_target`, a
-    partial unique index on `scans.target_id` — this exception is what an
+    """Raised when a target's host already has a non-terminal scan and a
+    new one is requested. The real guard is `ix_scans_one_active_per_host`,
+    a partial unique index on `scans.host` — this exception is what an
     `IntegrityError` from that index gets translated into, same idiom as
-    `target_service.register_target`'s own unique-constraint catch."""
+    `target_service.register_target`'s own unique-constraint catch.
+
+    2026-09-06 correction round: re-keyed from `target_id` to `host` — two
+    different `Target` rows can point at the same physical host, and the
+    conflicting non-terminal scan this error reports may belong to a
+    sibling target sharing that host, not necessarily the one just
+    requested."""
 
 
 def create_scan(db: Session, *, target_id: uuid.UUID, triggered_by: str | None) -> Scan:
-    target_service.get_active_target_or_raise(db, target_id)
+    target = target_service.get_active_target_or_raise(db, target_id)
     try:
-        return scan_repository.create_scan(db, target_id=target_id, triggered_by=triggered_by)
+        return scan_repository.create_scan(
+            db, target_id=target_id, host=target.host, triggered_by=triggered_by
+        )
     except IntegrityError as exc:
         db.rollback()
+        # An IntegrityError here is usually the host-concurrency race that
+        # ix_scans_one_active_per_host guards against — but if `target` was
+        # deleted between get_active_target_or_raise above and this
+        # insert's commit, the FK violation looks identical. Re-checking
+        # existence disambiguates: it raises TargetNotFoundError on its own
+        # if the target is gone, so ScanAlreadyRunningError only survives
+        # to describe the case it actually names.
+        target_service.get_target_or_raise(db, target_id)
         raise ScanAlreadyRunningError(str(target_id)) from exc
 
 

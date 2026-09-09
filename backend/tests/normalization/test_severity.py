@@ -1,7 +1,7 @@
 import pytest
+from models import SeverityLevel
 
 from app.normalization import severity
-from models import SeverityLevel
 
 
 @pytest.mark.parametrize(
@@ -58,6 +58,7 @@ def test_from_label(label, expected):
         (-5.0, 0.0),
         (15.0, 10.0),
         (99.9, 10.0),
+        (float("nan"), None),
     ],
 )
 def test_sanitize_cvss_score(value, expected):

@@ -4,9 +4,8 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from models import ScanStatus
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ScanCreate(BaseModel):

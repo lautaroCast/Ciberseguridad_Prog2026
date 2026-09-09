@@ -1,0 +1,10 @@
+[lint]
+# Ruff's default rule set (E4/E7/E9/F) doesn't include flake8-bugbear (B)
+# at all, so a bare `lint.ignore` was previously a no-op for B008 -
+# actually enable the family so it (and every other real bugbear check)
+# runs for real, then ignore the one rule that's a well-known FastAPI
+# false positive: B008 flags `Depends(...)` in argument defaults, which
+# is exactly how FastAPI's dependency injection works (ruff's own docs
+# recommend this exact ignore for FastAPI projects).
+extend-select = ["B"]
+ignore = ["B008"]

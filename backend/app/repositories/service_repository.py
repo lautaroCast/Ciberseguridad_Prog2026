@@ -22,11 +22,10 @@ source of truth for "does this row already exist."
 
 import uuid
 
+from models import Service
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-
-from models import Service
 
 # Tool-derived strings (Nmap's own service/product/version guesses) have no
 # length guarantee, but these three columns are all String(100)

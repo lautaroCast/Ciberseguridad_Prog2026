@@ -1,5 +1,6 @@
-from app.normalization import nuclei_normalizer
 from models import SeverityLevel
+
+from app.normalization import nuclei_normalizer
 
 
 def test_cve_references_extracted():

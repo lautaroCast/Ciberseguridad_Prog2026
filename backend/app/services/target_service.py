@@ -8,12 +8,12 @@ existing in the database means it was already validated here.
 
 import uuid
 
+from models import TERMINAL_SCAN_STATUSES, Target
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.repositories import scan_repository, target_repository
-from models import TERMINAL_SCAN_STATUSES, Target
 
 
 class TargetNotAllowedError(Exception):

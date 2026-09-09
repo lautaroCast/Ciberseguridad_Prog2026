@@ -7,10 +7,9 @@ database.
 
 import uuid
 
+from models import TERMINAL_SCAN_STATUSES, Scan, Target
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
-
-from models import TERMINAL_SCAN_STATUSES, Scan, Target
 
 
 def list_targets(

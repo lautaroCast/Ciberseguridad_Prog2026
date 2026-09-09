@@ -6,11 +6,11 @@ pattern the rest of it already uses."""
 from datetime import UTC, datetime
 
 import pytest
+from models import ScanTaskStatus, SeverityLevel
 from sqlalchemy import inspect
 
 from app.repositories import finding_repository, scan_task_repository
 from app.services import scan_service, target_service
-from models import ScanTaskStatus, SeverityLevel
 
 
 def _make_scan_task(db_session):

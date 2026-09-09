@@ -8,9 +8,10 @@ Python-level pre-check alone."""
 
 import uuid
 
+from models import ScanStatus
+
 from app.repositories import scan_repository
 from app.services import scan_service, target_service
-from models import ScanStatus
 
 
 def _make_scan(db_session):

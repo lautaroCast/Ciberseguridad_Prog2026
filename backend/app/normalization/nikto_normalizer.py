@@ -12,9 +12,10 @@ reviewing", not as pre-triaged by risk the way Nuclei/ZAP findings are
 
 from typing import Any
 
+from models import SeverityLevel
+
 from app.normalization import category
 from app.normalization.types import FindingData, NormalizedData
-from models import SeverityLevel
 
 
 def normalize(parsed: list[dict[str, Any]] | None) -> NormalizedData:

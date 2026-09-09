@@ -1,5 +1,6 @@
-from app.normalization import nikto_normalizer
 from models import SeverityLevel
+
+from app.normalization import nikto_normalizer
 
 
 def test_flattens_hosts_and_vulnerabilities():

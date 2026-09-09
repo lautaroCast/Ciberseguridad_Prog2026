@@ -1,5 +1,6 @@
-from app.normalization import zap_normalizer
 from models import SeverityLevel
+
+from app.normalization import zap_normalizer
 
 
 def test_walks_nested_sites_and_alerts():

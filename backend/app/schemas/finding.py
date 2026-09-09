@@ -4,9 +4,8 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
-
 from models import SeverityLevel
+from pydantic import BaseModel, ConfigDict
 
 
 class CveReferenceRead(BaseModel):

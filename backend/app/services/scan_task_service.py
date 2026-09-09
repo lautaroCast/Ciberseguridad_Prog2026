@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from models import ScanTask, ScanTaskStatus
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -31,8 +32,7 @@ from app.repositories import (
     service_repository,
     technology_repository,
 )
-from app.services.scan_service import get_scan_or_raise
-from models import ScanTask, ScanTaskStatus
+from app.services.scan_service import TERMINAL_STATUSES, ScanAlreadyTerminalError, get_scan_or_raise
 
 
 def list_scan_tasks_for_scan(
@@ -76,7 +76,16 @@ def ingest_scan_task(
     parsed: Any | None,
     error_message: str | None,
 ) -> IngestResult:
-    get_scan_or_raise(db, scan_id)  # 404s before writing anything if the scan doesn't exist
+    scan = get_scan_or_raise(db, scan_id)  # 404s before writing anything if the scan doesn't exist
+    if scan.status in TERMINAL_STATUSES:
+        # A retried/late Ingest node (n8n's retryOnFail, or a manual
+        # execution retry from the n8n UI) can land after Complete Scan
+        # already ran — without this, its Service/Technology/Finding rows
+        # would attach silently to a scan the Backend already told every
+        # caller is "done". Same exception + 409 handler already used for
+        # a double POST /scans/{id}/complete, reused here for the same
+        # class of conflict.
+        raise ScanAlreadyTerminalError(str(scan_id))
 
     try:
         scan_task = scan_task_repository.create_scan_task(
@@ -101,7 +110,14 @@ def ingest_scan_task(
         # though its real data already landed on the first attempt.
         db.rollback()
         existing = scan_task_repository.get_scan_task_by_scan_and_tool(db, scan_id, tool)
-        assert existing is not None  # the IntegrityError just proved a row exists
+        if existing is None:
+            # The unique index didn't explain this IntegrityError after all
+            # (e.g. a FK violation because the scan was deleted in the
+            # window between get_scan_or_raise above and this insert) -
+            # same idiom as service_repository.get_or_create_service's own
+            # IntegrityError catch. Re-raising surfaces the real cause
+            # instead of masking it as an AssertionError.
+            raise
         return IngestResult(
             scan_task=existing,
             services_upserted=0,

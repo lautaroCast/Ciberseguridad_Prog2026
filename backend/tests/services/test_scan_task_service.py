@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.services import scan_task_service, scan_service, target_service
+from app.services import scan_service, scan_task_service, target_service
 
 
 def _make_scan(db_session):
@@ -19,18 +19,32 @@ def _make_scan(db_session):
 
 def _ingest(db_session, scan_id, **overrides):
     now = datetime.now(UTC)
-    kwargs = dict(
-        tool="nmap",
-        command="nmap -sV juice-shop",
-        status="completed",
-        started_at=now,
-        finished_at=now,
-        raw_output="<nmaprun></nmaprun>",
-        parsed=None,
-        error_message=None,
-    )
+    kwargs = {
+        "tool": "nmap",
+        "command": "nmap -sV juice-shop",
+        "status": "completed",
+        "started_at": now,
+        "finished_at": now,
+        "raw_output": "<nmaprun></nmaprun>",
+        "parsed": None,
+        "error_message": None,
+    }
     kwargs.update(overrides)
     return scan_task_service.ingest_scan_task(db_session, scan_id, **kwargs)
+
+
+def test_ingest_into_an_already_terminal_scan_raises(db_session):
+    """Ronda J: get_scan_or_raise only checked the scan exists, never its
+    status — a late/retried Ingest node landing after Complete Scan
+    already ran would silently attach rows to a scan every caller was
+    already told is "done"."""
+    from models import ScanStatus
+
+    scan = _make_scan(db_session)
+    scan_service.complete_scan(db_session, scan.id, status=ScanStatus.COMPLETED, error_message=None)
+
+    with pytest.raises(scan_service.ScanAlreadyTerminalError):
+        _ingest(db_session, scan.id, tool="nmap")
 
 
 def test_ingest_happy_path_creates_services_from_normalizer(db_session):
@@ -45,6 +59,30 @@ def test_ingest_happy_path_creates_services_from_normalizer(db_session):
     assert result.technologies_created == 0
     assert result.findings_created == 0
     assert result.scan_task.tool_name == "nmap"
+
+
+def test_ingest_integrity_error_not_explained_by_a_duplicate_reraises(db_session, monkeypatch):
+    """Ronda I: the IntegrityError handler used to `assert existing is not
+    None`, assuming the unique (scan_id, tool_name) index was always the
+    cause. If some other IntegrityError reached here (e.g. a FK violation
+    from the scan being deleted mid-flight) and the lookup legitimately
+    found nothing, the assert masked the real cause as an AssertionError
+    instead of propagating it — same idiom as
+    service_repository.get_or_create_service's own `if existing is None:
+    raise`."""
+    from sqlalchemy.exc import IntegrityError
+
+    from app.repositories import scan_task_repository
+
+    scan = _make_scan(db_session)
+    _ingest(db_session, scan.id, tool="nmap")
+
+    monkeypatch.setattr(
+        scan_task_repository, "get_scan_task_by_scan_and_tool", lambda *a, **k: None
+    )
+
+    with pytest.raises(IntegrityError):
+        _ingest(db_session, scan.id, tool="nmap")
 
 
 def test_ingesting_the_same_tool_twice_is_an_idempotent_replay_not_a_refine(db_session):
@@ -81,9 +119,8 @@ def test_ingesting_the_same_tool_twice_is_an_idempotent_replay_not_a_refine(db_s
     assert second.services_upserted == 0
     assert second.scan_task.id == first.scan_task.id
 
+    from models import ScanTask, Service
     from sqlalchemy import select as sa_select
-
-    from models import Service, ScanTask
 
     services = (
         db_session.execute(sa_select(Service).where(Service.scan_id == scan.id))
@@ -193,8 +230,8 @@ def test_ingest_truncates_oversized_service_fields(db_session):
     )
     assert result.services_upserted == 1
 
-    from sqlalchemy import select as sa_select
     from models import Service
+    from sqlalchemy import select as sa_select
 
     service = db_session.execute(
         sa_select(Service).where(Service.scan_id == scan.id)
@@ -227,8 +264,8 @@ def test_ingest_truncates_oversized_service_fields_against_real_postgres(postgre
     )
     assert result.services_upserted == 1
 
-    from sqlalchemy import select as sa_select
     from models import Service
+    from sqlalchemy import select as sa_select
 
     service = postgres_session.execute(
         sa_select(Service).where(Service.scan_id == scan.id)

@@ -6,11 +6,12 @@ Wire format is unaffected (these enums are `str` subclasses — JSON
 serialization already produced the same value either way), so this only
 asserts the field's declared type, not any behavior change."""
 
+from models import ReportFormat, ScanStatus, ScanTaskStatus, SeverityLevel
+
 from app.schemas.finding import FindingRead
 from app.schemas.report import ReportRead
 from app.schemas.scan import ScanRead
 from app.schemas.scan_task import ScanTaskRead
-from models import ReportFormat, ScanStatus, ScanTaskStatus, SeverityLevel
 
 
 def test_scan_read_status_is_the_real_enum():
