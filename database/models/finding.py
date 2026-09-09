@@ -53,6 +53,13 @@ class Finding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     finding_type: Mapped[str] = mapped_column(String(100), nullable=False)
     evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Not a unified scale, unlike `severity` — read per-tool, never
+    # aggregated across tools (same caveat docs/security.md already
+    # documents for the severity bias). Nikto always writes "low" (a
+    # design decision, not a measurement — Nikto reports no real
+    # confidence signal); ZAP writes its own raw numeric risk-confidence
+    # code as a string; Nuclei/Nmap-derived findings leave it `None`. No
+    # normalizer invents a value the tool didn't actually provide.
     confidence: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     cvss_score: Mapped[Decimal | None] = mapped_column(Numeric(3, 1), nullable=True)

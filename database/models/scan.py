@@ -44,9 +44,30 @@ class Scan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         # check in the service layer as an optimistic fast path only) -
         # here the uniqueness is conditional on status, hence a partial
         # index rather than a plain unique constraint.
+        #
+        # Re-keyed from target_id to host (2026-09-06 correction round):
+        # nothing stops registering two Target rows with different names
+        # against the same physical host, and a target_id-keyed index never
+        # noticed that case - two such targets could each run a scan at
+        # once against the one host that actually matters for the race
+        # described above. `host` is denormalized onto Scan (copied from
+        # Target.host at creation time, see scan_repository.create_scan)
+        # purely so this index can enforce the invariant at the host level
+        # without a cross-table constraint (Postgres can't express a
+        # partial unique index over a join) - it is not meant as a general
+        # Scan-level fact, only as the key this index needs.
+        #
+        # Residual gap, accepted: this compares `host` as an exact string,
+        # not physical-host identity. If BACKEND_ALLOWED_LAB_HOSTS ever
+        # listed two different strings resolving to the same machine (a
+        # DNS name and its IP, say - or, same idea, two different casings
+        # like "dvwa" and "DVWA") two Targets using each string could
+        # still run concurrent scans against it undetected. Not fixed
+        # here - this lab's whitelist is two fixed, distinct container
+        # names - but worth knowing before extending the whitelist.
         Index(
-            "ix_scans_one_active_per_target",
-            "target_id",
+            "ix_scans_one_active_per_host",
+            "host",
             unique=True,
             # No explicit ::scan_status cast on the literals: Postgres
             # infers the enum type from the column context and implicitly
@@ -69,6 +90,15 @@ class Scan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     target_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("targets.id", ondelete="CASCADE"), nullable=False
     )
+    # Denormalized copy of Target.host at creation time (see
+    # scan_repository.create_scan) - exists solely so
+    # ix_scans_one_active_per_host above can enforce "one active scan per
+    # host" at the DB level. Not meant to diverge from target.host or to be
+    # read as an independent fact; if Target.host is ever changed, existing
+    # Scan rows keep the host they were created against, which is correct
+    # for this column's one purpose (it describes what was true when the
+    # scan started, not the target's current state).
+    host: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[ScanStatus] = mapped_column(
         Enum(ScanStatus, name="scan_status", native_enum=True),
         nullable=False,
