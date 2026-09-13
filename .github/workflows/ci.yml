@@ -35,6 +35,59 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  migration-immutability:
+    # Ronda J: no test that runs the migration chain from scratch (CI
+    # already does this implicitly via `docker compose up -d migrate` in
+    # unit-tests above) can ever catch an in-place edit to an
+    # *already-merged* migration — that only manifests on a database
+    # that isn't fresh, and CI's is always fresh. Only a diff against
+    # history catches it. See scripts/check-migration-immutability.sh.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure no already-merged migration file was edited
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          ./scripts/check-migration-immutability.sh "$BASE"
+
+  python-lint:
+    # 2026-09-06 correction round: backend/scanner/reports had no static
+    # checks at all in CI — unit-tests above only runs pytest. ruff is a
+    # hard gate (it's clean as of this change). pip-audit is intentionally
+    # non-blocking for now: it already flags real, pre-existing CVEs in
+    # fastapi/starlette (transitive), weasyprint and pytest that need their
+    # own dedicated upgrade-and-verify pass (weasyprint in particular is
+    # pinned against a documented pydyf compatibility issue, see
+    # reports/requirements.txt) rather than a blind bump inside this round.
+    # Flip this to a hard gate once that follow-up lands.
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend, scanner, reports]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lint tools
+        run: pip install ruff pip-audit
+
+      - name: ruff check
+        run: ruff check ${{ matrix.service }}
+
+      - name: pip-audit (report only, not yet a gate — see comment above)
+        continue-on-error: true
+        run: pip-audit -r ${{ matrix.service }}/requirements.txt
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:

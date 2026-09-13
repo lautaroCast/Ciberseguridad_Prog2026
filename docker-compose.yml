@@ -270,7 +270,13 @@ services:
   # the Backend or a frontend — see n8n/README.md).
   # --------------------------------------------------------------------
   n8n:
-    image: n8nio/n8n:latest
+    # Pinned, unlike a floating :latest — this project was already bitten
+    # once by an unpinned upstream default change ($env access blocked by
+    # default in newer n8n, see N8N_BLOCK_ENV_ACCESS_IN_NODE below, which
+    # made the pipeline hang with zero calls ever reaching scanner/backend
+    # until that was found). 2.23.3 is the version this stack is actually
+    # verified against.
+    image: n8nio/n8n:2.23.3
     container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-n8n
     restart: unless-stopped
     environment:
