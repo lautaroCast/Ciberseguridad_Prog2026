@@ -4,11 +4,15 @@ import { statusColor, statusLabel } from "../lib/status";
 import { elapsedSeconds, formatDuration, stripAnsi } from "../lib/format";
 import type { ToolBreakdownRow } from "../lib/tools";
 
-function resultText(row: ToolBreakdownRow): string {
+function resultText(row: ToolBreakdownRow, scanRunning: boolean): string {
   const status = row.task?.status;
   if (status === "failed") return "error";
   if (status === "running") return "ejecutando…";
-  if (!row.task) return "en cola";
+  // A row with no task at all means either "hasn't had its turn yet"
+  // (the scan is still running, more tasks may still arrive) or "the scan
+  // is over and this tool never ran" (e.g. it failed earlier in the
+  // sequence) — those are different claims and must read differently.
+  if (!row.task) return scanRunning ? "en cola" : "no llegó a ejecutarse";
   if (status === "pending") return "en cola";
   if (status === "skipped") return "omitida";
   if (!row.producesFindings) return "no aporta hallazgos";
@@ -23,7 +27,13 @@ function resultText(row: ToolBreakdownRow): string {
  * "ZAP is halfway through a four-minute active scan". This is the view
  * that makes the wait legible.
  */
-export function ToolTimeline({ rows }: { rows: ToolBreakdownRow[] }) {
+export function ToolTimeline({
+  rows,
+  running: scanRunning,
+}: {
+  rows: ToolBreakdownRow[];
+  running: boolean;
+}) {
   const durations = rows.map((row) =>
     row.task ? (elapsedSeconds(row.task.started_at, row.task.finished_at) ?? 0) : 0,
   );
@@ -98,7 +108,7 @@ export function ToolTimeline({ rows }: { rows: ToolBreakdownRow[] }) {
                 color: status === "failed" ? "var(--bad)" : "var(--ink-2)",
               }}
             >
-              {resultText(row)}
+              {resultText(row, scanRunning)}
             </span>
           </div>
         );

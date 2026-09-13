@@ -123,8 +123,3 @@ export function buildToolBreakdown(
     };
   });
 }
-
-/** Tool name for one finding, or null when its task is not loaded yet. */
-export function findingTool(finding: FindingRead, tasks: ScanTaskRead[]): string | null {
-  return tasks.find((task) => task.id === finding.scan_task_id)?.tool_name ?? null;
-}

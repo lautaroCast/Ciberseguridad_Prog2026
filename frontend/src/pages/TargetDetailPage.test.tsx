@@ -98,6 +98,20 @@ describe("TargetDetailPage — deleting a target", () => {
     await waitFor(() => expect(deleteButton).not.toBeDisabled());
   });
 
+  // 2026-09-08 correction round: the scan-history header count
+  // (`{scans.length} ejecuciones`) never checked scansQuery at all —
+  // it showed the confident but false "0 ejecuciones" on a first-load
+  // failure, right next to the ErrorBanner. Same underlying condition
+  // the delete dialog was already fixed to check, now shared.
+  it("shows a could-not-load label in the header instead of a fabricated 0", async () => {
+    vi.mocked(getTarget).mockResolvedValue(ACTIVE_TARGET);
+    vi.mocked(listScansForTarget).mockRejectedValue(new Error("network error"));
+
+    renderPage();
+    expect(await screen.findByText("no se pudo cargar")).toBeInTheDocument();
+    expect(screen.queryByText("0 ejecuciones")).not.toBeInTheDocument();
+  });
+
   // 6th independent evaluation: the ErrorBanner for deleteMutation.error
   // used to render in the page's normal flow, underneath the open
   // ConfirmDialog's full-viewport backdrop - a failed delete left the
@@ -138,6 +152,49 @@ describe("TargetDetailPage — a background refetch failing after data already l
 
     expect(screen.getByRole("heading", { name: "juice-shop-demo" })).toBeInTheDocument();
     expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
+  });
+});
+
+describe("TargetDetailPage — scansQuery fails on a later poll, delete dialog already has real data", () => {
+  // 2026-09-06 correction round: the delete-confirmation dialog's copy
+  // used `scansQuery.isError` alone, which reflects only the *most
+  // recent* fetch attempt in TanStack Query v5 — a background poll
+  // failing after scans had already loaded flipped `isError` to true
+  // while `scans` (from `.data`) still held the real, accurate list,
+  // making the dialog falsely claim "no se pudo confirmar el historial
+  // real... se borra todo igual" right before an irreversible action.
+  const ONE_SCAN: ScanRead = {
+    id: "scan-1",
+    target_id: "target-1",
+    status: "completed",
+    pipeline_run_id: null,
+    triggered_by: null,
+    started_at: "2026-08-21T00:00:00Z",
+    finished_at: "2026-08-21T00:04:00Z",
+    error_message: null,
+    created_at: "2026-08-21T00:00:00Z",
+  };
+
+  it("shows the real scan count instead of the could-not-confirm message", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(getTarget).mockResolvedValue(ACTIVE_TARGET);
+    vi.mocked(listScansForTarget).mockResolvedValueOnce([ONE_SCAN]);
+
+    renderPage(queryClient);
+    await screen.findByText("1 ejecución");
+
+    vi.mocked(listScansForTarget).mockRejectedValueOnce(new Error("network error"));
+    await queryClient.refetchQueries({ queryKey: ["target-scans", "target-1"] });
+    await screen.findByText("No se pudo contactar al backend");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Eliminar" }));
+
+    expect(
+      screen.getByText(/sus 1 escaneo, todos sus hallazgos y todos sus reportes generados/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/No se pudo confirmar el historial real/),
+    ).not.toBeInTheDocument();
   });
 });
 

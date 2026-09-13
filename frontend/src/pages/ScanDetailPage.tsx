@@ -27,6 +27,7 @@ import { TableSkeleton } from "../components/Skeleton";
 import { ToolBreakdown } from "../components/ToolBreakdown";
 import { ToolErrors, ToolTimeline } from "../components/ToolTimeline";
 import { elapsedSeconds, formatDateTime, formatDuration, stripAnsi } from "../lib/format";
+import { queryFailedToLoad } from "../lib/query";
 import { SEVERITY_META, SEVERITY_ORDER, severityColor } from "../lib/severity";
 import { buildToolBreakdown, toolLabel } from "../lib/tools";
 import type { FindingRead, ReportFormat, ReportRead, ScanStatus, Severity } from "../types";
@@ -120,6 +121,10 @@ export function ScanDetailPage() {
 
   const tasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
   const findings = useMemo(() => findingsQuery.data ?? [], [findingsQuery.data]);
+  // .data === undefined (not findings.length === 0) so a scan that
+  // genuinely completed with zero findings isn't confused with one where
+  // findingsQuery never successfully loaded at all.
+  const findingsFailedToLoad = queryFailedToLoad(findingsQuery);
   const breakdown = useMemo(() => buildToolBreakdown(tasks, findings), [tasks, findings]);
 
   const toolByTaskId = useMemo(
@@ -229,6 +234,11 @@ export function ScanDetailPage() {
   const toolCount = breakdown.length;
   const completedTools = breakdown.filter((row) => row.task?.status === "completed").length;
   const failedTools = breakdown.filter((row) => row.task?.status === "failed");
+  // tasksQuery.data === undefined (not tasks.length === 0) so a scan that
+  // legitimately has 5 completed tools isn't confused with one where
+  // tasksQuery never successfully loaded at all — same "check .data before
+  // a defaulted value" idiom reportsQuery/scanQuery already use correctly.
+  const tasksFailedToLoad = queryFailedToLoad(tasksQuery);
   const hiddenCount = findings.length - visibleFindings.length;
   const stalled = running && (elapsed ?? 0) > 600;
 
@@ -272,20 +282,32 @@ export function ScanDetailPage() {
         completedTools={completedTools}
         toolCount={toolCount}
         failedTools={failedTools.map((row) => row.label)}
+        tasksFailedToLoad={tasksFailedToLoad}
       />
 
       <div className="th" style={{ marginBottom: 12 }}>
         Herramientas · ejecución secuencial
       </div>
       <ErrorBanner error={tasksQuery.error} />
+      {/* tasksFailedToLoad: same reasoning as the ToolBreakdown gate below
+          — breakdown's per-row status/duration come from `tasks`, which is
+          [] when tasksQuery never loaded, so every row would confidently
+          read "en cola" (queued) instead of "unknown". The ErrorBanner
+          above already says the request failed; this just stops the
+          timeline from contradicting it. */}
       {tasksQuery.isLoading ? (
         <TableSkeleton rows={5} />
-      ) : (
-        <ToolTimeline rows={breakdown} />
+      ) : tasksFailedToLoad ? null : (
+        <ToolTimeline rows={breakdown} running={running} />
       )}
       <ToolErrors rows={breakdown} />
 
-      {!running && findings.length > 0 && (
+      {/* tasksFailedToLoad: breakdown's per-tool counts come from `tasks`,
+          which is [] when tasksQuery never loaded — every row would show
+          0 regardless of the real findings shown two sections below.
+          Same "don't show a confident-looking number we don't actually
+          have" rule already applied to ScanBanner/FindingsTable. */}
+      {!running && !tasksFailedToLoad && findings.length > 0 && (
         <>
           <div className="th" style={{ margin: "26px 0 11px" }}>
             Aporte por herramienta
@@ -360,10 +382,14 @@ export function ScanDetailPage() {
             }}
           >
             {running
-              ? `lista incompleta — faltan ${toolCount - completedTools} de ${toolCount} herramientas`
-              : hiddenCount > 0
-                ? `${hiddenCount} ocultos por los filtros`
-                : "lista completa"}
+              ? tasksFailedToLoad
+                ? "no se pudo verificar cuántas herramientas terminaron"
+                : `lista incompleta — faltan ${toolCount - completedTools} de ${toolCount} herramientas`
+              : findingsFailedToLoad
+                ? "no se pudo verificar la lista completa"
+                : hiddenCount > 0
+                  ? `${hiddenCount} ocultos por los filtros`
+                  : "lista completa"}
           </span>
         </div>
 
@@ -377,7 +403,8 @@ export function ScanDetailPage() {
             total={findings.length}
             toolCount={toolCount}
             running={running}
-            failedToLoad={Boolean(findingsQuery.error)}
+            failedToLoad={findingsFailedToLoad}
+            tasksFailedToLoad={tasksFailedToLoad}
             openId={openFindingId}
             onToggle={(findingId) =>
               setOpenFindingId((current) => (current === findingId ? null : findingId))
@@ -504,6 +531,7 @@ function ScanBanner({
   completedTools,
   toolCount,
   failedTools,
+  tasksFailedToLoad,
 }: {
   running: boolean;
   stalled: boolean;
@@ -512,6 +540,7 @@ function ScanBanner({
   completedTools: number;
   toolCount: number;
   failedTools: string[];
+  tasksFailedToLoad: boolean;
 }) {
   if (stalled) {
     return (
@@ -525,6 +554,78 @@ function ScanBanner({
             Un pipeline normal tarda entre 5 y 8 minutos. Es probable que n8n haya abortado y el
             escaneo haya quedado en <span className="mono">running</span> sin nadie que lo cierre.
             Los hallazgos ya ingeridos siguen siendo válidos.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // `status === "failed"` and `tasksFailedToLoad` both come before
+  // `running`/`cancelled` on purpose: they carry their own independent,
+  // reliable signal (scan.status, or "the tasks call itself never
+  // loaded") that must not be shadowed by a branch whose text is derived
+  // from `completedTools`/`toolCount` — data tasksFailedToLoad means we
+  // don't actually have. `status === "failed"` goes first because it has
+  // a real error_message worth showing verbatim, which a vaguer
+  // "tasks unknown" message would otherwise hide.
+  if (status === "failed") {
+    return (
+      <div className="callout callout--bad stack" style={{ marginBottom: 26, gap: 8 }}>
+        <div className="row" style={{ gap: 9, color: "var(--bad)" }}>
+          <AlertIcon />
+          <span className="callout__title" style={{ color: "var(--bad)" }}>
+            Escaneo fallido
+          </span>
+        </div>
+        {errorMessage && <pre className="pre">{errorMessage}</pre>}
+      </div>
+    );
+  }
+
+  // Same reasoning as `status === "failed"` above: `cancelled` is also a
+  // terminal state with its own independent, reliable `error_message` -
+  // it must come before `tasksFailedToLoad` too, so that message is
+  // never swallowed by the vaguer "tasks unknown" warning. Unlike
+  // `failed`, this branch's own text *does* depend on
+  // completedTools/toolCount, so it can't just move position unchanged -
+  // it has to know not to claim a count it doesn't have.
+  if (status === "cancelled") {
+    return (
+      <div className="callout callout--bad stack" style={{ marginBottom: 26, gap: 8 }}>
+        <div className="row" style={{ gap: 9, color: "var(--bad)" }}>
+          <AlertIcon />
+          <span className="callout__title" style={{ color: "var(--bad)" }}>
+            Escaneo cancelado
+          </span>
+        </div>
+        <div>
+          {tasksFailedToLoad
+            ? "No se pudo verificar cuántas herramientas alcanzaron a correr antes de la cancelación."
+            : `Corrieron ${completedTools} de ${toolCount} herramientas antes de la cancelación. Esta lista está incompleta.`}
+        </div>
+        {errorMessage && <pre className="pre">{errorMessage}</pre>}
+      </div>
+    );
+  }
+
+  // tasksQuery never successfully loaded (not just a stale-data background
+  // poll failure — that case still has real completedTools/failedTools
+  // data and is handled correctly by the branches below). Without this,
+  // an all-null breakdown (0 completed, 0 failed — because "failed" only
+  // ever means a real ScanTask row exists with status "failed", never
+  // "we don't know") let `running`/`cancelled` confidently show "0 de N"
+  // as if that were a real progress count.
+  if (tasksFailedToLoad) {
+    return (
+      <div className="callout callout--warn" style={{ marginBottom: 26 }}>
+        <span style={{ color: "var(--warn)", flexShrink: 0, marginTop: 1 }}>
+          <AlertIcon />
+        </span>
+        <div>
+          <div className="callout__title">No se pudo verificar el estado de las herramientas</div>
+          <div style={{ marginTop: 2 }}>
+            La consulta de tareas del pipeline falló y nunca llegó a cargar. Esta lista podría no
+            reflejar lo que realmente ocurrió durante el escaneo.
           </div>
         </div>
       </div>
@@ -550,38 +651,6 @@ function ScanBanner({
         <span className="th" style={{ flexShrink: 0 }}>
           {completedTools} de {toolCount} herramientas completadas
         </span>
-      </div>
-    );
-  }
-
-  if (status === "failed") {
-    return (
-      <div className="callout callout--bad stack" style={{ marginBottom: 26, gap: 8 }}>
-        <div className="row" style={{ gap: 9, color: "var(--bad)" }}>
-          <AlertIcon />
-          <span className="callout__title" style={{ color: "var(--bad)" }}>
-            Escaneo fallido
-          </span>
-        </div>
-        {errorMessage && <pre className="pre">{errorMessage}</pre>}
-      </div>
-    );
-  }
-
-  if (status === "cancelled") {
-    return (
-      <div className="callout callout--bad stack" style={{ marginBottom: 26, gap: 8 }}>
-        <div className="row" style={{ gap: 9, color: "var(--bad)" }}>
-          <AlertIcon />
-          <span className="callout__title" style={{ color: "var(--bad)" }}>
-            Escaneo cancelado
-          </span>
-        </div>
-        <div>
-          Corrieron {completedTools} de {toolCount} herramientas antes de la cancelación. Esta
-          lista está incompleta.
-        </div>
-        {errorMessage && <pre className="pre">{errorMessage}</pre>}
       </div>
     );
   }
@@ -701,6 +770,7 @@ function FindingsTable({
   toolCount,
   running,
   failedToLoad,
+  tasksFailedToLoad,
   openId,
   onToggle,
   toolFor,
@@ -713,6 +783,7 @@ function FindingsTable({
   toolCount: number;
   running: boolean;
   failedToLoad: boolean;
+  tasksFailedToLoad: boolean;
   openId: string | null;
   onToggle: (id: string) => void;
   toolFor: (finding: FindingRead) => string | null;
@@ -836,7 +907,17 @@ function FindingsTable({
               escaneo no haya producido ninguno. Reintentá recargando la página.
             </>
           ) : total === 0 ? (
-            running ? (
+            // tasksFailedToLoad goes before `running`, same precedence
+            // rule as ScanBanner above (line ~563): it's an independent,
+            // reliable signal ("the tasks call itself never loaded") that
+            // must not be shadowed by a branch whose reassurance depends
+            // on tool progress data we don't actually have.
+            tasksFailedToLoad ? (
+              <>
+                No se pudo verificar si las herramientas llegaron a correr. Esta ausencia de
+                hallazgos podría no ser un resultado real.
+              </>
+            ) : running ? (
               <>
                 Nmap y WhatWeb aportan servicios y tecnologías, no hallazgos. Los primeros
                 hallazgos aparecen cuando termina Nikto.

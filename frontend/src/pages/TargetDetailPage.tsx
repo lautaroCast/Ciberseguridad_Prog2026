@@ -19,6 +19,7 @@ import { TableSkeleton } from "../components/Skeleton";
 import { StatusIcon } from "../components/StatusIcon";
 import { statusColor, statusLabel } from "../lib/status";
 import { elapsedSeconds, formatDateTime, formatDuration, stripAnsi } from "../lib/format";
+import { queryFailedToLoad } from "../lib/query";
 import type { ScanRead } from "../types";
 
 export function TargetDetailPage() {
@@ -78,6 +79,11 @@ export function TargetDetailPage() {
   const target = targetQuery.data;
 
   const scans = scansQuery.data ?? [];
+  // Shared by the header count below and the delete-confirmation dialog
+  // further down — one source instead of two copies of the same check
+  // that can drift apart (which is how most of this round's findings
+  // happened: one copy got fixed, the sibling didn't).
+  const scansFailedToLoad = queryFailedToLoad(scansQuery);
 
   return (
     <div>
@@ -221,7 +227,9 @@ export function TargetDetailPage() {
       <div className="row" style={{ gap: 11, alignItems: "baseline", marginBottom: 12 }}>
         <span className="th">Historial de escaneos</span>
         <span style={{ fontSize: 12, color: "var(--ink-3)" }}>
-          {scans.length} {scans.length === 1 ? "ejecución" : "ejecuciones"}
+          {scansFailedToLoad
+            ? "no se pudo cargar"
+            : `${scans.length} ${scans.length === 1 ? "ejecución" : "ejecuciones"}`}
         </span>
       </div>
 
@@ -318,7 +326,14 @@ export function TargetDetailPage() {
         >
           <ErrorBanner error={deleteMutation.error} />
           <p style={{ margin: "0 0 8px" }}>
-            {scansQuery.isError ? (
+            {/* 2026-09-06 correction round: `scansQuery.isError` alone
+                doesn't distinguish "never loaded" from "loaded fine, a
+                later background poll failed" (`isError` reflects only the
+                most recent fetch) — `scans` still holds the real, accurate
+                list in the latter case, same `.data` check as the
+                empty-state above. 2026-09-08: now shared with the header
+                count above, one source of truth instead of two. */}
+            {scansFailedToLoad ? (
               <>
                 No se pudo confirmar el historial real de este objetivo (falló la carga). Se
                 borran también{" "}

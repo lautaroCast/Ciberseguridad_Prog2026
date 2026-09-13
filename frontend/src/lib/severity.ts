@@ -18,19 +18,6 @@ export const SEVERITY_META: Record<Severity, SeverityMeta> = {
   info: { rank: 1, label: "Informativa", token: "--sev-info" },
 };
 
-/** Sort index — critical first. */
-export function severityRank(severity: Severity): number {
-  return SEVERITY_ORDER.indexOf(severity);
-}
-
 export function severityColor(severity: Severity): string {
   return `var(${SEVERITY_META[severity].token})`;
-}
-
-export function severityBackground(severity: Severity): string {
-  return `var(${SEVERITY_META[severity].token}-bg)`;
-}
-
-export function severityBorder(severity: Severity): string {
-  return `var(${SEVERITY_META[severity].token}-line)`;
 }

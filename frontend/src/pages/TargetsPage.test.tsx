@@ -72,6 +72,17 @@ describe("TargetsPage", () => {
     expect(await screen.findByText("Todavía no hay objetivos registrados")).toBeInTheDocument();
   });
 
+  // 2026-09-08 correction round: the header target-count
+  // (`{targets.length} registrados`) never checked targetsQuery — a
+  // first-load failure showed the confident but false "0 registrados"
+  // above the registration form, before any error was visible.
+  it("shows a could-not-load label in the header instead of a fabricated 0", async () => {
+    vi.mocked(listTargets).mockRejectedValue(new Error("network error"));
+    renderPage();
+    expect(await screen.findByText("no se pudo cargar")).toBeInTheDocument();
+    expect(screen.queryByText("0 registrados")).not.toBeInTheDocument();
+  });
+
   it("lists a registered target with a link to its last scan", async () => {
     renderPage();
     expect(await screen.findByText("juice-shop-demo")).toBeInTheDocument();
@@ -87,6 +98,18 @@ describe("TargetsPage", () => {
     renderPage();
     await screen.findByText("juice-shop-demo");
     expect(screen.getByText("nunca escaneado")).toBeInTheDocument();
+  });
+
+  // Ronda J: `scanHistoryNeverLoaded` was only true on an *error* — while
+  // the per-target scan-history query was still loading (no error yet,
+  // no data yet), the row fell through to "nunca escaneado" before the
+  // request even settled, on every single page load.
+  it("does not claim 'nunca escaneado' while scan history is still loading", async () => {
+    vi.mocked(listScansForTarget).mockReturnValue(new Promise(() => {}));
+    renderPage();
+    await screen.findByText("juice-shop-demo");
+    expect(screen.queryByText("nunca escaneado")).not.toBeInTheDocument();
+    expect(screen.getByText("cargando…")).toBeInTheDocument();
   });
 
   // 8th independent evaluation: `scanHistoryFailed` used to be checked

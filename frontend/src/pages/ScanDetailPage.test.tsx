@@ -279,6 +279,38 @@ describe("ScanDetailPage strips ANSI escapes from scan.error_message", () => {
   });
 });
 
+describe("ScanDetailPage — a terminal scan with a tool that never got a task row", () => {
+  // Ronda I: ToolTimeline's resultText() used to read `!row.task` as
+  // "en cola" (queued) unconditionally — indistinguishable from a tool
+  // that simply hasn't had its turn yet while the scan is still running.
+  // A scan that failed on nmap and never got to run the other 4 tools
+  // showed them as "en cola" forever, even long after the scan reached a
+  // terminal status.
+  it('shows "no llegó a ejecutarse" instead of "en cola" for tools with no task', async () => {
+    vi.mocked(getScan).mockResolvedValue({ ...SCAN, status: "failed" });
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nmap", "nmap", "failed")]);
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+
+    renderPage();
+    await screen.findByText("Escaneo fallido");
+    expect(screen.getAllByText("no llegó a ejecutarse").length).toBeGreaterThan(0);
+    expect(screen.queryByText("en cola")).not.toBeInTheDocument();
+  });
+
+  it('still shows "en cola" for tools with no task while the scan is running', async () => {
+    vi.mocked(getScan).mockResolvedValue({ ...SCAN, status: "running", finished_at: null });
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nmap", "nmap")]);
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+
+    renderPage();
+    await screen.findByText("Nmap");
+    expect(screen.getAllByText("en cola").length).toBeGreaterThan(0);
+    expect(screen.queryByText("no llegó a ejecutarse")).not.toBeInTheDocument();
+  });
+});
+
 describe("ScanDetailPage with more than five tools reported", () => {
   beforeEach(() => {
     vi.mocked(getScan).mockResolvedValue({ ...SCAN, status: "running", finished_at: null });
@@ -347,7 +379,7 @@ describe("ScanDetailPage when a tool's ingest call itself failed (no ScanTask ro
     // that succeeded" above.
     vi.mocked(getScan).mockResolvedValue({
       ...SCAN,
-      error_message: "Tools that failed to ingest results: Nikto.",
+      error_message: "Tools that failed to run: Nikto.",
     });
     vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei"), task("t-zap", "zap")]);
     vi.mocked(listFindings).mockResolvedValue([]);
@@ -357,7 +389,7 @@ describe("ScanDetailPage when a tool's ingest call itself failed (no ScanTask ro
   it("shows a warning banner instead of claiming a clean, complete result", async () => {
     renderPage();
     expect(await screen.findByText("El pipeline terminó con advertencias")).toBeInTheDocument();
-    expect(screen.getByText(/Tools that failed to ingest results: Nikto\./)).toBeInTheDocument();
+    expect(screen.getByText(/Tools that failed to run: Nikto\./)).toBeInTheDocument();
     expect(screen.queryByText(/Todos los resultados fueron ingeridos/)).not.toBeInTheDocument();
   });
 });
@@ -488,6 +520,284 @@ describe("ScanDetailPage — a background poll failing on tasksQuery after data 
 
     expect(screen.getAllByText("Nuclei").length).toBeGreaterThan(0);
     expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage — tasksQuery fails on its very first load, scan already terminal", () => {
+  // 2026-09-06 correction round: ScanBanner received no signal about
+  // tasksQuery.error at all. `tasks` defaults to `[]` on a never-loaded
+  // tasksQuery, so buildToolBreakdown produces 5 rows all with
+  // `task: null` — indistinguishable from "0 completed, 0 failed" to
+  // every branch ScanBanner checks, so a completed scan whose tasksQuery
+  // never loaded fell through to the confident "Terminaron las N
+  // herramientas... Todos los resultados fueron ingeridos y
+  // normalizados" success banner instead of a warning.
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockRejectedValue(new Error("network error"));
+    vi.mocked(listFindings).mockResolvedValue([CRITICAL]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("shows a warning instead of claiming every tool completed", async () => {
+    renderPage();
+    expect(
+      await screen.findByText("No se pudo verificar el estado de las herramientas"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Todos los resultados fueron ingeridos y normalizados."),
+    ).not.toBeInTheDocument();
+  });
+
+  // 2026-09-08 correction round: "Aporte por herramienta" (ToolBreakdown)
+  // attributes findings to tools via `tasks`, which is [] when tasksQuery
+  // never loaded — every tool row showed 0 even with a real critical
+  // finding loaded and visible in the table two sections below.
+  it("hides the per-tool breakdown instead of showing every tool at zero", async () => {
+    renderPage();
+    await screen.findByText("Apache Struts RCE");
+    expect(screen.queryByText("Aporte por herramienta")).not.toBeInTheDocument();
+  });
+
+  // 2026-09-09 mechanical sweep: ToolTimeline (the "Herramientas ·
+  // ejecución secuencial" progress view) read the same defaulted
+  // `breakdown` as ToolBreakdown but was never gated on
+  // tasksFailedToLoad — every tool confidently showed "en cola" (its
+  // never-started state) directly below the real ErrorBanner and
+  // ScanBanner's own "no se pudo verificar" warning.
+  it("hides the tool timeline instead of showing every tool as queued", async () => {
+    renderPage();
+    await screen.findByText("Apache Struts RCE");
+    expect(screen.queryByText("en cola")).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage — tasksQuery fails on its very first load, scan still running", () => {
+  // 2026-09-06 correction round (2nd pass): the first tasksFailedToLoad
+  // fix only guarded the terminal-scan default banner — `if (running)`
+  // returns earlier and confidently shows "{completedTools} de
+  // {toolCount} herramientas completadas" from an all-null breakdown.
+  // This is the more likely window in practice, since tasksQuery and
+  // scanQuery both start on mount.
+  beforeEach(() => {
+    // started_at must be recent, not SCAN's hardcoded 2026-08-21 — a
+    // running scan started that long ago would make `stalled` true
+    // against the real wall clock and mask the branch under test here.
+    vi.mocked(getScan).mockResolvedValue({
+      ...SCAN,
+      status: "running",
+      started_at: new Date().toISOString(),
+      finished_at: null,
+    });
+    vi.mocked(listScanTasks).mockRejectedValue(new Error("network error"));
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("shows a warning instead of a confident 0-of-N progress count", async () => {
+    renderPage();
+    expect(
+      await screen.findByText("No se pudo verificar el estado de las herramientas"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/de \d+ herramientas completadas/)).not.toBeInTheDocument();
+  });
+
+  // 2026-09-08 correction round: the findings-summary "faltan X de Y
+  // herramientas" line, right below the severity/tool filters, read the
+  // same unreliable `completedTools`/`toolCount` as ScanBanner but never
+  // checked tasksFailedToLoad — it kept confidently saying "faltan 5 de
+  // 5" on the same screen as ScanBanner's own "no se pudo verificar".
+  it("does not show a fabricated 'faltan N de N herramientas' count in the findings summary", async () => {
+    renderPage();
+    await screen.findByText("No se pudo verificar el estado de las herramientas");
+    expect(
+      screen.getByText("no se pudo verificar cuántas herramientas terminaron"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/faltan \d+ de \d+ herramientas/)).not.toBeInTheDocument();
+  });
+
+  // Ronda J: the zero-findings empty state's `running` branch confidently
+  // claimed "Nmap y WhatWeb aportan servicios... los primeros hallazgos
+  // aparecen cuando termina Nikto" even when tasksFailedToLoad — the
+  // `!running` branch already checked it, this one didn't.
+  it("does not claim tool progress is normal when tasksQuery never loaded", async () => {
+    renderPage();
+    await screen.findByText("No se pudo verificar el estado de las herramientas");
+    expect(
+      screen.getByText(/No se pudo verificar si las herramientas llegaron a correr/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Los primeros hallazgos aparecen cuando termina Nikto/)).not
+      .toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage — tasksQuery fails on its very first load, scan genuinely failed", () => {
+  // Confirms the reordering in the fix above didn't let tasksFailedToLoad
+  // shadow a scan that's independently, reliably known to have failed —
+  // scan.error_message is real and worth showing regardless of whether
+  // tasksQuery loaded.
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue({
+      ...SCAN,
+      status: "failed",
+      error_message: "n8n: Backend unreachable after 3 retries.",
+    });
+    vi.mocked(listScanTasks).mockRejectedValue(new Error("network error"));
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("still shows the real failure reason, not the tasks-unknown warning", async () => {
+    renderPage();
+    expect(await screen.findByText("Escaneo fallido")).toBeInTheDocument();
+    expect(
+      screen.getByText("n8n: Backend unreachable after 3 retries."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No se pudo verificar el estado de las herramientas"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage — tasksQuery fails on its very first load, scan genuinely cancelled", () => {
+  // 2026-09-06 correction round (3rd pass): the "failed" fix above didn't
+  // extend to its identical sibling, "cancelled" — also a terminal
+  // status with its own independent, reliable error_message. Before this
+  // fix, tasksFailedToLoad (checked earlier in the branch order) would
+  // have shadowed the real cancellation reason with the generic
+  // tasks-unknown warning.
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue({
+      ...SCAN,
+      status: "cancelled",
+      error_message: "cancelado por el operador",
+    });
+    vi.mocked(listScanTasks).mockRejectedValue(new Error("network error"));
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("still shows the real cancellation reason, with an unknown-count caveat instead of a fabricated count", async () => {
+    renderPage();
+    expect(await screen.findByText("Escaneo cancelado")).toBeInTheDocument();
+    expect(screen.getByText("cancelado por el operador")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No se pudo verificar cuántas herramientas alcanzaron a correr antes de la cancelación.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Corrieron \d+ de \d+ herramientas/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No se pudo verificar el estado de las herramientas"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage — findingsQuery fails on its very first load, scan already terminal", () => {
+  // 2026-09-06 correction round (2nd pass): the findings summary line
+  // ("X de Y" / "lista completa") used `findings.length` (already
+  // defaulted through `?? []`), the exact idiom the sibling FindingsTable
+  // empty-state was fixed to stop using in this same file's earlier pass
+  // this same day — a scan whose findingsQuery never loaded showed "0 de
+  // 0" / "lista completa" directly above FindingsTable's own correct
+  // "No se pudieron cargar los hallazgos" state, a live contradiction on
+  // one screen.
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listFindings).mockRejectedValue(new Error("network error"));
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("does not claim the list is complete when it never loaded", async () => {
+    renderPage();
+    expect(
+      await screen.findByText("no se pudo verificar la lista completa"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("lista completa")).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage — tasksQuery fails on its very first load, findingsQuery genuinely empty", () => {
+  // 2026-09-06 correction round (3rd pass): FindingsTable's empty state
+  // for total === 0 && !running said "Las {toolCount} herramientas
+  // corrieron y ninguna reportó nada. Esto es un resultado, no un
+  // error." — that claim depends on tasksQuery having loaded, not on
+  // findingsQuery. If tasksQuery fails on its first load while
+  // findingsQuery genuinely, successfully resolves to [], this text
+  // asserted "corrieron" right below ScanBanner's own, correct "No se
+  // pudo verificar el estado de las herramientas" warning.
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockRejectedValue(new Error("network error"));
+    vi.mocked(listFindings).mockResolvedValue([]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("does not claim the tools ran when tasksQuery never loaded", async () => {
+    renderPage();
+    expect(
+      await screen.findByText(
+        "No se pudo verificar si las herramientas llegaron a correr. Esta ausencia de hallazgos podría no ser un resultado real.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/herramientas corrieron y ninguna reportó nada/),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("ScanDetailPage — a background poll failing on findingsQuery after data already loaded", () => {
+  // 2026-09-06 correction round: `failedToLoad={Boolean(findingsQuery.error)}`
+  // didn't check whether `findings.length` was still nonzero, unlike every
+  // other query on this page — TanStack Query never clears `data` on a
+  // failed background refetch, so a single transient poll failure after
+  // findings had already loaded rendered the false "no se pudieron cargar
+  // los hallazgos" empty state on top of data that was, in fact, already
+  // loaded (same bug class as the scanQuery/tasksQuery blocks above, one
+  // level deeper — inside the derived empty-state text, not the loading
+  // branch itself).
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("keeps showing the already-loaded findings instead of the failed-to-load empty state", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listFindings).mockResolvedValueOnce([CRITICAL]);
+
+    renderPage(queryClient);
+    await screen.findByText("Apache Struts RCE");
+
+    vi.mocked(listFindings).mockRejectedValueOnce(new Error("network error"));
+    await queryClient.refetchQueries({ queryKey: ["findings", "scan-1"] });
+
+    expect(screen.getByText("Apache Struts RCE")).toBeInTheDocument();
+    expect(screen.queryByText("No se pudieron cargar los hallazgos")).not.toBeInTheDocument();
+    expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
+  });
+
+  // The fix above used `findings.length === 0` (the array after `?? []`),
+  // which can't tell "never loaded" apart from "loaded, genuinely zero
+  // findings" — both default to the same empty array. A scan that
+  // legitimately completed with 0 findings, followed by a later
+  // transient poll failure (e.g. a background refetch on window focus),
+  // must keep showing the real "sin hallazgos" result, not flip to
+  // claiming the list failed to load.
+  it("keeps showing a genuinely empty result instead of the failed-to-load state after a later error", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listFindings).mockResolvedValueOnce([]);
+
+    renderPage(queryClient);
+    await screen.findByText("El escaneo terminó sin hallazgos");
+
+    vi.mocked(listFindings).mockRejectedValueOnce(new Error("network error"));
+    await queryClient.refetchQueries({ queryKey: ["findings", "scan-1"] });
+
+    expect(await screen.findByText("No se pudo contactar al backend")).toBeInTheDocument();
+    expect(screen.getByText("El escaneo terminó sin hallazgos")).toBeInTheDocument();
+    expect(screen.queryByText("No se pudieron cargar los hallazgos")).not.toBeInTheDocument();
   });
 });
 

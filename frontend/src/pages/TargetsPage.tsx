@@ -10,6 +10,7 @@ import { TableSkeleton } from "../components/Skeleton";
 import { StatusIcon } from "../components/StatusIcon";
 import { statusColor, statusLabel } from "../lib/status";
 import { formatDateTime } from "../lib/format";
+import { queryFailedToLoad } from "../lib/query";
 import { isTerminalStatus } from "../api/scans";
 import type { ScanRead, TargetRead } from "../types";
 
@@ -42,6 +43,7 @@ export function TargetsPage() {
   const [description, setDescription] = useState("");
 
   const targets = targetsQuery.data ?? [];
+  const targetsFailedToLoad = queryFailedToLoad(targetsQuery);
 
   // One scan-history request per target. With a two-host whitelist this is
   // two requests, not a scale problem worth a dedicated endpoint.
@@ -70,7 +72,9 @@ export function TargetsPage() {
       <div className="row" style={{ gap: 12, alignItems: "baseline", marginBottom: 4 }}>
         <h1>Objetivos</h1>
         <span style={{ fontSize: 13, color: "var(--ink-3)" }}>
-          {targets.length} {targets.length === 1 ? "registrado" : "registrados"}
+          {targetsFailedToLoad
+            ? "no se pudo cargar"
+            : `${targets.length} ${targets.length === 1 ? "registrado" : "registrados"}`}
         </span>
       </div>
       <p style={{ margin: "0 0 22px", fontSize: 13, color: "var(--ink-2)", maxWidth: 640 }}>
@@ -241,10 +245,18 @@ export function TargetsPage() {
                       no se pudo cargar
                     </span>
                   )}
-                  {!scanHistoryNeverLoaded && !latest && (
+                  {/* scanQuery?.isLoading gates "nunca escaneado" so a
+                      target with real scan history doesn't briefly (or,
+                      under a slow network, indefinitely) claim it was
+                      never scanned before its own history has even
+                      finished loading. */}
+                  {!scanHistoryNeverLoaded && scanQuery?.isLoading && (
+                    <span style={{ color: "var(--ink-3)" }}>cargando…</span>
+                  )}
+                  {!scanHistoryNeverLoaded && !scanQuery?.isLoading && !latest && (
                     <span style={{ color: "var(--ink-3)" }}>nunca escaneado</span>
                   )}
-                  {!scanHistoryNeverLoaded && latest && (
+                  {!scanHistoryNeverLoaded && !scanQuery?.isLoading && latest && (
                     <Link
                       to={`/scans/${latest.id}`}
                       className="row"

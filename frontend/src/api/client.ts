@@ -31,6 +31,20 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
   return url.toString();
 }
 
+async function throwIfError(response: Response): Promise<void> {
+  if (response.ok) return;
+  let detail = `Request failed with status ${response.status}`;
+  try {
+    const data = (await response.json()) as { detail?: string };
+    if (data.detail) {
+      detail = data.detail;
+    }
+  } catch {
+    // Response body wasn't JSON (or was empty) — fall back to the generic message above.
+  }
+  throw new ApiError(response.status, detail);
+}
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, query } = options;
 
@@ -43,18 +57,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  if (!response.ok) {
-    let detail = `Request failed with status ${response.status}`;
-    try {
-      const data = (await response.json()) as { detail?: string };
-      if (data.detail) {
-        detail = data.detail;
-      }
-    } catch {
-      // Response body wasn't JSON (or was empty) — fall back to the generic message above.
-    }
-    throw new ApiError(response.status, detail);
-  }
+  await throwIfError(response);
 
   if (response.status === 204) {
     return undefined as T;
@@ -71,18 +74,7 @@ export async function downloadFile(path: string): Promise<{ blob: Blob; filename
     headers: { "X-API-Key": API_KEY },
   });
 
-  if (!response.ok) {
-    let detail = `Request failed with status ${response.status}`;
-    try {
-      const data = (await response.json()) as { detail?: string };
-      if (data.detail) {
-        detail = data.detail;
-      }
-    } catch {
-      // Response body wasn't JSON (or was empty) — fall back to the generic message above.
-    }
-    throw new ApiError(response.status, detail);
-  }
+  await throwIfError(response);
 
   const disposition = response.headers.get("Content-Disposition") ?? "";
   const match = /filename="([^"]+)"/.exec(disposition);
