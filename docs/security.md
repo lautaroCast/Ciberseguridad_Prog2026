@@ -39,8 +39,13 @@ Tres niveles de secreto compartido, ninguno es un sistema de usuarios:
   n8n (al llamar a Scanner) y el Backend (al llamar a Reports), header
   `X-Internal-Token`.
 - **`N8N_WEBHOOK_SECRET`** — protege el Webhook Trigger de n8n
-  (`POST /webhook/vulnscan-pipeline`), la única entrada externa al
-  workflow. Lo manda el Backend (header `X-Webhook-Secret`, ver
+  (`POST /webhook/vulnscan-pipeline`), la entrada externa que usa el
+  Backend en producción. El mismo workflow tiene una segunda entrada, el
+  `Form Trigger`, deliberadamente sin este chequeo — existe para correr
+  el pipeline a mano sin el Backend ni el Frontend (demos, ver
+  `n8n/README.md`), acotada al mismo modelo de laboratorio de un solo
+  operador que ya rige el resto de este documento. Lo manda el Backend
+  (header `X-Webhook-Secret`, ver
   `backend/app/services/pipeline_service.py`); el nodo `Check Webhook
   Secret`, ubicado inmediatamente después del trigger, lo compara contra
   `$env.N8N_WEBHOOK_SECRET` y responde 401 (`Respond Unauthorized`) antes
@@ -136,6 +141,15 @@ de quedar oculto en un solo número.
   (incluidas ambas keys) viaja en texto plano dentro de `app-network`.
   Razonable para un laboratorio que corre en `localhost`; no lo sería si
   esto se expusiera fuera de la máquina de desarrollo.
+- **El contenedor `n8n` concentra las 4 API keys de la plataforma.**
+  Necesita `BACKEND_API_KEY`/`INTERNAL_API_KEY`/`N8N_CALLBACK_API_KEY`/
+  `N8N_WEBHOOK_SECRET` simultáneamente para orquestar los 3 servicios en
+  nombre de distintos roles, y `$env` está deliberadamente accesible
+  desde cualquier nodo (`N8N_BLOCK_ENV_ACCESS_IN_NODE=false`, ver
+  `n8n/README.md`). El modelo de keys separadas por responsable limita
+  el daño de una key filtrada por *otro* componente (Frontend, Backend)
+  — no limita lo que alguien con acceso al editor de n8n (protegido
+  solo por el basic-auth compartido) podría leer.
 - **La descarga de reportes ya no es un link directo.** Como un `<a href>`
   no puede llevar headers custom, `GET /reports/{id}/download` pasó a
   requerir `X-API-Key` — el Frontend lo resuelve haciendo `fetch` con el

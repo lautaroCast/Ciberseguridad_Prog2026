@@ -49,13 +49,14 @@ la pena revisar dos cosas si algo no encaja en tu máquina:
 docker compose up -d
 ```
 
-Esto construye y levanta los 9 servicios definidos en
+Esto construye y levanta los 10 servicios definidos en
 `docker-compose.yml`: base de datos, migraciones, backend, scanner,
-reports, n8n, frontend, y los dos targets del laboratorio (Juice Shop,
-DVWA). La primera vez puede tardar varios minutos — compila el Scanner
-Service (instala Nmap/Nikto/Nuclei/ZAP) y el Reports Service (instala
-WeasyPrint). Las siguientes veces es cuestión de segundos, salvo que
-cambiés una dependencia.
+reports, n8n, frontend, los dos targets del laboratorio (Juice Shop,
+DVWA), y `dvwa-init` (un job que corre una vez para dejar DVWA en el
+nivel de seguridad esperado). La primera vez puede tardar varios
+minutos — compila el Scanner Service (instala Nmap/Nikto/Nuclei/ZAP) y
+el Reports Service (instala WeasyPrint). Las siguientes veces es
+cuestión de segundos, salvo que cambiés una dependencia.
 
 ## 4. Verificar que todo esté saludable
 
@@ -63,10 +64,13 @@ cambiés una dependencia.
 docker compose ps
 ```
 
-Todos los servicios deberían mostrar `Up ... (healthy)`. Si alguno queda
-en `Created` sin arrancar, corré `docker compose up -d` de nuevo — a
-veces el primer intento no alcanza a esperar toda la cadena de
-dependencias entre servicios.
+`db`, `backend`, `scanner`, `reports`, `n8n`, `frontend`, `juice-shop` y
+`dvwa` deberían mostrar `Up ... (healthy)`. `migrate` y `dvwa-init` son
+jobs de un solo uso sin healthcheck — deberían mostrar `Exited (0)`, no
+`Up`; eso es el estado esperado, no una falla. Si alguno de los
+servicios de larga duración queda en `Created` sin arrancar, corré
+`docker compose up -d` de nuevo — a veces el primer intento no alcanza a
+esperar toda la cadena de dependencias entre servicios.
 
 Chequeo rápido por servicio (asumiendo los puertos por defecto):
 
