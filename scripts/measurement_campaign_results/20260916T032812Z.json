@@ -1,0 +1,329 @@
+{
+  "target_host": "juice-shop",
+  "runs": [
+    {
+      "run_index": 1,
+      "scan_id": "9a008c79-f2c6-4918-b369-36aee66892a3",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 433.872755,
+      "tool_execution_seconds": 431.610552,
+      "orchestration_seconds": 2.2622029999999995,
+      "tool_durations_seconds": {
+        "nmap": 12.691581,
+        "whatweb": 6.98781,
+        "nikto": 92.637355,
+        "nuclei": 145.788166,
+        "zap": 173.50564
+      },
+      "findings_count": 27,
+      "severity_distribution_overall": {
+        "medium": 3,
+        "info": 15,
+        "low": 9
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "medium": 2,
+          "info": 3,
+          "low": 1
+        },
+        "nuclei": {
+          "info": 12,
+          "medium": 1
+        },
+        "nikto": {
+          "low": 8
+        }
+      }
+    },
+    {
+      "run_index": 2,
+      "scan_id": "1a2b5730-112b-452d-a7d3-2916bd7b548e",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 216.942449,
+      "tool_execution_seconds": 215.804091,
+      "orchestration_seconds": 1.1383580000000109,
+      "tool_durations_seconds": {
+        "nmap": 11.91435,
+        "whatweb": 5.863317,
+        "nikto": 92.364872,
+        "nuclei": 60.322152,
+        "zap": 45.3394
+      },
+      "findings_count": 10,
+      "severity_distribution_overall": {
+        "info": 1,
+        "low": 9
+      },
+      "severity_distribution_by_tool": {
+        "nuclei": {
+          "info": 1
+        },
+        "nikto": {
+          "low": 9
+        }
+      }
+    },
+    {
+      "run_index": 3,
+      "scan_id": "4e45a023-37e4-4458-8120-b6e642b96b34",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 182.913102,
+      "tool_execution_seconds": 182.375207,
+      "orchestration_seconds": 0.5378950000000202,
+      "tool_durations_seconds": {
+        "nmap": 1.728837,
+        "whatweb": 3.179325,
+        "nikto": 1.163705,
+        "nuclei": 6.694211,
+        "zap": 169.609129
+      },
+      "findings_count": 7,
+      "severity_distribution_overall": {
+        "low": 2,
+        "info": 3,
+        "medium": 2
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "low": 1,
+          "info": 3,
+          "medium": 2
+        },
+        "nikto": {
+          "low": 1
+        }
+      }
+    },
+    {
+      "run_index": 4,
+      "scan_id": "f132702d-3f47-46c4-9785-3bada7b37c10",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 375.113977,
+      "tool_execution_seconds": 374.360867,
+      "orchestration_seconds": 0.7531099999999924,
+      "tool_durations_seconds": {
+        "nmap": 11.848968,
+        "whatweb": 5.597919,
+        "nikto": 92.275886,
+        "nuclei": 93.006766,
+        "zap": 171.631328
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "info": 15,
+        "low": 14,
+        "medium": 3
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 1,
+          "medium": 2
+        },
+        "nuclei": {
+          "info": 12,
+          "medium": 1
+        },
+        "nikto": {
+          "low": 13
+        }
+      }
+    },
+    {
+      "run_index": 5,
+      "scan_id": "a131e6d0-d559-481b-9a7e-f9dcf7e08081",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 314.246205,
+      "tool_execution_seconds": 313.710781,
+      "orchestration_seconds": 0.5354239999999777,
+      "tool_durations_seconds": {
+        "nmap": 11.85426,
+        "whatweb": 5.41539,
+        "nikto": 120.036844,
+        "nuclei": 6.561855,
+        "zap": 169.842432
+      },
+      "findings_count": 6,
+      "severity_distribution_overall": {
+        "info": 3,
+        "low": 1,
+        "medium": 2
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 1,
+          "medium": 2
+        }
+      }
+    },
+    {
+      "run_index": 6,
+      "scan_id": "9b880006-2e1a-4615-804d-f14d2a29417f",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 376.548637,
+      "tool_execution_seconds": 375.875142,
+      "orchestration_seconds": 0.6734950000000026,
+      "tool_durations_seconds": {
+        "nmap": 13.927771,
+        "whatweb": 5.507315,
+        "nikto": 92.150896,
+        "nuclei": 91.847067,
+        "zap": 172.442093
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "medium": 3,
+        "low": 14,
+        "info": 15
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "medium": 2,
+          "low": 1,
+          "info": 3
+        },
+        "nuclei": {
+          "info": 12,
+          "medium": 1
+        },
+        "nikto": {
+          "low": 13
+        }
+      }
+    },
+    {
+      "run_index": 7,
+      "scan_id": "fd363030-f692-4b87-acae-1d8504180d7d",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 220.932841,
+      "tool_execution_seconds": 220.263292,
+      "orchestration_seconds": 0.6695489999999893,
+      "tool_durations_seconds": {
+        "nmap": 12.946477,
+        "whatweb": 5.414225,
+        "nikto": 91.948114,
+        "nuclei": 67.565466,
+        "zap": 42.38901
+      },
+      "findings_count": 8,
+      "severity_distribution_overall": {
+        "low": 8
+      },
+      "severity_distribution_by_tool": {
+        "nikto": {
+          "low": 8
+        }
+      }
+    },
+    {
+      "run_index": 8,
+      "scan_id": "78bcd0cb-49dc-4675-9cb8-65c4ddf4e8e5",
+      "target_host": "juice-shop",
+      "status": "failed",
+      "pipeline_total_seconds": 0.783423,
+      "tool_execution_seconds": 0.529916,
+      "orchestration_seconds": 0.2535069999999999,
+      "tool_durations_seconds": {
+        "nmap": 0.529916
+      },
+      "findings_count": 0,
+      "severity_distribution_overall": {},
+      "severity_distribution_by_tool": {}
+    },
+    {
+      "run_index": 9,
+      "scan_id": "add77fa4-a854-4169-98fc-1b7ccdb234a9",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 389.209507,
+      "tool_execution_seconds": 388.479879,
+      "orchestration_seconds": 0.7296279999999911,
+      "tool_durations_seconds": {
+        "nmap": 11.937947,
+        "whatweb": 5.598573,
+        "nikto": 92.447839,
+        "nuclei": 94.167765,
+        "zap": 184.327755
+      },
+      "findings_count": 32,
+      "severity_distribution_overall": {
+        "info": 15,
+        "medium": 3,
+        "low": 14
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "medium": 2,
+          "low": 1
+        },
+        "nuclei": {
+          "info": 12,
+          "medium": 1
+        },
+        "nikto": {
+          "low": 13
+        }
+      }
+    },
+    {
+      "run_index": 10,
+      "scan_id": "38782389-3871-4fd9-9c56-234c11768cd9",
+      "target_host": "juice-shop",
+      "status": "completed",
+      "pipeline_total_seconds": 346.52814,
+      "tool_execution_seconds": 345.861873,
+      "orchestration_seconds": 0.6662670000000048,
+      "tool_durations_seconds": {
+        "nmap": 11.850986,
+        "whatweb": 5.494345,
+        "nikto": 113.896477,
+        "nuclei": 41.241153,
+        "zap": 173.378912
+      },
+      "findings_count": 14,
+      "severity_distribution_overall": {
+        "info": 3,
+        "low": 9,
+        "medium": 2
+      },
+      "severity_distribution_by_tool": {
+        "zap": {
+          "info": 3,
+          "low": 1,
+          "medium": 2
+        },
+        "nikto": {
+          "low": 8
+        }
+      }
+    }
+  ],
+  "environment": {
+    "captured_at": "2026-09-16T02:39:16.278852+00:00",
+    "docker_version": "Docker version 29.0.1, build eedd969",
+    "docker_compose_version": "Docker Compose version v2.40.3-desktop.1",
+    "host_cpu": "AMD Ryzen 7 5700U with Radeon Graphics",
+    "host_ram_gb": "31.4",
+    "host_disk_gb": "475.7",
+    "host_os": "Microsoft Windows 11 Home Single Language 10.0.26200",
+    "scanner_tool_versions": {
+      "nmap": "Nmap version 7.95 ( https://nmap.org )",
+      "whatweb": "WhatWeb version 0.5.5 ( https://www.morningstarsecurity.com/research/whatweb/ )",
+      "nikto": "Nikto 2.6.0 (LW 2.5)",
+      "nuclei_engine": "v3.11.0",
+      "nuclei_templates": "v10.4.8 (/home/appuser/nuclei-templates)",
+      "zap": "2.17.0"
+    },
+    "note": "Scanner tool versions captured live from the running Scanner container (docker compose exec scanner ...), not from the Dockerfile pins \u2014 nuclei's binary is downloaded from GitHub's `latest` release at build time and its template set is updated at build time too, so neither is actually pinned to a fixed version; the only reproducible record is what was running during this campaign."
+  }
+}
