@@ -36,10 +36,6 @@ export interface ScanRead {
   created_at: string;
 }
 
-export interface ScanCreate {
-  triggered_by?: string | null;
-}
-
 export interface CveReferenceRead {
   id: string;
   cve_id: string;

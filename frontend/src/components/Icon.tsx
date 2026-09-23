@@ -87,16 +87,6 @@ export function AlertIcon({ size = 14, className }: IconProps) {
   );
 }
 
-export function WarnIcon({ size = 15, className }: IconProps) {
-  return (
-    <svg {...base(size, className)} strokeWidth={2.2}>
-      <path d="M12 8.5V13" />
-      <path d="M12 16.5v.01" />
-      <path d="M10.3 3.9L2.6 17.4A1.9 1.9 0 0 0 4.3 20.3h15.4a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0z" />
-    </svg>
-  );
-}
-
 export function InfoIcon({ size = 14, className }: IconProps) {
   return (
     <svg {...base(size, className)} strokeWidth={2.2}>
