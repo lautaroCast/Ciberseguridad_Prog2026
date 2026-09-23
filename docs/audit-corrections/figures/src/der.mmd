@@ -4,9 +4,9 @@ erDiagram
     scans ||--o{ scan_tasks : "scan"
     scans ||--o{ services : "scan"
     scans ||--o{ technologies : "scan"
+    scan_tasks ||--o{ findings : "scan task"
     services ||--o{ findings : "service"
     scans ||--o{ findings : "scan"
-    scan_tasks ||--o{ findings : "scan task"
     findings ||--o{ cve_references : "finding"
 
     targets {
@@ -19,17 +19,9 @@ erDiagram
         UUID id PK
         DATETIME created_at
     }
-    users {
-        VARCHAR email
-        VARCHAR hashed_password
-        VARCHAR full_name
-        VARCHAR role
-        BOOLEAN is_active
-        UUID id PK
-        DATETIME created_at
-    }
     scans {
         UUID target_id FK
+        VARCHAR host
         VARCHAR status
         VARCHAR pipeline_run_id
         VARCHAR triggered_by
