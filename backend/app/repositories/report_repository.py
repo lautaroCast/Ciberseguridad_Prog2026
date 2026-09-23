@@ -26,6 +26,18 @@ def get_report(db: Session, report_id: uuid.UUID) -> Report | None:
     return db.get(Report, report_id)
 
 
+def get_report_by_scan_and_format(
+    db: Session, scan_id: uuid.UUID, format: ReportFormat
+) -> Report | None:
+    """Backs the idempotent-replay path in report_service.generate_report -
+    looked up only after create_report's insert hits the unique
+    (scan_id, format) index, to return the row a retried Generate Report
+    call already created instead of duplicating it. Same idiom as
+    scan_task_repository.get_scan_task_by_scan_and_tool."""
+    stmt = select(Report).where(Report.scan_id == scan_id, Report.format == format)
+    return db.scalars(stmt).first()
+
+
 def list_reports_for_scan(
     db: Session, scan_id: uuid.UUID, *, limit: int | None = None, offset: int = 0
 ) -> list[Report]:

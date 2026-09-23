@@ -32,7 +32,12 @@ from app.repositories import (
     service_repository,
     technology_repository,
 )
-from app.services.scan_service import TERMINAL_STATUSES, ScanAlreadyTerminalError, get_scan_or_raise
+from app.services.scan_service import (
+    TERMINAL_STATUSES,
+    ScanAlreadyTerminalError,
+    get_scan_for_update_or_raise,
+    get_scan_or_raise,
+)
 
 
 def list_scan_tasks_for_scan(
@@ -76,15 +81,23 @@ def ingest_scan_task(
     parsed: Any | None,
     error_message: str | None,
 ) -> IngestResult:
-    scan = get_scan_or_raise(db, scan_id)  # 404s before writing anything if the scan doesn't exist
+    # Locked (not a plain read) for the rest of this transaction: a
+    # retried/late Ingest node (n8n's retryOnFail, or a manual execution
+    # retry from the n8n UI) can land while Complete Scan is concurrently
+    # running for the same scan - without the lock, both could read
+    # "not terminal yet" before either commits, and this function's rows
+    # would attach silently to a scan the Backend already told every
+    # caller is "done" (same race `scan_repository.complete_scan`'s own
+    # docstring already flags its conditional UPDATE as not covering,
+    # since that guard only protects writes to `scans` itself, not to
+    # ScanTask/Service/Technology/Finding). Locking here makes a
+    # concurrent complete_scan wait until this transaction ends, instead
+    # of both racing to read a status that's about to change.
+    scan = get_scan_for_update_or_raise(db, scan_id)
     if scan.status in TERMINAL_STATUSES:
-        # A retried/late Ingest node (n8n's retryOnFail, or a manual
-        # execution retry from the n8n UI) can land after Complete Scan
-        # already ran — without this, its Service/Technology/Finding rows
-        # would attach silently to a scan the Backend already told every
-        # caller is "done". Same exception + 409 handler already used for
-        # a double POST /scans/{id}/complete, reused here for the same
-        # class of conflict.
+        # Same exception + 409 handler already used for a double
+        # POST /scans/{id}/complete, reused here for the same class of
+        # conflict.
         raise ScanAlreadyTerminalError(str(scan_id))
 
     try:

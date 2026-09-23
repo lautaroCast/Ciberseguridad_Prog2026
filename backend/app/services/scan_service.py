@@ -30,11 +30,17 @@ class ScanNotFoundError(Exception):
 
 
 class ScanAlreadyTerminalError(Exception):
-    """Raised when POST /scans/{id}/complete targets a scan that already
-    reached a terminal status — nothing calls this twice by design today
-    (n8n's Complete Scan node runs once per pipeline), so a repeat call is
-    treated as a conflict rather than silently overwriting the first
-    outcome."""
+    """Raised when a scan that's already terminal is targeted with a
+    completion that conflicts with its current status - `POST
+    /scans/{id}/complete` asking for a *different* status than the one
+    already persisted, or `ingest_scan_task` attaching new rows to a scan
+    that finished in the meantime.
+
+    A completion that matches the status already persisted (n8n's
+    `Complete Scan` node retrying after its own response was lost/timed
+    out, `retryOnFail: true`) is not this case - `complete_scan` below
+    treats that as an idempotent repeat and returns the existing scan
+    instead of raising this."""
 
 
 class ScanAlreadyRunningError(Exception):
@@ -84,6 +90,17 @@ def get_scan_or_raise(db: Session, scan_id: uuid.UUID) -> Scan:
     return scan
 
 
+def get_scan_for_update_or_raise(db: Session, scan_id: uuid.UUID) -> Scan:
+    """Same as `get_scan_or_raise`, but locks the row for the rest of the
+    caller's transaction. Only `scan_task_service.ingest_scan_task` should
+    use this - every other caller just reads, and locking on a plain read
+    would serialize requests that don't need it."""
+    scan = scan_repository.get_scan_for_update(db, scan_id)
+    if scan is None:
+        raise ScanNotFoundError(str(scan_id))
+    return scan
+
+
 def complete_scan(
     db: Session,
     scan_id: uuid.UUID,
@@ -94,6 +111,15 @@ def complete_scan(
 ) -> Scan:
     scan = get_scan_or_raise(db, scan_id)
     if scan.status in TERMINAL_STATUSES:
+        if scan.status == status:
+            # Idempotent retry: an earlier attempt already committed this
+            # exact completion but its response was lost/timed out before
+            # n8n saw it (Complete Scan's own retryOnFail) - same status
+            # means same completion, so return the current state instead
+            # of a conflict. A *different* status (e.g. a stray retry
+            # after the scan already failed a different way) is still a
+            # real conflict, handled below.
+            return scan
         # Optimistic fast path only, same caveat as target_service.
         # register_target's own pre-check: not atomic with the write
         # below. The real guard is the conditional UPDATE's WHERE clause
@@ -108,5 +134,11 @@ def complete_scan(
         forbidden_statuses=TERMINAL_STATUSES,
     )
     if updated is None:
+        # Lost the race between the pre-check above and the conditional
+        # UPDATE - a concurrent completion landed in between. Re-fetch and
+        # apply the exact same idempotent-retry rule as the pre-check.
+        current = get_scan_or_raise(db, scan_id)
+        if current.status == status:
+            return current
         raise ScanAlreadyTerminalError(str(scan_id))
     return updated

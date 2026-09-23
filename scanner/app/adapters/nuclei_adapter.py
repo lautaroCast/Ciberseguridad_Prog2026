@@ -39,4 +39,20 @@ class NucleiAdapter(ScannerAdapter):
         return command
 
     def parse_output(self, raw_output: str) -> list[dict[str, Any]]:
-        return [json.loads(line) for line in raw_output.strip().splitlines() if line.strip()]
+        results: list[dict[str, Any]] = []
+        for line in raw_output.strip().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                results.append(json.loads(line))
+            except json.JSONDecodeError:
+                # A single truncated/corrupted JSONL line (nuclei killed
+                # mid-write - OOM, an external kill signal outside this
+                # process's own subprocess.run(timeout=...)) shouldn't drop
+                # every other finding already reported in the same run -
+                # same "one malformed entry doesn't sink the batch"
+                # precedent as app.normalization.nmap_normalizer. Skip just
+                # this line.
+                continue
+        return results

@@ -33,6 +33,50 @@ def _ingest(db_session, scan_id, **overrides):
     return scan_task_service.ingest_scan_task(db_session, scan_id, **kwargs)
 
 
+@pytest.mark.postgres
+def test_ingest_locks_scan_row_blocking_concurrent_complete_scan(postgres_session_pair):
+    """Ronda L: the terminal-status check in ingest_scan_task was a plain
+    SELECT-then-check in Python with no DB-level backstop — unlike
+    scan_repository.complete_scan's own conditional UPDATE, nothing kept a
+    concurrent complete_scan from reading "not terminal yet" and
+    committing while this transaction was still writing rows for the same
+    scan. This proves the fix (get_scan_for_update_or_raise's row lock)
+    actually blocks a concurrent writer, which a single-session test can't
+    exercise at all."""
+    import threading
+
+    from models import ScanStatus
+
+    from app.services.scan_service import complete_scan, get_scan_for_update_or_raise
+
+    session_a, session_b = postgres_session_pair
+    scan = _make_scan(session_a)
+    scan_id = scan.id
+    session_a.commit()  # make the scan visible to session_b
+
+    # Session A takes the lock (the first thing ingest_scan_task does) and
+    # holds its transaction open — standing in for "still normalizing and
+    # inserting Service/Technology/Finding rows".
+    get_scan_for_update_or_raise(session_a, scan_id)
+
+    result: dict = {}
+
+    def _try_complete():
+        result["scan"] = complete_scan(
+            session_b, scan_id, status=ScanStatus.COMPLETED, error_message=None
+        )
+
+    thread = threading.Thread(target=_try_complete)
+    thread.start()
+    thread.join(timeout=0.5)
+    assert thread.is_alive(), "complete_scan should block on session A's row lock, not proceed"
+
+    session_a.commit()  # session A "finishes ingesting"
+    thread.join(timeout=5)
+    assert not thread.is_alive(), "complete_scan should unblock once the lock is released"
+    assert result["scan"].status == ScanStatus.COMPLETED
+
+
 def test_ingest_into_an_already_terminal_scan_raises(db_session):
     """Ronda J: get_scan_or_raise only checked the scan exists, never its
     status — a late/retried Ingest node landing after Complete Scan

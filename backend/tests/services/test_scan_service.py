@@ -61,6 +61,26 @@ def test_complete_scan_twice_raises(db_session):
         scan_service.complete_scan(db_session, scan.id, status=ScanStatus.FAILED, error_message="x")
 
 
+def test_complete_scan_twice_with_same_status_is_idempotent(db_session):
+    """Ronda L: Complete Scan's own retryOnFail (n8n) can re-send the same
+    completion after its first response was lost/timed out — the first
+    attempt already committed, so this must return the existing scan, not
+    a false 409 that would stall the pipeline before Generate Report."""
+    target = _make_target(db_session)
+    scan = scan_service.create_scan(db_session, target_id=target.id, triggered_by=None)
+    first = scan_service.complete_scan(
+        db_session, scan.id, status=ScanStatus.COMPLETED, error_message=None
+    )
+
+    retried = scan_service.complete_scan(
+        db_session, scan.id, status=ScanStatus.COMPLETED, error_message=None
+    )
+
+    assert retried.id == first.id
+    assert retried.status == ScanStatus.COMPLETED
+    assert retried.finished_at == first.finished_at
+
+
 def test_complete_scan_persists_pipeline_run_id(db_session):
     # n8n sends its own $execution.id on the Complete Scan / Mark Scan
     # Failed nodes so this column (docs/database.md) actually correlates

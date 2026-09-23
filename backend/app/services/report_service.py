@@ -13,6 +13,7 @@ import uuid
 
 import httpx
 from models import Report, ReportFormat
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -104,13 +105,35 @@ def generate_report(db: Session, scan_id: uuid.UUID, format: str) -> Report:
 
     if not is_safe_filename(file_path):
         raise InvalidReportFilePathError(file_path)
-    return report_repository.create_report(
-        db,
-        scan_id=scan_id,
-        format=report_format,
-        file_path=file_path,
-        generated_by="backend",
-    )
+    try:
+        return report_repository.create_report(
+            db,
+            scan_id=scan_id,
+            format=report_format,
+            file_path=file_path,
+            generated_by="backend",
+        )
+    except IntegrityError:
+        # ix_reports_scan_id_format (unique) caught a retried Generate
+        # Report - n8n's Generate Report node retries on transient
+        # failures (same 60s budget as this function's own httpx timeout
+        # above, with no margin between the two), so this means the first
+        # attempt already rendered the file and committed the Report row;
+        # the Reports Service's own atomic overwrite (same deterministic
+        # "{scan_id}.{ext}" filename every time) already made re-rendering
+        # here harmless. Return the existing row idempotently instead of
+        # duplicating it - same idiom as
+        # scan_task_service.ingest_scan_task's IntegrityError catch.
+        db.rollback()
+        existing = report_repository.get_report_by_scan_and_format(db, scan_id, report_format)
+        if existing is None:
+            # The unique index didn't explain this IntegrityError after all
+            # (e.g. a FK violation because the scan was deleted in the
+            # window between get_scan_or_raise above and this insert) -
+            # same idiom as scan_task_service.ingest_scan_task's own
+            # re-raise for the identical ambiguity.
+            raise
+        return existing
 
 
 def list_reports_for_scan(

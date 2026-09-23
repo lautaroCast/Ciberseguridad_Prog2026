@@ -25,7 +25,15 @@ class Report(UUIDPrimaryKeyMixin, Base):
     """
 
     __tablename__ = "reports"
-    __table_args__ = (Index("ix_reports_scan_id", "scan_id"),)
+    # Unique (not just indexed) as of the Ronda L migration
+    # (unique_report_per_scan_format): Generate Report's own retryOnFail
+    # (n8n) can re-send the same POST /scans/{id}/reports after a slow/
+    # lost response from a first attempt that already committed - without
+    # this, the retry duplicates a Report row for the same (scan, format).
+    # report_service.generate_report catches the resulting IntegrityError
+    # and returns the existing row, same idiom as
+    # ix_scan_tasks_scan_id_tool_name for the identical class of problem.
+    __table_args__ = (Index("ix_reports_scan_id_format", "scan_id", "format", unique=True),)
 
     scan_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("scans.id", ondelete="CASCADE"), nullable=False

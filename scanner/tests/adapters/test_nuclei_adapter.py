@@ -1,7 +1,3 @@
-import json
-
-import pytest
-
 from app.adapters.nuclei_adapter import NucleiAdapter
 
 
@@ -49,10 +45,17 @@ def test_build_command_with_auth_cookie_adds_header_flag():
     assert command[idx + 1] == "Cookie: security=low; PHPSESSID=abc123"
 
 
-def test_malformed_jsonl_line_raises():
+def test_malformed_jsonl_line_is_skipped_other_lines_kept():
+    # A truncated/corrupted line (nuclei killed mid-write) shouldn't drop
+    # every other finding already reported in the same run - same
+    # tolerance nmap_normalizer already applies to a malformed entry.
     adapter = NucleiAdapter()
-    with pytest.raises(json.JSONDecodeError):
-        adapter.parse_output('{"template-id": "a"}\n{"template-id": truncated')
+    result = adapter.parse_output(
+        '{"template-id": "before"}\n'
+        '{"template-id": truncated\n'
+        '{"template-id": "after"}\n'
+    )
+    assert [item["template-id"] for item in result] == ["before", "after"]
 
 
 def test_parses_multiple_jsonl_lines():

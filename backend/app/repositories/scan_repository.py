@@ -43,6 +43,24 @@ def get_scan(db: Session, scan_id: uuid.UUID) -> Scan | None:
     return db.get(Scan, scan_id)
 
 
+def get_scan_for_update(db: Session, scan_id: uuid.UUID) -> Scan | None:
+    """Same lookup as `get_scan`, but takes a row lock held until the
+    caller's transaction ends (commit or rollback).
+
+    Only `scan_task_service.ingest_scan_task` uses this — a long-running
+    transaction that writes to `ScanTask`/`Service`/`Technology`/`Finding`,
+    not to `scans` itself, so it can't lean on `complete_scan`'s own
+    conditional UPDATE (that guard only protects writes to the `scans`
+    row). Locking the `Scan` row here makes a concurrent `complete_scan`
+    wait until this transaction commits or rolls back, closing the window
+    where a retried/late ingest could attach new rows to a scan that
+    another transaction completes in the meantime. See
+    scan_task_service.ingest_scan_task for the full reasoning.
+    """
+    stmt = select(Scan).where(Scan.id == scan_id).with_for_update()
+    return db.execute(stmt).scalar_one_or_none()
+
+
 def complete_scan(
     db: Session,
     scan_id: uuid.UUID,

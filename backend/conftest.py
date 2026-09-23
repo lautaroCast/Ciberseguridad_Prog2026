@@ -130,6 +130,53 @@ def db_session(sqlite_engine) -> Session:
 
 
 @pytest.fixture
+def postgres_session_pair():
+    """Two independent `Session`s — separate connections/transactions — on
+    one shared throwaway schema.
+
+    `postgres_session` above gives one session per call, each in its own
+    fresh schema, which is right for most tests but can't exercise real
+    cross-transaction locking (e.g. a row lock from `.with_for_update()`
+    blocking a concurrent writer) — that needs two sessions that can
+    actually see and contend for the same row. Same schema-per-test
+    isolation and reachability-skip as `postgres_session`; tests using
+    this must be marked `@pytest.mark.postgres` for the same reason.
+    """
+    from models import Base
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url.startswith("postgresql"):
+        pytest.skip("DATABASE_URL is not a Postgres URL — skipping postgres-only test")
+
+    schema = f"pytest_{uuid.uuid4().hex[:8]}"
+    setup_engine = create_engine(database_url)
+    try:
+        with setup_engine.connect() as conn:
+            conn.execute(text(f'CREATE SCHEMA "{schema}"'))
+            conn.commit()
+    except OperationalError as exc:
+        pytest.skip(f"Postgres not reachable: {exc}")
+
+    engine = setup_engine.execution_options(schema_translate_map={None: schema})
+    Base.metadata.create_all(engine)
+
+    session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    session_a = session_factory()
+    session_b = session_factory()
+    try:
+        yield session_a, session_b
+    finally:
+        session_a.rollback()
+        session_a.close()
+        session_b.rollback()
+        session_b.close()
+        with setup_engine.connect() as conn:
+            conn.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+            conn.commit()
+        setup_engine.dispose()
+
+
+@pytest.fixture
 def postgres_session():
     """A `Session` against the *real* Postgres instance (`DATABASE_URL`),
     isolated in a throwaway schema so it never touches real dev data.
