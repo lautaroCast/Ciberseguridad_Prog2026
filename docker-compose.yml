@@ -389,6 +389,10 @@ services:
         # docs/security.md for what this does and doesn't protect against
         # once it's baked into a public JS bundle.
         VITE_API_KEY: ${BACKEND_API_KEY}
+        # Mirrors BACKEND_ALLOWED_LAB_HOSTS the same way
+        # SCANNER_ALLOWED_LAB_HOSTS does below, so the target-host picker
+        # can't silently drift from what the Backend actually accepts.
+        VITE_LAB_HOSTS: ${BACKEND_ALLOWED_LAB_HOSTS}
     container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-frontend
     restart: unless-stopped
     # nginx's master process needs root to bind port 80 and to set up its
@@ -432,7 +436,12 @@ services:
   # `internal: true`.
   # --------------------------------------------------------------------
   juice-shop:
-    image: bkimminich/juice-shop:latest
+    # Pinned to the exact version the ground-truth catalog
+    # (scripts/ground_truth/juice_shop_catalog.json) was built against —
+    # same reasoning as the n8n pin above: an unannounced upstream bump
+    # would silently change which vulnerabilities exist here, invalidating
+    # the recall/precision measurements without anything flagging it.
+    image: bkimminich/juice-shop:v20.1.1
     container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-juice-shop
     restart: unless-stopped
     ports:
@@ -455,7 +464,11 @@ services:
       start_period: 20s
 
   dvwa:
-    image: vulnerables/web-dvwa:latest
+    # vulnerables/web-dvwa publishes no semantic version tags, so a tag
+    # pin (like juice-shop above) isn't available — pinned by digest
+    # instead, to the image this project's ground-truth catalog and
+    # measurement campaigns were actually run against.
+    image: vulnerables/web-dvwa@sha256:dae203fe11646a86937bf04db0079adef295f426da68a92b40e3b181f337daa7
     container_name: ${COMPOSE_PROJECT_NAME:-vulnscan}-dvwa
     restart: unless-stopped
     ports:

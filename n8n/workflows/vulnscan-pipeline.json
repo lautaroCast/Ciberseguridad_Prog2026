@@ -158,6 +158,52 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "9f1a2b3c-4d5e-4a1a-9a11-1000000000b1",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-1000000000b2",
+      "name": "IF: Create Scan Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4368,
+        1728
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Create Scan (Manual) failed after 3 retries: {{ $json.error }}. A Scan row may already exist for this target (the first attempt's response could have been lost, not the request) - its id was lost here, so this branch cannot mark it failed. Check manually."
+      },
+      "id": "9f1a2b3c-4d5e-4a1a-9a11-1000000000b3",
+      "name": "Stop: Create Scan Failed",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        4368,
+        1856
+      ]
+    },
+    {
+      "parameters": {
         "url": "=http://backend:8000/targets/{{ $json.target_id }}",
         "options": {
           "timeout": 15000
@@ -668,7 +714,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ {} }}",
         "options": {
-          "timeout": 60000
+          "timeout": 75000
         },
         "sendHeaders": true,
         "headerParameters": {
@@ -725,7 +771,7 @@
               "responseFormat": "file"
             }
           },
-          "timeout": 30000
+          "timeout": 40000
         },
         "sendHeaders": true,
         "headerParameters": {
@@ -1221,6 +1267,24 @@
     },
     "Create Scan (Manual)": {
       "main": [
+        [
+          {
+            "node": "IF: Create Scan Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Create Scan Failed": {
+      "main": [
+        [
+          {
+            "node": "Stop: Create Scan Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Get Target (Manual)",

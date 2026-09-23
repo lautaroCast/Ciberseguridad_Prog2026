@@ -81,6 +81,61 @@ def test_complete_scan_twice_with_same_status_is_idempotent(db_session):
     assert retried.finished_at == first.finished_at
 
 
+@pytest.mark.postgres
+def test_complete_scan_loses_race_returns_existing_scan(postgres_session_pair, monkeypatch):
+    """Ronda M: scan_service.py:136-143 (the conditional UPDATE losing the
+    race between this function's own pre-check and its write) had no
+    test - only the pre-check's idempotent-retry path was covered above
+    (test_complete_scan_twice_with_same_status_is_idempotent). This forces
+    the actual race window: session B's pre-check reads RUNNING, then
+    session A's full completion commits before session B's own UPDATE
+    runs, so B's conditional UPDATE affects 0 rows and must fall back to
+    re-fetching and applying the same idempotent-retry rule - proving the
+    fallback branch itself works, not just the pre-check."""
+    import threading
+
+    from app.repositories import scan_repository
+
+    session_a, session_b = postgres_session_pair
+    target = _make_target(session_a)
+    scan = scan_service.create_scan(session_a, target_id=target.id, triggered_by=None)
+    scan_id = scan.id
+    session_a.commit()  # make the scan visible to session_b
+
+    precheck_done = threading.Event()
+    proceed = threading.Event()
+    real_repo_complete_scan = scan_repository.complete_scan
+
+    def _delayed_repo_complete_scan(db, *args, **kwargs):
+        if db is session_b:
+            precheck_done.set()
+            assert proceed.wait(timeout=5), "session A never signalled it had committed"
+        return real_repo_complete_scan(db, *args, **kwargs)
+
+    monkeypatch.setattr(scan_repository, "complete_scan", _delayed_repo_complete_scan)
+
+    result: dict = {}
+
+    def _try_complete_b():
+        result["scan"] = scan_service.complete_scan(
+            session_b, scan_id, status=ScanStatus.COMPLETED, error_message=None
+        )
+
+    thread = threading.Thread(target=_try_complete_b)
+    thread.start()
+    assert precheck_done.wait(timeout=5), "session B should have reached its own UPDATE call"
+
+    # Session A completes for real while B is paused right before its own
+    # UPDATE - B's pre-check already read RUNNING, so it must lose the race.
+    scan_service.complete_scan(session_a, scan_id, status=ScanStatus.COMPLETED, error_message=None)
+    session_a.commit()
+
+    proceed.set()
+    thread.join(timeout=5)
+    assert not thread.is_alive(), "session B should have returned once unblocked, not hung"
+    assert result["scan"].status == ScanStatus.COMPLETED
+
+
 def test_complete_scan_persists_pipeline_run_id(db_session):
     # n8n sends its own $execution.id on the Complete Scan / Mark Scan
     # Failed nodes so this column (docs/database.md) actually correlates

@@ -261,6 +261,11 @@ export function TargetsPage() {
                       to={`/scans/${latest.id}`}
                       className="row"
                       style={{ gap: 6, color: running ? "var(--accent)" : statusColor(latest.status) }}
+                      aria-label={
+                        running
+                          ? statusLabel(latest.status)
+                          : `${statusLabel(latest.status)}, ${formatDateTime(latest.created_at)}`
+                      }
                     >
                       <StatusIcon status={latest.status} size={12} />
                       <span style={{ color: "var(--ink-2)" }}>

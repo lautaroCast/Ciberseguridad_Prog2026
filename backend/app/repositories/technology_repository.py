@@ -1,10 +1,13 @@
 """Persistence layer for `Technology` — plain insert, no dedup.
 
 Unlike `services`, `technologies` has no unique constraint to upsert on:
-the same technology name detected differently across runs (e.g. a version
-string appearing on a later scan) is kept as separate historical rows
-rather than overwritten, consistent with `Scan` being an append-only
-execution record.
+the same technology name detected differently across *scans* (e.g. a
+version string appearing on a later scan of the same target) is kept as
+separate historical rows rather than overwritten, consistent with `Scan`
+being an append-only execution record. (Within a single scan, a tool can
+no longer run — and re-ingest — twice: `ix_scan_tasks_scan_id_tool_name`
+is unique since the 9th independent evaluation, so this dedup absence is
+purely a cross-scan design choice, not a gap left over from that.)
 """
 
 import uuid
