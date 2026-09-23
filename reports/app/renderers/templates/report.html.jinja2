@@ -35,6 +35,7 @@
 
   <table class="meta-table">
     <tr><td>Target</td><td>{{ target.name }} ({{ target.host }})</td></tr>
+    <tr><td>Descripción</td><td>{{ target.description or "-" }}</td></tr>
     <tr><td>Scan ID</td><td>{{ scan.id }}</td></tr>
     <tr><td>Estado</td><td>{{ scan.status }}</td></tr>
     <tr><td>Iniciado</td><td>{{ scan.started_at or "-" }}</td></tr>
@@ -70,7 +71,7 @@
         <td>{{ f.evidence or "-" }}</td>
         <td>
           {% for cve in f.cve_references %}
-            <div class="cve">{{ cve.cve_id }}{% if cve.cvss_score %} (CVSS {{ cve.cvss_score }}){% endif %}</div>
+            <div class="cve">{{ cve.cve_id }}{% if cve.cvss_score %} (CVSS {{ cve.cvss_score }}{% if cve.cvss_vector %} {{ cve.cvss_vector }}{% endif %}){% endif %}{% if cve.description %}<br><span style="color:#666">{{ cve.description }}</span>{% endif %}{% if cve.source_url %}<br><span style="color:#999;font-size:10px">{{ cve.source_url }}</span>{% endif %}</div>
           {% else %}-{% endfor %}
         </td>
       </tr>

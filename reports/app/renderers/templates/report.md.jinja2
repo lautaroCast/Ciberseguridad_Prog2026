@@ -1,6 +1,7 @@
 # VulnScan Platform — Reporte de Escaneo
 
 **Target:** {{ target.name }} ({{ target.host }})
+**Descripción:** {{ target.description or "-" }}
 **Scan ID:** {{ scan.id }}
 **Estado:** {{ scan.status }}
 **Iniciado:** {{ scan.started_at or "-" }}
@@ -31,7 +32,9 @@
 {% endif -%}
 {% if f.cvss_score %}- **CVSS:** {{ f.cvss_score }}{% if f.cvss_vector %} ({{ f.cvss_vector }}){% endif %}
 {% endif -%}
-{% if f.cve_references %}- **CVE:** {% for cve in f.cve_references %}{{ cve.cve_id }}{% if not loop.last %}, {% endif %}{% endfor %}
+{% if f.cve_references %}- **CVE:**
+{% for cve in f.cve_references %}  - {{ cve.cve_id }}{% if cve.cvss_score %} (CVSS {{ cve.cvss_score }}{% if cve.cvss_vector %} {{ cve.cvss_vector }}{% endif %}){% endif %}{% if cve.description %} — {{ cve.description }}{% endif %}{% if cve.source_url %} ({{ cve.source_url }}){% endif %}
+{% endfor %}
 {% endif %}
 {% else %}
 _No se registraron hallazgos para este scan._
