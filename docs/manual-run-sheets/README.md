@@ -16,8 +16,10 @@ cronómetro operado por cada autor y no de marcas temporales del sistema.
 
 ## Advertencias que el informe también declara
 
-- El tiempo de reloj de la etapa de Nmap de la corrida A **no se midió** y se consigna
-  reconstruido (ver la hoja correspondiente). Es el único valor no medido de la Tabla 10.
+- La etapa de Nmap de la corrida A se volvió a cronometrar en dos sesiones posteriores
+  (el tiempo atendido el 2026-09-23 y el de reloj el 2026-09-25) y sus celdas quedan
+  marcadas como recronometradas. Todos los valores de ambas hojas son mediciones de
+  cronómetro: no hay cifras estimadas ni reconstruidas.
 - Ambos operadores son autores del sistema, de modo que las dos corridas no eliminan el
   sesgo de familiaridad (Sección 9.9 del informe).
 - El operador de la corrida B conocía el resultado de la corrida A, publicado en una
