@@ -31,6 +31,31 @@ La Sección 12.6.4 del informe las declara, explica el motivo de exclusión y an
 muestran sus datos sobre la tasa de fallos parciales silenciosos y sobre la atribución
 causal de la Sección 12.6.3.
 
+## Procedencia y trazabilidad
+
+Cada JSON registra en `environment.captured_at` la marca temporal de su propia captura.
+Los artefactos de las tres campañas analizadas se capturaron en agosto de 2026 y se
+incorporaron a este repositorio el 24 de septiembre de 2026, en el commit que publica
+este directorio. La diferencia entre ambas fechas es de publicación, no de medición.
+
+El script de medición **no registra el identificador de revisión del repositorio**
+vigente durante cada campaña. La correspondencia se reconstruye desde `captured_at` y
+el historial de `main`, y es la siguiente:
+
+| Campaña | `captured_at` (UTC) | Estado de `main` | Fecha del commit |
+|---|---|---|---|
+| A | 2026-08-11 00:18 | `aadd368` | 2026-08-06 |
+| B | 2026-08-24 16:59 | `b0a1bd3` | 2026-08-23 |
+| C | 2026-08-24 19:21 | `ecb6d42` | 2026-08-24 |
+
+Ninguna de las tres corrió sobre `0357df2` (etiqueta `tesis-entrega`), que describe el
+estado del código al cierre del período de medición. Entre la campaña A y ese commit
+median 89 commits, con seis cambios en `backend/app/normalization/`. La Sección 20 del
+informe declara esta correspondencia.
+
+Registrar la revisión en curso dentro de cada artefacto está propuesto como trabajo
+futuro en la Sección 17 del informe.
+
 ## Brazo manual
 
 Las dos corridas cronometradas del proceso manual de referencia (Tabla 10 del informe)
