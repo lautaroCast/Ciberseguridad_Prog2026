@@ -1,0 +1,57 @@
+[
+  {
+    "id": "2f9a24f6-7b90-41be-b3d5-30c6cba5f156",
+    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "tool_name": "nmap",
+    "status": "completed",
+    "command": "nmap -sV -T4 -oX - juice-shop",
+    "started_at": "2026-08-11T00:42:33.384293Z",
+    "finished_at": "2026-08-11T00:42:45.619855Z",
+    "error_message": null,
+    "created_at": "2026-08-11T00:42:45.649339Z"
+  },
+  {
+    "id": "593f8698-9ac1-4e57-b0fc-e4f463bd0f23",
+    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "tool_name": "whatweb",
+    "status": "completed",
+    "command": "whatweb --log-json=- -q --color=never -a 3 http://juice-shop:3000",
+    "started_at": "2026-08-11T00:42:45.743824Z",
+    "finished_at": "2026-08-11T00:42:51.988794Z",
+    "error_message": null,
+    "created_at": "2026-08-11T00:42:52.006444Z"
+  },
+  {
+    "id": "ae118a0e-e4a9-4aed-89d9-5f66654f4a01",
+    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "tool_name": "nikto",
+    "status": "completed",
+    "command": "perl /opt/nikto/program/nikto.pl -h http://juice-shop:3000 -Format json -output /tmp/tmphsy6xxzs.json -nointeractive -maxtime 90s",
+    "started_at": "2026-08-11T00:42:52.070902Z",
+    "finished_at": "2026-08-11T00:44:24.150957Z",
+    "error_message": null,
+    "created_at": "2026-08-11T00:44:24.172854Z"
+  },
+  {
+    "id": "a5b3f80d-1851-42e9-92bb-db9a3a8ef8b4",
+    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "tool_name": "nuclei",
+    "status": "completed",
+    "command": "nuclei -u http://juice-shop:3000 -jsonl -silent -duc -tags exposure,misconfig,tech,default-login",
+    "started_at": "2026-08-11T00:44:24.252583Z",
+    "finished_at": "2026-08-11T00:46:42.360433Z",
+    "error_message": null,
+    "created_at": "2026-08-11T00:46:42.428128Z"
+  },
+  {
+    "id": "5e5d0359-25b1-4281-8b86-947493864f8d",
+    "scan_id": "c2421b99-d1fc-4919-81b9-b0446b1156ef",
+    "tool_name": "zap",
+    "status": "completed",
+    "command": "zap.sh -cmd -quickurl http://juice-shop:3000 -quickout /tmp/tmpuq1w8_ur.json",
+    "started_at": "2026-08-11T00:46:42.534636Z",
+    "finished_at": "2026-08-11T00:50:26.333896Z",
+    "error_message": null,
+    "created_at": "2026-08-11T00:50:26.363193Z"
+  }
+]
