@@ -79,6 +79,11 @@ assets/       # Diagramas fuente, capturas de pantalla
 
 ## Documentación
 
+- **[Informe final del trabajo](docs/informe-final.pdf)** — el documento que describe y
+  evalúa este sistema. El estado del código que describe es el commit `0357df2`
+  (etiqueta `tesis-entrega`); los datos crudos de sus mediciones están bajo la etiqueta
+  `tesis-datos`. La Sección 20 del informe detalla la correspondencia entre cada
+  campaña de medición y el estado del repositorio vigente en ella.
 - [Arquitectura completa y plan de desarrollo](docs/architecture.md)
 - [Manual de instalación](docs/installation.md)
 - [Manual de uso](docs/usage.md)
