@@ -154,6 +154,92 @@
   --shadow: 0 8px 28px rgb(0 0 0 / 45%);
 }
 
+/*
+ * Glass layer.
+ *
+ * Defined once, after both theme blocks, and derived from --panel with
+ * color-mix so light and dark stay in sync without a third copy of the
+ * palette. The mix stays deliberately opaque (78-86%): this is a dense
+ * data surface, and a thinner glass costs contrast on 11px mono text
+ * before it buys anything. Blur does the visual work, not transparency.
+ *
+ * Radii are raised here from the old 3-5px. One rule, applied everywhere:
+ * controls 8px, panels and dialogs 14px, pills fully round.
+ */
+:root {
+  --radius-control: 8px;
+  --radius-panel: 14px;
+  --radius-pill: 999px;
+
+  --glass: color-mix(in oklab, var(--panel) 82%, transparent);
+  --glass-2: color-mix(in oklab, var(--panel-2) 80%, transparent);
+  --glass-line: color-mix(in oklab, var(--line-2) 70%, transparent);
+  --glass-blur: blur(18px) saturate(150%);
+  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 55%);
+  --glass-shadow: 0 10px 30px rgb(0 0 0 / 8%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 10%);
+    --glass-shadow: 0 10px 34px rgb(0 0 0 / 38%);
+  }
+}
+
+:root[data-theme="dark"] {
+  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 10%);
+  --glass-shadow: 0 10px 34px rgb(0 0 0 / 38%);
+}
+
+/*
+ * Something has to sit behind the glass or it reads as flat grey. Three
+ * wide, low-saturation washes on the accent hue (248) plus the severity
+ * hues already in the palette — fixed and pointer-events:none so it never
+ * repaints on scroll.
+ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 40rem at 12% -8%, oklch(0.72 0.1 248 / 16%), transparent 60%),
+    radial-gradient(50rem 36rem at 92% 4%, oklch(0.74 0.08 190 / 12%), transparent 62%),
+    radial-gradient(44rem 34rem at 70% 96%, oklch(0.7 0.09 300 / 10%), transparent 64%);
+}
+
+.glass {
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+
+/*
+ * Fallbacks. Either the viewer asked for less transparency, or the engine
+ * cannot blur — both get the original solid surface rather than a washed
+ * out one. The page has to stay readable without the effect.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass: var(--panel);
+    --glass-2: var(--panel-2);
+    --glass-blur: none;
+  }
+
+  body::before {
+    display: none;
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  :root {
+    --glass: var(--panel);
+    --glass-2: var(--panel-2);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -205,8 +291,12 @@ h1 {
   gap: 20px;
   height: 52px;
   padding: 0 28px;
-  border-bottom: 1px solid var(--line);
-  background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  border-bottom: 1px solid var(--glass-line);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
 }
 
 .topbar__brand {
@@ -239,9 +329,11 @@ h1 {
 }
 
 .panel {
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
 }
 
 .stack {
@@ -265,15 +357,27 @@ h1 {
   font-size: 12px;
   font-weight: 500;
   padding: 6px 13px;
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-control);
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-highlight);
   color: var(--ink);
   cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 90ms ease;
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--panel-2);
+  background: var(--glass-2);
+  border-color: var(--line-2);
+}
+
+/* Tactile feedback on press - the only motion the buttons have. */
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .btn:disabled {
@@ -376,12 +480,16 @@ h1 {
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
-  padding: 5px 10px;
+  padding: 5px 12px;
   border: 1px solid var(--line-2);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--ink-3);
   cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
 }
 
 .chip[aria-pressed="true"] {
@@ -578,11 +686,63 @@ h1 {
   transform-origin: center;
 }
 
+/*
+ * Findings pager. Sits under the table; only rendered when the filtered
+ * set needs more than one page.
+ */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 14px 2px;
+}
+
+.pager__range {
+  font-size: 12px;
+  /* --ink-3 measures 3.1:1 on the panel, under AA for 12px text. */
+  color: var(--ink-2);
+}
+
+.pager__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pager__page {
+  font-size: 12px;
+  color: var(--ink-2);
+  min-width: 46px;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .pager {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pager__controls {
+    justify-content: space-between;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton,
   .spin,
   .pulse {
     animation: none;
+  }
+
+  .btn,
+  .chip {
+    transition: none;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: none;
   }
 }
 
@@ -594,7 +754,8 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 40%);
+  background: rgb(0 0 0 / 38%);
+  backdrop-filter: blur(3px);
   padding: 20px;
   z-index: 10;
 }
@@ -602,11 +763,12 @@ h1 {
 .dialog {
   width: 100%;
   max-width: 460px;
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
   padding: 18px 20px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--glass-highlight), var(--shadow);
 }
 
 .error-boundary {

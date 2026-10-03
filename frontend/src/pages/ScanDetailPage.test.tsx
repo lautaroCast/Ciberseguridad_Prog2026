@@ -857,3 +857,88 @@ describe("ScanDetailPage report downloads", () => {
     resolveA();
   });
 });
+
+/**
+ * Findings are paged in the browser. The counts above the table describe the
+ * scan, not the page — paging must never turn "25 de 46" into "20 de 46".
+ */
+describe("ScanDetailPage findings pagination", () => {
+  function manyFindings(count: number): FindingRead[] {
+    return Array.from({ length: count }, (_, i) => ({
+      ...CRITICAL,
+      id: `finding-${i}`,
+      title: `Hallazgo ${String(i).padStart(2, "0")}`,
+      severity: "medium" as const,
+    }));
+  }
+
+  beforeEach(() => {
+    vi.mocked(getScan).mockResolvedValue(SCAN);
+    vi.mocked(listScanTasks).mockResolvedValue([task("t-nuclei", "nuclei")]);
+    vi.mocked(listReports).mockResolvedValue([]);
+  });
+
+  it("does not page a list that fits on one page", async () => {
+    vi.mocked(listFindings).mockResolvedValue(manyFindings(20));
+    renderPage();
+
+    await screen.findByText("Hallazgo 00");
+    expect(screen.queryByRole("navigation", { name: /Paginación/ })).not.toBeInTheDocument();
+  });
+
+  it("splits a longer list and moves between pages", async () => {
+    vi.mocked(listFindings).mockResolvedValue(manyFindings(25));
+    renderPage();
+
+    await screen.findByText("Hallazgo 00");
+    expect(screen.getByText("1-20 de 25")).toBeInTheDocument();
+    expect(screen.queryByText("Hallazgo 24")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anterior" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByText("21-25 de 25")).toBeInTheDocument();
+    expect(screen.getByText("Hallazgo 24")).toBeInTheDocument();
+    expect(screen.queryByText("Hallazgo 00")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
+  });
+
+  // The regression this whole file exists to prevent: a page-level number
+  // wearing a scan-level label.
+  it("keeps the summary count describing the scan, not the page", async () => {
+    vi.mocked(listFindings).mockResolvedValue(manyFindings(25));
+    renderPage();
+
+    await screen.findByText("Hallazgo 00");
+    expect(screen.getByText("25 de 25")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByText("25 de 25")).toBeInTheDocument();
+  });
+
+  it("returns to the first page when a filter changes", async () => {
+    vi.mocked(listFindings).mockResolvedValue(manyFindings(25));
+    renderPage();
+
+    await screen.findByText("Hallazgo 00");
+    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByText("21-25 de 25")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Informativa/ }));
+    expect(screen.getByText("1-20 de 25")).toBeInTheDocument();
+  });
+
+  // A filter that empties the list must show the empty state, not a blank
+  // table left over from whichever page the reader happened to be on.
+  it("shows the filtered empty state from any page", async () => {
+    vi.mocked(listFindings).mockResolvedValue(manyFindings(25));
+    renderPage();
+
+    await screen.findByText("Hallazgo 00");
+    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
+    fireEvent.click(screen.getByRole("button", { name: /Media/ }));
+
+    expect(screen.getByText("Ningún hallazgo coincide con los filtros")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: /Paginación/ })).not.toBeInTheDocument();
+  });
+});

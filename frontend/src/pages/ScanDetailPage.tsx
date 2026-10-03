@@ -47,6 +47,18 @@ const REPORT_FORMATS: ReportFormat[] = ["pdf", "html", "markdown", "json"];
  */
 const DEFAULT_SEVERITIES: Severity[] = ["critical", "high", "medium", "low"];
 
+/**
+ * Findings are paged in the browser, not by the server.
+ *
+ * The endpoint does accept limit/offset, but every count on this page —
+ * the severity chips, the tool breakdown, "N de M", and the three empty
+ * states — is derived from the full list. Paging server-side without
+ * also moving the filters there would leave those counts describing one
+ * page while claiming to describe the scan. Until the API can filter and
+ * count, the honest split is: fetch everything, page the rows.
+ */
+const FINDINGS_PAGE_SIZE = 20;
+
 export function ScanDetailPage() {
   const { id } = useParams<{ id: string }>();
   const scanId = id!;
@@ -110,6 +122,7 @@ export function ScanDetailPage() {
   const [openFindingId, setOpenFindingId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("severity");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [page, setPage] = useState(1);
 
   // Live clock while the pipeline runs; `finished_at` is null until it ends.
   const [, forceTick] = useState(0);
@@ -191,6 +204,20 @@ export function ScanDetailPage() {
       .sort(compareFindings);
   }, [findings, selectedSeverities, excludedTools, toolByTaskId, compareFindings]);
 
+  // Clamped rather than reset on every change: while a scan runs the list
+  // grows under a poll, and snapping the reader back to page 1 each time
+  // would be hostile. Only an explicit filter or sort change resets.
+  const pageCount = Math.max(1, Math.ceil(visibleFindings.length / FINDINGS_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pagedFindings = useMemo(
+    () =>
+      visibleFindings.slice(
+        (safePage - 1) * FINDINGS_PAGE_SIZE,
+        safePage * FINDINGS_PAGE_SIZE,
+      ),
+    [visibleFindings, safePage],
+  );
+
   function toggleSort(key: SortKey) {
     if (key === sortKey) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -198,6 +225,7 @@ export function ScanDetailPage() {
       setSortKey(key);
       setSortDirection("asc");
     }
+    setPage(1);
   }
 
   function toggleSeverity(severity: Severity) {
@@ -208,6 +236,7 @@ export function ScanDetailPage() {
       return next;
     });
     setOpenFindingId(null);
+    setPage(1);
   }
 
   function toggleTool(tool: string) {
@@ -218,6 +247,7 @@ export function ScanDetailPage() {
       return next;
     });
     setOpenFindingId(null);
+    setPage(1);
   }
 
   if (scanQuery.isLoading) return <TableSkeleton rows={5} />;
@@ -399,7 +429,8 @@ export function ScanDetailPage() {
           <TableSkeleton />
         ) : (
           <FindingsTable
-            findings={visibleFindings}
+            findings={pagedFindings}
+            matching={visibleFindings.length}
             total={findings.length}
             toolCount={toolCount}
             running={running}
@@ -413,6 +444,18 @@ export function ScanDetailPage() {
             sortKey={sortKey}
             sortDirection={sortDirection}
             onSort={toggleSort}
+          />
+        )}
+
+        {pageCount > 1 && (
+          <Pagination
+            page={safePage}
+            pageCount={pageCount}
+            matching={visibleFindings.length}
+            onPage={(next) => {
+              setPage(next);
+              setOpenFindingId(null);
+            }}
           />
         )}
       </div>
@@ -766,6 +809,7 @@ function SortableHeader({
 
 function FindingsTable({
   findings,
+  matching,
   total,
   toolCount,
   running,
@@ -778,7 +822,11 @@ function FindingsTable({
   sortDirection,
   onSort,
 }: {
+  /** Only the rows for the current page. */
   findings: FindingRead[];
+  /** How many findings pass the filters, across every page. */
+  matching: number;
+  /** Every finding the scan produced, before any filter. */
   total: number;
   toolCount: number;
   running: boolean;
@@ -889,7 +937,7 @@ function FindingsTable({
         );
       })}
 
-      {findings.length === 0 && (
+      {matching === 0 && (
         <EmptyState
           title={
             failedToLoad
@@ -937,6 +985,55 @@ function FindingsTable({
         </EmptyState>
       )}
     </div>
+  );
+}
+
+/**
+ * Paging over the already-filtered list. The range it states ("21-40 de 46")
+ * counts findings that passed the filters, not every finding in the scan —
+ * the "N de M" line above the table is what reports that.
+ */
+function Pagination({
+  page,
+  pageCount,
+  matching,
+  onPage,
+}: {
+  page: number;
+  pageCount: number;
+  matching: number;
+  onPage: (page: number) => void;
+}) {
+  const first = (page - 1) * FINDINGS_PAGE_SIZE + 1;
+  const last = Math.min(page * FINDINGS_PAGE_SIZE, matching);
+
+  return (
+    <nav className="pager" aria-label="Paginación de hallazgos">
+      <span className="mono pager__range">
+        {first}-{last} de {matching}
+      </span>
+      <span className="pager__controls">
+        <button
+          type="button"
+          className="btn"
+          onClick={() => onPage(page - 1)}
+          disabled={page <= 1}
+        >
+          Anterior
+        </button>
+        <span className="mono pager__page" aria-current="page">
+          {page} / {pageCount}
+        </span>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => onPage(page + 1)}
+          disabled={page >= pageCount}
+        >
+          Siguiente
+        </button>
+      </span>
+    </nav>
   );
 }
 
