@@ -171,24 +171,30 @@
   --radius-panel: 14px;
   --radius-pill: 999px;
 
-  --glass: color-mix(in oklab, var(--panel) 82%, transparent);
-  --glass-2: color-mix(in oklab, var(--panel-2) 80%, transparent);
-  --glass-line: color-mix(in oklab, var(--line-2) 70%, transparent);
-  --glass-blur: blur(18px) saturate(150%);
-  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 55%);
-  --glass-shadow: 0 10px 30px rgb(0 0 0 / 8%);
+  --glass: color-mix(in oklab, var(--panel) 62%, transparent);
+  --glass-2: color-mix(in oklab, var(--panel-2) 58%, transparent);
+  --glass-line: color-mix(in oklab, var(--line-2) 55%, transparent);
+  --glass-blur: blur(28px) saturate(185%);
+  --glass-highlight:
+    inset 0 1px 0 rgb(255 255 255 / 70%),
+    inset 0 0 0 1px rgb(255 255 255 / 10%);
+  --glass-shadow: 0 16px 40px rgb(0 0 0 / 14%);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 10%);
-    --glass-shadow: 0 10px 34px rgb(0 0 0 / 38%);
+    --glass-highlight:
+      inset 0 1px 0 rgb(255 255 255 / 22%),
+      inset 0 0 0 1px rgb(255 255 255 / 7%);
+    --glass-shadow: 0 18px 48px rgb(0 0 0 / 52%);
   }
 }
 
 :root[data-theme="dark"] {
-  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 10%);
-  --glass-shadow: 0 10px 34px rgb(0 0 0 / 38%);
+  --glass-highlight:
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    inset 0 0 0 1px rgb(255 255 255 / 7%);
+  --glass-shadow: 0 18px 48px rgb(0 0 0 / 52%);
 }
 
 /*
@@ -204,9 +210,10 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(60rem 40rem at 12% -8%, oklch(0.72 0.1 248 / 16%), transparent 60%),
-    radial-gradient(50rem 36rem at 92% 4%, oklch(0.74 0.08 190 / 12%), transparent 62%),
-    radial-gradient(44rem 34rem at 70% 96%, oklch(0.7 0.09 300 / 10%), transparent 64%);
+    radial-gradient(44rem 30rem at 8% -6%, oklch(0.62 0.19 262 / 52%), transparent 58%),
+    radial-gradient(38rem 28rem at 96% 2%, oklch(0.68 0.16 196 / 44%), transparent 58%),
+    radial-gradient(34rem 26rem at 76% 54%, oklch(0.6 0.2 318 / 34%), transparent 60%),
+    radial-gradient(40rem 30rem at 24% 104%, oklch(0.66 0.17 162 / 30%), transparent 60%);
 }
 
 .glass {
