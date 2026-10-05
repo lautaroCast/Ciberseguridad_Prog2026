@@ -59,6 +59,14 @@ export function TargetDetailPage() {
     },
   });
 
+  const updateDescriptionMutation = useMutation({
+    mutationFn: (description: string | null) => updateTarget(targetId, { description }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["target", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["targets"] });
+    },
+  });
+
   const updateActiveMutation = useMutation({
     mutationFn: (isActive: boolean) => updateTarget(targetId, { is_active: isActive }),
     onSuccess: () => {
@@ -130,9 +138,11 @@ export function TargetDetailPage() {
               )}
             </button>
           </div>
-          {target.description && (
-            <p style={{ margin: 0, fontSize: 13, color: "var(--ink-2)" }}>{target.description}</p>
-          )}
+          <DescriptionEditor
+            description={target.description}
+            saving={updateDescriptionMutation.isPending}
+            onSave={(next) => updateDescriptionMutation.mutateAsync(next)}
+          />
         </div>
         <button
           type="button"
@@ -148,6 +158,7 @@ export function TargetDetailPage() {
       <ErrorBanner error={targetQuery.error} />
       <ErrorBanner error={pipelineMutation.error} />
       <ErrorBanner error={updateActiveMutation.error} />
+      <ErrorBanner error={updateDescriptionMutation.error} />
 
       <div
         style={{
@@ -358,6 +369,116 @@ export function TargetDetailPage() {
           </span>
         </ConfirmDialog>
       )}
+    </div>
+  );
+}
+
+/**
+ * Inline edit for the target description.
+ *
+ * An empty box is sent as null, not "": the PATCH tells an explicit null
+ * apart from an omitted field, and null is what clears the column. Saving
+ * an unchanged value skips the request. If the request fails the editor
+ * stays open with the draft intact, and the page-level ErrorBanner shows
+ * why, so nothing typed is lost.
+ */
+function DescriptionEditor({
+  description,
+  saving,
+  onSave,
+}: {
+  description: string | null;
+  saving: boolean;
+  onSave: (next: string | null) => Promise<unknown>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  function start() {
+    setDraft(description ?? "");
+    setEditing(true);
+  }
+
+  async function save() {
+    const trimmed = draft.trim();
+    const next = trimmed === "" ? null : trimmed;
+    if (next === description) {
+      setEditing(false);
+      return;
+    }
+    try {
+      await onSave(next);
+      setEditing(false);
+    } catch {
+      // Left open on purpose; see the component comment.
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="row" style={{ gap: 10, alignItems: "baseline" }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            color: "var(--ink-2)",
+            fontStyle: description ? "normal" : "italic",
+          }}
+        >
+          {description ?? "Sin descripción"}
+        </p>
+        <button
+          type="button"
+          className="btn"
+          style={{ fontSize: 11, padding: "2px 8px" }}
+          onClick={start}
+        >
+          Editar descripción
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="stack" style={{ gap: 8, maxWidth: 560, marginTop: 4 }}>
+      <label className="field__label" htmlFor="target-description">
+        Descripción
+      </label>
+      <textarea
+        id="target-description"
+        className="input"
+        rows={2}
+        value={draft}
+        autoFocus
+        disabled={saving}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            setEditing(false);
+          } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault();
+            void save();
+          }
+        }}
+        style={{ resize: "vertical", fontFamily: "inherit" }}
+      />
+      <div className="row" style={{ gap: 8 }}>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => void save()}
+          disabled={saving}
+        >
+          {saving ? <SpinnerIcon size={11} /> : "Guardar"}
+        </button>
+        <button type="button" className="btn" onClick={() => setEditing(false)} disabled={saving}>
+          Cancelar
+        </button>
+        <span style={{ fontSize: 11, color: "var(--ink-2)" }}>
+          Dejala vacía para quitarla.
+        </span>
+      </div>
     </div>
   );
 }

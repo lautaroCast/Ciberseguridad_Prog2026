@@ -226,3 +226,83 @@ describe("TargetDetailPage strips ANSI escapes from a scan's error_message in th
     expect(screen.queryByText(/\[1;31m/)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * The PATCH accepts `description`, but until this the UI only ever sent
+ * `is_active`: a description set at creation could never be changed.
+ */
+describe("TargetDetailPage editing the description", () => {
+  beforeEach(() => {
+    vi.mocked(updateTarget).mockReset();
+    vi.mocked(getTarget).mockResolvedValue({ ...ACTIVE_TARGET, description: "DVWA local" });
+    vi.mocked(listScansForTarget).mockResolvedValue([]);
+    vi.mocked(updateTarget).mockResolvedValue({ ...ACTIVE_TARGET, description: "DVWA nueva" });
+  });
+
+  it("saves an edited description", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Editar descripción" }));
+
+    const field = screen.getByLabelText("Descripción");
+    expect(field).toHaveValue("DVWA local");
+    fireEvent.change(field, { target: { value: "  DVWA nueva  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(updateTarget).toHaveBeenCalledWith("target-1", { description: "DVWA nueva" }),
+    );
+  });
+
+  // An empty string would be stored as "", not cleared. null is what the
+  // backend treats as "remove it".
+  it("sends null, not an empty string, when the box is emptied", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Editar descripción" }));
+    fireEvent.change(screen.getByLabelText("Descripción"), { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(updateTarget).toHaveBeenCalledWith("target-1", { description: null }),
+    );
+  });
+
+  it("skips the request when nothing changed", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Editar descripción" }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Descripción")).not.toBeInTheDocument(),
+    );
+    expect(updateTarget).not.toHaveBeenCalled();
+  });
+
+  it("discards the draft on Cancelar", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Editar descripción" }));
+    fireEvent.change(screen.getByLabelText("Descripción"), { target: { value: "otra cosa" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.getByText("DVWA local")).toBeInTheDocument();
+    expect(updateTarget).not.toHaveBeenCalled();
+  });
+
+  // A failed save must not throw away what was typed.
+  it("keeps the editor open with the draft when the save fails", async () => {
+    vi.mocked(updateTarget).mockRejectedValue(new Error("network"));
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Editar descripción" }));
+    fireEvent.change(screen.getByLabelText("Descripción"), { target: { value: "no se pierde" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(updateTarget).toHaveBeenCalled());
+    expect(screen.getByLabelText("Descripción")).toHaveValue("no se pierde");
+  });
+
+  it("shows a placeholder when there is no description", async () => {
+    vi.mocked(getTarget).mockResolvedValue({ ...ACTIVE_TARGET, description: null });
+    renderPage();
+    expect(await screen.findByText("Sin descripción")).toBeInTheDocument();
+  });
+});
+
