@@ -149,12 +149,3 @@ export function MoonIcon({ size = 14, className }: IconProps) {
     </svg>
   );
 }
-
-export function SystemIcon({ size = 14, className }: IconProps) {
-  return (
-    <svg {...base(size, className)} strokeWidth={2}>
-      <rect x="3" y="4" width="18" height="12" rx="2" />
-      <path d="M8 20h8" />
-    </svg>
-  );
-}

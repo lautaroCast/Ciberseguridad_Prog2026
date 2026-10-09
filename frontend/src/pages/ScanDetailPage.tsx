@@ -764,6 +764,27 @@ function SortableHeader({
   );
 }
 
+// Fixed column widths, shared by the header and every row so the two can't
+// drift apart. `type` fits the longest category the normalizers emit today
+// (`security_misconfiguration`, ~165px in 11px Plex Mono); TRUNCATE below is
+// what actually keeps a longer value from spilling into the next column.
+const COLUMN: Record<Exclude<SortKey, "title">, CSSProperties> = {
+  severity: { width: 100, flexShrink: 0 },
+  type: { width: 172, flexShrink: 0 },
+  origin: { width: 74, flexShrink: 0 },
+  cvss: { width: 44, flexShrink: 0 },
+};
+
+// Identifiers like `finding_type` have no spaces to wrap at, so a cell that
+// only sets a width lets them overflow onto its neighbour. Clip instead, and
+// pair it with a `title` so the full value is still one hover away.
+const TRUNCATE: CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
 function FindingsTable({
   findings,
   total,
@@ -800,7 +821,7 @@ function FindingsTable({
           activeKey={sortKey}
           direction={sortDirection}
           onSort={onSort}
-          style={{ width: 100, flexShrink: 0 }}
+          style={COLUMN.severity}
         />
         <SortableHeader
           label="Título"
@@ -816,7 +837,7 @@ function FindingsTable({
           activeKey={sortKey}
           direction={sortDirection}
           onSort={onSort}
-          style={{ width: 128, flexShrink: 0 }}
+          style={COLUMN.type}
         />
         <SortableHeader
           label="Origen"
@@ -824,7 +845,7 @@ function FindingsTable({
           activeKey={sortKey}
           direction={sortDirection}
           onSort={onSort}
-          style={{ width: 74, flexShrink: 0 }}
+          style={COLUMN.origin}
         />
         <SortableHeader
           label="CVSS"
@@ -832,7 +853,7 @@ function FindingsTable({
           activeKey={sortKey}
           direction={sortDirection}
           onSort={onSort}
-          style={{ width: 44, flexShrink: 0, textAlign: "right" }}
+          style={{ ...COLUMN.cvss, textAlign: "right" }}
         />
       </div>
 
@@ -848,7 +869,7 @@ function FindingsTable({
               onClick={() => onToggle(finding.id)}
               aria-expanded={open}
             >
-              <span role="cell" className="row" style={{ width: 100, flexShrink: 0, gap: 7 }}>
+              <span role="cell" className="row" style={{ ...COLUMN.severity, gap: 7 }}>
                 <SeverityMeter severity={finding.severity} />
                 <span className="sev-label" style={{ color: severityColor(finding.severity) }}>
                   {SEVERITY_META[finding.severity].label}
@@ -858,14 +879,16 @@ function FindingsTable({
               <span
                 role="cell"
                 className="mono"
-                style={{ width: 128, flexShrink: 0, fontSize: 11, color: "var(--ink-3)" }}
+                style={{ ...COLUMN.type, ...TRUNCATE, fontSize: 11, color: "var(--ink-3)" }}
+                title={finding.finding_type}
               >
                 {finding.finding_type}
               </span>
               <span
                 role="cell"
                 className="mono"
-                style={{ width: 74, flexShrink: 0, fontSize: 11, color: "var(--ink-2)" }}
+                style={{ ...COLUMN.origin, ...TRUNCATE, fontSize: 11, color: "var(--ink-2)" }}
+                title={tool ? toolLabel(tool) : undefined}
               >
                 {tool ? toolLabel(tool) : "—"}
               </span>
@@ -873,8 +896,7 @@ function FindingsTable({
                 role="cell"
                 className="mono"
                 style={{
-                  width: 44,
-                  flexShrink: 0,
+                  ...COLUMN.cvss,
                   fontSize: 12,
                   textAlign: "right",
                   color: "var(--ink-2)",

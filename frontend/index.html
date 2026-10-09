@@ -4,9 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Tells the browser both themes are supported so form controls and
-         scrollbars follow the active one instead of staying light. -->
+    <!-- Tells the browser both themes are supported. On its own this makes
+         native controls follow the OS; global.css sets `color-scheme` per
+         theme so they follow the theme chosen with the toggle instead. -->
     <meta name="color-scheme" content="light dark" />
+    <!-- Classic blocking script on purpose: it must set data-theme before
+         the first paint. See public/theme-init.js. -->
+    <script src="/theme-init.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

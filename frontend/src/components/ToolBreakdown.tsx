@@ -64,6 +64,9 @@ export function ToolBreakdown({ rows }: { rows: ToolBreakdownRow[] }) {
                   key={severity}
                   title={`${SEVERITY_META[severity].label}: ${row.counts[severity]}`}
                   style={{
+                    // Explicit height: the `.row` container centers its
+                    // children, and an empty div centered that way is 0px tall.
+                    height: "100%",
                     width: `${(row.counts[severity] / maxTotal) * 100}%`,
                     background: severityColor(severity),
                     opacity: 0.85,

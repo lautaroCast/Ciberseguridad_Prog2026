@@ -15,6 +15,10 @@
  */
 
 :root {
+  /* color-scheme travels with the tokens in every theme block, so native
+     parts (scrollbars, checkboxes, caret) follow the chosen theme — not the
+     OS, which is what the <meta name="color-scheme"> alone would give. */
+  color-scheme: light;
   --bg: #fbfbfa;
   --panel: #ffffff;
   --panel-2: #f6f6f5;
@@ -66,6 +70,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #131416;
     --panel: #1a1b1e;
     --panel-2: #202225;
@@ -111,6 +116,7 @@
 }
 
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #131416;
   --panel: #1a1b1e;
   --panel-2: #202225;

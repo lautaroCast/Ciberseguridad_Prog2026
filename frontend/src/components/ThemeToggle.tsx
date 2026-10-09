@@ -1,26 +1,22 @@
-import { MoonIcon, SunIcon, SystemIcon } from "./Icon";
+import { MoonIcon, SunIcon } from "./Icon";
 import { useTheme } from "../lib/useTheme";
 
-const LABELS = {
-  system: "Tema del sistema",
-  light: "Tema claro",
-  dark: "Tema oscuro",
-} as const;
-
+// The label and icon name what the click does, not the current state: a
+// button labelled "Tema oscuro" reads the same whether it means "you are in
+// dark" or "switch to dark".
 export function ThemeToggle() {
-  const [preference, cycle] = useTheme();
+  const [theme, toggle] = useTheme();
+  const label = theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro";
   return (
     <button
       type="button"
       className="btn"
-      onClick={cycle}
-      title={LABELS[preference]}
-      aria-label={LABELS[preference]}
+      onClick={toggle}
+      title={label}
+      aria-label={label}
       style={{ padding: "6px 9px", color: "var(--ink-2)" }}
     >
-      {preference === "system" && <SystemIcon />}
-      {preference === "light" && <SunIcon />}
-      {preference === "dark" && <MoonIcon />}
+      {theme === "dark" ? <SunIcon /> : <MoonIcon />}
     </button>
   );
 }
